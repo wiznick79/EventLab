@@ -2,13 +2,15 @@
 
 Every milestone must finish with a behavior that can be demonstrated through the UI or a short recording.
 
-## Milestone 0: repository and contracts
+## Milestone 0: repository and contracts — completed 2026-08-10
 
 - Establish the Maven modules, frontend, Compose skeleton, coding conventions, and decision records.
 - Define workflow states, event envelope, identifiers, versioning, and scenario contracts.
 - Add baseline CI verification.
 
 **Demonstration:** architecture page and executable skeleton with health endpoints.
+
+Implemented with four independently runnable Spring Boot service skeletons, a shared contracts module, a responsive React scenario shell, PostgreSQL Compose configuration, container build foundations, and backend/frontend/Compose CI verification.
 
 ## Milestone 1: observable walking skeleton
 

@@ -1,0 +1,11 @@
+.git
+.github
+.idea
+.vscode
+**/node_modules
+**/target
+frontend/dist
+docs
+*.log
+*.tfstate*
+.terraform

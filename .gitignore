@@ -1,0 +1,33 @@
+# Java and Maven
+target/
+*.class
+.mvn/timing.properties
+
+# Node
+node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+
+# Environment and local runtime
+.env
+!.env.example
+*.log
+
+# IDE and OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+!*.tfvars.example

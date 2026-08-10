@@ -1,0 +1,12 @@
+package pt.eventlab.contracts;
+
+public enum WorkflowState {
+    ACCEPTED,
+    PAYMENT_PENDING,
+    PAYMENT_AUTHORIZED,
+    FULFILMENT_PENDING,
+    COMPENSATION_PENDING,
+    COMPLETED,
+    COMPENSATED,
+    FAILED_REQUIRES_INTERVENTION
+}

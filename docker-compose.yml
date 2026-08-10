@@ -1,0 +1,22 @@
+name: eventlab
+
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_USER: ${EVENTLAB_POSTGRES_USER:-eventlab}
+      POSTGRES_PASSWORD: ${EVENTLAB_POSTGRES_PASSWORD:-eventlab-local-only}
+      POSTGRES_DB: eventlab
+    ports:
+      - "${EVENTLAB_POSTGRES_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    volumes:
+      - eventlab-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  eventlab-postgres-data:
