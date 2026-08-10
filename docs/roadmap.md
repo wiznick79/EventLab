@@ -34,13 +34,15 @@ Implemented with PostgreSQL-owned service state, the official local Azure Servic
 
 Implemented with transactional Workflow and Payment outboxes, scheduled Service Bus dispatch, transactional consumer inboxes, separate delivery-row and logical-event identity in the Lab Console, persistence-level integration tests, and a repeatable multi-service emulator check. The executable duplicate-payment scenario records two deliveries while proving one payment row and one workflow completion.
 
-## Milestone 3: retry, DLQ, and recovery
+## Milestone 3: retry, DLQ, and recovery — completed 2026-08-11
 
 - Add deterministic temporary failure.
 - Expose delivery attempts and exponential backoff.
 - Add retry exhaustion, DLQ inspection, replay audit, and guarded resubmission.
 
 **Demonstration:** take Fulfilment offline logically, reach the DLQ, recover it, and complete the workflow.
+
+Implemented with a persisted Fulfilment participant, deterministic per-workflow availability, four visible delivery attempts with 250/500/1000 ms backoff, explicit dead-letter settlement, workflow-scoped DLQ lookup, dependency recovery through the Fulfilment API, and replay through the original command queue. The consumer inbox is claimed only after successful handling, so retries remain possible while a replayed logical command still completes at most once.
 
 ## Milestone 4: saga compensation
 

@@ -7,6 +7,7 @@ public record WorkflowMessagingProperties(
         boolean enabled,
         String connectionString,
         String paymentCommandsQueue,
+        String fulfilmentCommandsQueue,
         String businessEventsTopic,
         String workflowEventsSubscription) {
 }

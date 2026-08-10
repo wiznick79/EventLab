@@ -25,4 +25,9 @@ class OutboxWorkflowMessagePublisher implements WorkflowMessagePublisher {
     public void publishBusinessEvent(EventEnvelope<?> event) {
         outbox.enqueue(OutboxDestination.TOPIC, properties.businessEventsTopic(), event);
     }
+
+    @Override
+    public void sendFulfilmentCommand(EventEnvelope<?> command) {
+        outbox.enqueue(OutboxDestination.QUEUE, properties.fulfilmentCommandsQueue(), command);
+    }
 }

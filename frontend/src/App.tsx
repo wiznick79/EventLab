@@ -16,7 +16,6 @@ type TimelineEvent = {
 type RunResponse = { workflowId: string; state: string }
 
 const futureScenarios = [
-  ['Fulfilment unavailable', 'Follow retries and exponential backoff into the dead-letter queue and recovery.', 'Retry + DLQ'],
   ['Fulfilment rejected', 'Watch the saga reverse an authorized payment through a compensation command.', 'Compensation'],
 ]
 
@@ -31,6 +30,7 @@ export function App() {
   const [run, setRun] = useState<RunResponse | null>(null)
   const [events, setEvents] = useState<TimelineEvent[]>([])
   const [starting, setStarting] = useState(false)
+  const [recovering, setRecovering] = useState(false)
   const [error, setError] = useState('')
   const [activeScenario, setActiveScenario] = useState('')
   const streamRef = useRef<EventSource | null>(null)
@@ -69,15 +69,30 @@ export function App() {
     }
   }
 
+  async function recover() {
+    if (!run) return
+    setRecovering(true)
+    setError('')
+    try {
+      const response = await fetch(`/api/v1/runs/${run.workflowId}/recover`, { method: 'POST' })
+      if (!response.ok) throw new Error(`Recovery returned HTTP ${response.status}`)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not recover the workflow')
+    } finally {
+      setRecovering(false)
+    }
+  }
+
   const completed = events.some((event) => event.state === 'COMPLETED')
   const duplicateCount = events.filter((event) => event.duplicateDelivery).length
+  const deadLettered = events.some((event) => event.state === 'DEAD_LETTERED')
 
   return (
     <main>
       <header className="hero">
         <nav aria-label="Primary navigation">
           <a className="wordmark" href="#top" aria-label="EventLab home"><span className="mark">EL</span>EventLab</a>
-          <span className="build-status"><i /> Milestone 2 · reliable delivery</span>
+          <span className="build-status"><i /> Milestone 3 · retry and recovery</span>
         </nav>
         <div className="hero-copy" id="top">
           <p className="eyebrow">Distributed systems under pressure</p>
@@ -109,9 +124,17 @@ export function App() {
               {starting && activeScenario === 'duplicate-payment-result' ? 'Starting…' : 'Run experiment'} <span>→</span>
             </button>
           </article>
+          <article className="scenario-card active-card">
+            <span className="scenario-number">03</span><span className="scenario-tag">Retry + DLQ</span>
+            <h3>Fulfilment unavailable</h3>
+            <p>Exhaust four delivery attempts, restore the dependency, and replay the quarantined command safely.</p>
+            <button className="run-button" type="button" onClick={() => startScenario('fulfilment-unavailable')} disabled={starting}>
+              {starting && activeScenario === 'fulfilment-unavailable' ? 'Starting…' : 'Run experiment'} <span>→</span>
+            </button>
+          </article>
           {futureScenarios.map(([label, description, tag], index) => (
             <article className="scenario-card" key={label}>
-              <span className="scenario-number">0{index + 3}</span><span className="scenario-tag">{tag}</span>
+              <span className="scenario-number">0{index + 4}</span><span className="scenario-tag">{tag}</span>
               <h3>{label}</h3><p>{description}</p>
               <button type="button" disabled aria-label={`${label} is not implemented yet`}>Coming next <span>→</span></button>
             </article>
@@ -126,6 +149,13 @@ export function App() {
           {activeScenario === 'duplicate-payment-result' && completed && duplicateCount > 0 && <div className="invariant">
             <strong>Invariant protected</strong>
             <span>{duplicateCount} duplicate delivery observed · 1 workflow completion</span>
+          </div>}
+          {activeScenario === 'fulfilment-unavailable' && deadLettered && !completed && <div className="invariant">
+            <strong>Command quarantined</strong>
+            <span>The retry budget is exhausted. Restore the simulated dependency and replay this command.</span>
+            <button className="run-button" type="button" onClick={recover} disabled={recovering}>
+              {recovering ? 'Recovering…' : 'Recover and replay'} <span>→</span>
+            </button>
           </div>}
           {error && <p className="run-error">{error}</p>}
           <ol className="timeline">

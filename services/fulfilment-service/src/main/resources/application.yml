@@ -1,6 +1,16 @@
 spring:
   application:
     name: fulfilment-service
+  datasource:
+    url: ${FULFILMENT_DATABASE_URL:jdbc:postgresql://localhost:5433/fulfilment_service}
+    username: ${FULFILMENT_DATABASE_USER:fulfilment_service}
+    password: ${FULFILMENT_DATABASE_PASSWORD:fulfilment-local-only}
+  flyway:
+    locations: classpath:db/migration
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
 server:
   port: ${SERVER_PORT:8083}
 management:
@@ -12,3 +22,16 @@ management:
     health:
       probes:
         enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTEL_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+
+eventlab:
+  messaging:
+    enabled: ${EVENTLAB_MESSAGING_ENABLED:false}
+    connection-string: ${EVENTLAB_SERVICEBUS_CONNECTION_STRING:Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;}
+    fulfilment-commands-queue: fulfilment-commands
+    business-events-topic: business-events

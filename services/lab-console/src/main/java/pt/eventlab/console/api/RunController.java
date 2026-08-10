@@ -19,11 +19,14 @@ class RunController {
     private final TimelineProjectionService timeline;
     private final TimelineStream stream;
     private final WorkflowClient workflowClient;
+    private final DeadLetterRecoveryService recovery;
 
-    RunController(TimelineProjectionService timeline, TimelineStream stream, WorkflowClient workflowClient) {
+    RunController(TimelineProjectionService timeline, TimelineStream stream,
+            WorkflowClient workflowClient, DeadLetterRecoveryService recovery) {
         this.timeline = timeline;
         this.stream = stream;
         this.workflowClient = workflowClient;
+        this.recovery = recovery;
     }
 
     @PostMapping
@@ -39,5 +42,10 @@ class RunController {
     @GetMapping(path = "/{workflowId}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     SseEmitter stream(@PathVariable UUID workflowId) {
         return stream.subscribe(workflowId, timeline.timeline(workflowId));
+    }
+
+    @PostMapping("/{workflowId}/recover")
+    void recover(@PathVariable UUID workflowId) {
+        recovery.recover(workflowId);
     }
 }

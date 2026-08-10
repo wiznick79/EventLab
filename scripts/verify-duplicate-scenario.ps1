@@ -33,12 +33,16 @@ try {
         '-jar', 'services/payment-service/target/payment-service-0.1.0-SNAPSHOT.jar',
         '--server.port=18082') -WorkingDirectory $repositoryRoot -WindowStyle Hidden -PassThru
     $processes += Start-Process java -ArgumentList @(
+        '-jar', 'services/fulfilment-service/target/fulfilment-service-0.1.0-SNAPSHOT.jar',
+        '--server.port=18083') -WorkingDirectory $repositoryRoot -WindowStyle Hidden -PassThru
+    $processes += Start-Process java -ArgumentList @(
         '-jar', 'services/lab-console/target/lab-console-0.1.0-SNAPSHOT.jar',
         '--server.port=18080',
-        '--eventlab.workflow-base-url=http://localhost:18081') `
+        '--eventlab.workflow-base-url=http://localhost:18081',
+        '--eventlab.fulfilment-base-url=http://localhost:18083') `
         -WorkingDirectory $repositoryRoot -WindowStyle Hidden -PassThru
 
-    Wait-ForHealth -Ports @(18081, 18082, 18080)
+    Wait-ForHealth -Ports @(18081, 18082, 18083, 18080)
 
     $request = @{
         scenarioId = 'duplicate-payment-result'

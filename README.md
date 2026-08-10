@@ -6,7 +6,7 @@ The project is a portfolio and learning system, not a parcel-management product.
 
 ## Status
 
-Milestone 2 is complete. The project now demonstrates transactional outbox delivery, inbox idempotency, duplicate logical-message delivery, and a visible proof that one workflow state transition survives two payment-result deliveries.
+Milestone 3 is complete. The project demonstrates transactional delivery, consumer idempotency, deterministic exponential retries, explicit dead-lettering, guarded workflow-scoped replay, and successful recovery after a simulated Fulfilment outage.
 
 ## Target technology
 
@@ -72,7 +72,7 @@ docker volume rm eventlab_eventlab-postgres-data
 docker compose up -d postgres
 ```
 
-Start the three backend processes in separate PowerShell terminals from the repository root:
+Start the four backend processes in separate PowerShell terminals from the repository root:
 
 ```powershell
 $env:EVENTLAB_MESSAGING_ENABLED='true'
@@ -82,6 +82,11 @@ mvn -pl services/workflow-service -am spring-boot:run
 ```powershell
 $env:EVENTLAB_MESSAGING_ENABLED='true'
 mvn -pl services/payment-service -am spring-boot:run
+```
+
+```powershell
+$env:EVENTLAB_MESSAGING_ENABLED='true'
+mvn -pl services/fulfilment-service -am spring-boot:run
 ```
 
 ```powershell
@@ -105,8 +110,9 @@ After packaging the backend and starting the Compose infrastructure, the cross-s
 ```powershell
 mvn package
 .\scripts\verify-duplicate-scenario.ps1
+.\scripts\verify-dlq-recovery.ps1
 ```
 
 ### Reliability model
 
-Workflow and Payment persist business state and outgoing messages in the same database transaction. Scheduled dispatchers send pending outbox rows and mark successful delivery. A crash after the broker accepts a message but before the row is marked can still produce a duplicate—as expected under at-least-once delivery—so consumers claim the logical message ID in an inbox within the same transaction as their state change.
+Workflow, Payment, and Fulfilment persist business state and outgoing messages in the same database transaction. Scheduled dispatchers send pending outbox rows and mark successful delivery. A crash after the broker accepts a message but before the row is marked can still produce a duplicate—as expected under at-least-once delivery—so consumers claim the logical message ID in an inbox within the same transaction as their state change. Failed Fulfilment attempts deliberately do not claim the inbox entry; the claim occurs only when the command succeeds.

@@ -53,9 +53,17 @@ public class WorkflowRun {
         return new WorkflowRun(UUID.randomUUID(), scenarioId, amount, currency.toUpperCase(), now);
     }
 
-    public void complete(Instant now) {
+    public void recordPaymentAuthorized(Instant now) {
         if (state != WorkflowState.PAYMENT_PENDING) {
-            throw new IllegalStateException("Only a payment-pending workflow can complete this walking skeleton");
+            throw new IllegalStateException("Only a payment-pending workflow can accept a payment result");
+        }
+        state = WorkflowState.FULFILMENT_PENDING;
+        updatedAt = now;
+    }
+
+    public void complete(Instant now) {
+        if (state != WorkflowState.FULFILMENT_PENDING) {
+            throw new IllegalStateException("Only a fulfilment-pending workflow can complete");
         }
         state = WorkflowState.COMPLETED;
         updatedAt = now;

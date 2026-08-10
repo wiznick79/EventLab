@@ -41,7 +41,7 @@ public class TimelineProjectionService {
                 ? new EventPresentation(
                         "Workflow inbox", "DUPLICATE_IGNORED",
                         "Duplicate logical event observed; the workflow inbox rejected a second state change")
-                : presentation(envelope.eventType());
+                : presentation(envelope);
         TimelineEvent saved = events.save(new TimelineEvent(
                 envelope.eventId(), envelope.workflowId(), envelope.eventType(),
                 presentation.service(), presentation.state(), presentation.description(),
@@ -75,15 +75,26 @@ public class TimelineProjectionService {
         });
     }
 
-    private EventPresentation presentation(String eventType) {
-        return switch (eventType) {
+    private EventPresentation presentation(EventEnvelope<JsonNode> envelope) {
+        return switch (envelope.eventType()) {
             case MessageTypes.WORKFLOW_STARTED -> new EventPresentation(
                     "Workflow", "PAYMENT_PENDING", "Workflow accepted; payment authorization requested");
             case MessageTypes.PAYMENT_AUTHORIZED -> new EventPresentation(
-                    "Payment", "PAYMENT_AUTHORIZED", "Payment authorized by the Payment service");
+                    "Payment", "FULFILMENT_PENDING", "Payment authorized; fulfilment requested");
+            case MessageTypes.FULFILMENT_ATTEMPT_FAILED -> new EventPresentation(
+                    "Fulfilment", "RETRY_SCHEDULED", "Attempt " + envelope.payload().path("attempt").asInt()
+                            + " failed; retry delay " + envelope.payload().path("nextDelayMilliseconds").asLong() + " ms");
+            case MessageTypes.FULFILMENT_DEAD_LETTERED -> new EventPresentation(
+                    "Fulfilment", "DEAD_LETTERED", "Retry budget exhausted; command moved to the dead-letter queue");
+            case MessageTypes.FULFILMENT_RECOVERY_REQUESTED -> new EventPresentation(
+                    "Recovery", "RECOVERY_REQUESTED", "Dependency restored; replay "
+                            + envelope.payload().path("replayMessageId").asText() + " requested by "
+                            + envelope.payload().path("initiatedBy").asText());
+            case MessageTypes.FULFILMENT_COMPLETED -> new EventPresentation(
+                    "Fulfilment", "FULFILLED", "Fulfilment completed after a successful command delivery");
             case MessageTypes.WORKFLOW_COMPLETED -> new EventPresentation(
                     "Workflow", "COMPLETED", "Workflow reached its successful terminal state");
-            default -> new EventPresentation("Unknown", "OBSERVED", "Observed " + eventType);
+            default -> new EventPresentation("Unknown", "OBSERVED", "Observed " + envelope.eventType());
         };
     }
 

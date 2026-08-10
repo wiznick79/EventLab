@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import pt.eventlab.contracts.EventEnvelope;
 import pt.eventlab.contracts.MessageTypes;
 import pt.eventlab.contracts.messages.PaymentAuthorized;
+import pt.eventlab.contracts.messages.FulfilmentCompleted;
 import pt.eventlab.messaging.ServiceBusEnvelopeCodec;
 import pt.eventlab.messaging.ServiceBusTraceContext;
 
@@ -29,17 +30,20 @@ class PaymentAuthorizedProcessor {
     private final ServiceBusProcessorClient processor;
     private final ServiceBusTraceContext traceContext;
     private final PaymentAuthorizedHandler handler;
+    private final FulfilmentCompletedHandler fulfilmentHandler;
 
     PaymentAuthorizedProcessor(
             WorkflowMessagingProperties properties,
             ServiceBusEnvelopeCodec codec,
             ServiceBusTraceContext traceContext,
             ObservationRegistry observations,
-            PaymentAuthorizedHandler handler) {
+            PaymentAuthorizedHandler handler,
+            FulfilmentCompletedHandler fulfilmentHandler) {
         this.codec = codec;
         this.traceContext = traceContext;
         this.observations = observations;
         this.handler = handler;
+        this.fulfilmentHandler = fulfilmentHandler;
         this.processor = new ServiceBusClientBuilder()
                 .connectionString(properties.connectionString())
                 .processor()
@@ -59,7 +63,8 @@ class PaymentAuthorizedProcessor {
     }
 
     private void process(ServiceBusReceivedMessageContext context) {
-        if (!MessageTypes.PAYMENT_AUTHORIZED.equals(context.getMessage().getSubject())) {
+        if (!MessageTypes.PAYMENT_AUTHORIZED.equals(context.getMessage().getSubject())
+                && !MessageTypes.FULFILMENT_COMPLETED.equals(context.getMessage().getSubject())) {
             context.complete();
             return;
         }
@@ -72,9 +77,15 @@ class PaymentAuthorizedProcessor {
     }
 
     private void handle(ServiceBusReceivedMessageContext context) {
-        EventEnvelope<PaymentAuthorized> event = codec.decode(
-                context.getMessage().getBody(), PaymentAuthorized.class);
-        handler.handle(event);
+        if (MessageTypes.PAYMENT_AUTHORIZED.equals(context.getMessage().getSubject())) {
+            EventEnvelope<PaymentAuthorized> event = codec.decode(
+                    context.getMessage().getBody(), PaymentAuthorized.class);
+            handler.handle(event);
+        } else {
+            EventEnvelope<FulfilmentCompleted> event = codec.decode(
+                    context.getMessage().getBody(), FulfilmentCompleted.class);
+            fulfilmentHandler.handle(event);
+        }
         context.complete();
     }
 

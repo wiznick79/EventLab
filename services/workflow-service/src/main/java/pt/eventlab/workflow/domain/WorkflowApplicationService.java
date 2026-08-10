@@ -12,6 +12,8 @@ import pt.eventlab.contracts.MessageTypes;
 import pt.eventlab.contracts.WorkflowState;
 import pt.eventlab.contracts.messages.AuthorizePayment;
 import pt.eventlab.contracts.messages.PaymentAuthorized;
+import pt.eventlab.contracts.messages.FulfilmentCompleted;
+import pt.eventlab.contracts.messages.RequestFulfilment;
 import pt.eventlab.contracts.messages.WorkflowCompleted;
 import pt.eventlab.contracts.messages.WorkflowStarted;
 import pt.eventlab.workflow.messaging.WorkflowMessagePublisher;
@@ -61,6 +63,19 @@ public class WorkflowApplicationService {
 
     @Transactional
     public void recordPaymentAuthorized(EventEnvelope<PaymentAuthorized> event) {
+        WorkflowRun workflow = workflows.findById(event.workflowId())
+                .orElseThrow(() -> new IllegalArgumentException("Unknown workflow " + event.workflowId()));
+        workflow.recordPaymentAuthorized(clock.instant());
+        workflows.flush();
+
+        messages.sendFulfilmentCommand(new EventEnvelope<>(
+                UUID.randomUUID(), MessageTypes.REQUEST_FULFILMENT, 1,
+                workflow.id(), event.eventId(), event.correlationId(), clock.instant(),
+                new RequestFulfilment(workflow.id(), workflow.scenarioId())));
+    }
+
+    @Transactional
+    public void recordFulfilmentCompleted(EventEnvelope<FulfilmentCompleted> event) {
         WorkflowRun workflow = workflows.findById(event.workflowId())
                 .orElseThrow(() -> new IllegalArgumentException("Unknown workflow " + event.workflowId()));
         workflow.complete(clock.instant());

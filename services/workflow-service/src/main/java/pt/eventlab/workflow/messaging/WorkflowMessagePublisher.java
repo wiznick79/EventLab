@@ -6,5 +6,7 @@ public interface WorkflowMessagePublisher {
 
     void sendPaymentCommand(EventEnvelope<?> command);
 
+    void sendFulfilmentCommand(EventEnvelope<?> command);
+
     void publishBusinessEvent(EventEnvelope<?> event);
 }

@@ -235,6 +235,10 @@ Deliver the same logical result more than once. The timeline shows multiple deli
 
 Fulfilment fails for configured attempts. The UI shows retry delay, delivery count, exhaustion, DLQ placement, operator replay, and recovery.
 
+The implemented Milestone 3 path uses the `fulfilment-commands` queue and native peek-lock settlement. The Fulfilment consumer records a failed-attempt event and abandons the command after deterministic delays of 250, 500, and 1000 milliseconds. On the fourth failure it explicitly dead-letters the command with a stable reason. This short in-handler delay is intentional for the teaching scenario; a production system with longer delays would normally schedule a new message instead of occupying a consumer thread.
+
+Recovery is workflow-scoped. The Lab Console searches the dead-letter subqueue for a message whose `workflowId` matches the requested run, restores that run's simulated dependency through the Fulfilment control API, sends the original envelope back to the command queue under a new broker message ID, and completes the dead-lettered delivery only after the send succeeds. The recovery audit event records the original and replay message IDs, initiator, reason, and workflow ID. Normal inbox idempotency remains active on replay.
+
 ### Fulfilment rejection and compensation
 
 Payment succeeds and fulfilment rejects the order. The saga commands payment compensation and displays the forward and compensating paths.
