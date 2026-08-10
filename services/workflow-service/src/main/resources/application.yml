@@ -1,6 +1,16 @@
 spring:
   application:
     name: workflow-service
+  datasource:
+    url: ${WORKFLOW_DATABASE_URL:jdbc:postgresql://localhost:5433/workflow_service}
+    username: ${WORKFLOW_DATABASE_USER:workflow_service}
+    password: ${WORKFLOW_DATABASE_PASSWORD:workflow-local-only}
+  flyway:
+    locations: classpath:db/migration
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
 
 server:
   port: ${SERVER_PORT:8081}
@@ -14,3 +24,17 @@ management:
     health:
       probes:
         enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTEL_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+
+eventlab:
+  messaging:
+    enabled: ${EVENTLAB_MESSAGING_ENABLED:false}
+    connection-string: ${EVENTLAB_SERVICEBUS_CONNECTION_STRING:Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;}
+    payment-commands-queue: payment-commands
+    business-events-topic: business-events
+    workflow-events-subscription: workflow-events

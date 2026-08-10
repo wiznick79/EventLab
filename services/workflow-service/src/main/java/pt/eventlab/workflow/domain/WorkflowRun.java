@@ -1,0 +1,72 @@
+package pt.eventlab.workflow.domain;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+import pt.eventlab.contracts.WorkflowState;
+
+@Entity
+@Table(name = "workflow_runs")
+public class WorkflowRun {
+
+    @Id
+    private UUID id;
+    private String scenarioId;
+    private BigDecimal amount;
+    private String currency;
+    @Enumerated(EnumType.STRING)
+    private WorkflowState state;
+    @Version
+    private long version;
+    private Instant createdAt;
+    private Instant updatedAt;
+
+    protected WorkflowRun() {
+    }
+
+    private WorkflowRun(UUID id, String scenarioId, BigDecimal amount, String currency, Instant now) {
+        this.id = id;
+        this.scenarioId = scenarioId;
+        this.amount = amount;
+        this.currency = currency;
+        this.state = WorkflowState.PAYMENT_PENDING;
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    public static WorkflowRun start(String scenarioId, BigDecimal amount, String currency, Instant now) {
+        if (scenarioId == null || scenarioId.isBlank()) {
+            throw new IllegalArgumentException("scenarioId is required");
+        }
+        if (amount == null || amount.signum() <= 0) {
+            throw new IllegalArgumentException("amount must be positive");
+        }
+        if (currency == null || currency.length() != 3) {
+            throw new IllegalArgumentException("currency must be a three-letter code");
+        }
+        return new WorkflowRun(UUID.randomUUID(), scenarioId, amount, currency.toUpperCase(), now);
+    }
+
+    public void complete(Instant now) {
+        if (state != WorkflowState.PAYMENT_PENDING) {
+            throw new IllegalStateException("Only a payment-pending workflow can complete this walking skeleton");
+        }
+        state = WorkflowState.COMPLETED;
+        updatedAt = now;
+    }
+
+    public UUID id() { return id; }
+    public String scenarioId() { return scenarioId; }
+    public BigDecimal amount() { return amount; }
+    public String currency() { return currency; }
+    public WorkflowState state() { return state; }
+    public long version() { return version; }
+    public Instant createdAt() { return createdAt; }
+    public Instant updatedAt() { return updatedAt; }
+}

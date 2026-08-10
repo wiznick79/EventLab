@@ -1,6 +1,16 @@
 spring:
   application:
     name: lab-console
+  datasource:
+    url: ${LAB_CONSOLE_DATABASE_URL:jdbc:postgresql://localhost:5433/lab_console}
+    username: ${LAB_CONSOLE_DATABASE_USER:lab_console}
+    password: ${LAB_CONSOLE_DATABASE_PASSWORD:console-local-only}
+  flyway:
+    locations: classpath:db/migration
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
 server:
   port: ${SERVER_PORT:8080}
 management:
@@ -12,3 +22,18 @@ management:
     health:
       probes:
         enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTEL_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+
+eventlab:
+  workflow-base-url: ${WORKFLOW_SERVICE_BASE_URL:http://localhost:8081}
+  grafana-base-url: ${GRAFANA_BASE_URL:http://localhost:3000}
+  messaging:
+    enabled: ${EVENTLAB_MESSAGING_ENABLED:false}
+    connection-string: ${EVENTLAB_SERVICEBUS_CONNECTION_STRING:Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;}
+    business-events-topic: business-events
+    lab-console-events-subscription: lab-console-events

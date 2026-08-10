@@ -6,9 +6,7 @@ The project is a portfolio and learning system, not a parcel-management product.
 
 ## Status
 
-Milestone 0 is implemented: the repository contains the backend module boundaries, transport-neutral contracts, a tested React experiment-console shell, PostgreSQL Compose foundation, Maven Wrapper, container build foundations, and baseline GitHub Actions CI.
-
-The distributed workflow and Azure Service Bus integration begin in Milestone 1.
+Milestone 1 is complete. The successful path is implemented and verified across Workflow, Payment, the Lab Console timeline projection, Azure Service Bus messaging, PostgreSQL persistence, OpenTelemetry tracing, Tempo/Grafana, and the React console.
 
 ## Target technology
 
@@ -56,9 +54,52 @@ Set-Location ..
 docker compose config --quiet
 ```
 
-Start the current UI shell with:
+## Run the Milestone 1 stack
+
+The local broker is Microsoft's official Azure Service Bus emulator. It depends on an Azure SQL Edge container and requires you to accept Microsoft's container EULA explicitly. Review the applicable terms, then copy the environment template and change `ACCEPT_EULA=N` to `ACCEPT_EULA=Y`. EventLab never accepts it automatically.
+
+```powershell
+Copy-Item .env.example .env
+# Review .env and explicitly set ACCEPT_EULA=Y if you accept the terms.
+docker compose up -d postgres servicebus-sql servicebus tempo otel-collector grafana
+```
+
+The PostgreSQL initialization script creates one database and role per service. If the Postgres volume predates that script, remove only that development volume and recreate it:
+
+```powershell
+docker compose down
+docker volume rm eventlab_eventlab-postgres-data
+docker compose up -d postgres
+```
+
+Start the three backend processes in separate PowerShell terminals from the repository root:
+
+```powershell
+$env:EVENTLAB_MESSAGING_ENABLED='true'
+mvn -pl services/workflow-service -am spring-boot:run
+```
+
+```powershell
+$env:EVENTLAB_MESSAGING_ENABLED='true'
+mvn -pl services/payment-service -am spring-boot:run
+```
+
+```powershell
+$env:EVENTLAB_MESSAGING_ENABLED='true'
+mvn -pl services/lab-console -am spring-boot:run
+```
+
+Then start the UI:
 
 ```powershell
 Set-Location frontend
 npm.cmd run dev
 ```
+
+Open `http://localhost:5173`, run **Successful payment workflow**, and follow any trace link into Grafana at `http://localhost:3000`.
+
+The emulator connection string is deliberately static and local-only. The emulator does not persist broker state across restarts; its queues, topic, and subscriptions are recreated from `infrastructure/servicebus/Config.json`.
+
+### Current reliability boundary
+
+Milestone 1 intentionally performs database state changes and Service Bus sends as separate operations. That establishes the observable walking skeleton, but a crash between those operations can lose or duplicate a logical message. Milestone 2 replaces this dual-write path with transactional outbox dispatch and idempotent inbox consumption.

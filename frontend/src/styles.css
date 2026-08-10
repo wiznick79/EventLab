@@ -50,7 +50,7 @@ h1 em { color: transparent; -webkit-text-stroke: 1px rgba(233, 237, 247, .62); f
 .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 2rem; margin-bottom: 2.5rem; }
 .section-heading h2 { margin: 0; font-size: clamp(1.8rem, 3vw, 3rem); letter-spacing: -.04em; font-weight: 500; }
 .section-heading > p { color: var(--muted); max-width: 410px; margin: 0; line-height: 1.6; }
-.scenario-grid { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.scenario-grid { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
 .scenario-card { min-height: 370px; padding: 1.5rem; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); position: relative; display: flex; flex-direction: column; background: rgba(13, 25, 23, .72); transition: background .2s, transform .2s; }
 .scenario-card:hover { background: #12231f; transform: translateY(-3px); }
 .scenario-number { color: #50605d; font: .72rem 'DM Mono', monospace; }
@@ -58,6 +58,24 @@ h1 em { color: transparent; -webkit-text-stroke: 1px rgba(233, 237, 247, .62); f
 .scenario-card h3 { font-size: 1.55rem; letter-spacing: -.035em; margin: 1.2rem 0 .75rem; }
 .scenario-card p { color: var(--muted); line-height: 1.6; margin: 0; }
 .scenario-card button { margin-top: auto; border: 0; border-top: 1px solid var(--line); background: transparent; color: #63716e; text-align: left; padding: 1rem 0 0; display: flex; justify-content: space-between; cursor: not-allowed; }
+.scenario-card.active-card { background: linear-gradient(145deg, rgba(189,255,83,.08), rgba(13,25,23,.85)); }
+.scenario-card .run-button { color: var(--acid); cursor: pointer; }
+.scenario-card .run-button:disabled { color: var(--muted); cursor: wait; }
+.run-panel { margin-top: 4rem; border: 1px solid var(--line); background: rgba(7,16,15,.88); padding: clamp(1.25rem, 3vw, 2.5rem); }
+.run-heading { display: flex; justify-content: space-between; align-items: end; gap: 1.5rem; border-bottom: 1px solid var(--line); padding-bottom: 1.5rem; }
+.run-heading h2 { margin: 0; font-size: 2rem; font-weight: 500; }
+.run-heading code { color: var(--muted); font: .7rem 'DM Mono', monospace; overflow-wrap: anywhere; }
+.run-error { color: #ff9d8f; border: 1px solid rgba(255,157,143,.3); padding: .8rem 1rem; }
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline li { display: grid; grid-template-columns: 1rem 9rem 1fr auto; align-items: center; gap: 1rem; min-height: 7rem; border-bottom: 1px solid var(--line); }
+.timeline li:last-child { border-bottom: 0; }
+.timeline-dot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 12px var(--cyan); }
+.timeline-meta strong, .timeline-meta time { display: block; }
+.timeline-meta time { color: var(--muted); font: .62rem 'DM Mono', monospace; margin-top: .4rem; }
+.timeline h3 { margin: 0 0 .3rem; font-size: 1rem; letter-spacing: .02em; }
+.timeline p { margin: 0; color: var(--muted); }
+.timeline a { color: var(--acid); font: .7rem 'DM Mono', monospace; text-decoration: none; }
+.timeline .waiting { display: block; color: var(--muted); padding: 2rem 0; }
 
 .system-strip { padding-top: 5rem; padding-bottom: 5rem; background: #0a1513; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .compact { margin-bottom: 2rem; }
@@ -79,6 +97,8 @@ footer { display: flex; justify-content: space-between; padding-top: 2rem; paddi
   .service:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
   .section-heading { align-items: start; flex-direction: column; }
   .signal { right: -12rem; }
+  .timeline li { grid-template-columns: 1rem 7rem 1fr; padding: 1rem 0; }
+  .timeline a { grid-column: 3; }
 }
 
 @media (max-width: 520px) {
@@ -89,6 +109,9 @@ footer { display: flex; justify-content: space-between; padding-top: 2rem; paddi
   .service { border-right: 0; border-bottom: 1px solid var(--line); }
   .service:last-child { border-bottom: 0; }
   footer { flex-direction: column; gap: .5rem; }
+  .run-heading { align-items: start; flex-direction: column; }
+  .timeline li { grid-template-columns: 1rem 1fr; }
+  .timeline-meta, .timeline li > div, .timeline a { grid-column: 2; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -12,7 +12,7 @@ Every milestone must finish with a behavior that can be demonstrated through the
 
 Implemented with four independently runnable Spring Boot service skeletons, a shared contracts module, a responsive React scenario shell, PostgreSQL Compose configuration, container build foundations, and backend/frontend/Compose CI verification.
 
-## Milestone 1: observable walking skeleton
+## Milestone 1: observable walking skeleton — completed 2026-08-10
 
 - Implement Workflow, one participant, Lab Console, and the UI timeline.
 - Run PostgreSQL and the Service Bus emulator locally.
@@ -20,6 +20,8 @@ Implemented with four independently runnable Spring Boot service skeletons, a sh
 - Display a successful workflow and link it to a trace.
 
 **Demonstration:** start a workflow and watch its messages and spans reach completion.
+
+Implemented with PostgreSQL-owned service state, the official local Azure Service Bus emulator, a payment command queue, a business-event topic with independent Workflow and Lab Console subscriptions, W3C trace-context propagation, a Tempo/Grafana trace backend, and a React console that streams the projected timeline over SSE. The verified baseline produces `workflow.started`, `payment.authorized`, and `workflow.completed` under one trace.
 
 ## Milestone 2: reliable delivery
 
