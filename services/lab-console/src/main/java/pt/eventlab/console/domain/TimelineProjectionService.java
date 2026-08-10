@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import pt.eventlab.console.api.TimelineEventResponse;
 import pt.eventlab.console.api.TimelineStream;
 import pt.eventlab.contracts.EventEnvelope;
@@ -31,14 +33,21 @@ public class TimelineProjectionService {
     }
 
     @Transactional
-    public TimelineEventResponse project(EventEnvelope<JsonNode> envelope, String traceId) {
-        EventPresentation presentation = presentation(envelope.eventType());
+    public TimelineEventResponse project(
+            EventEnvelope<JsonNode> envelope,
+            String traceId,
+            boolean duplicateDelivery) {
+        EventPresentation presentation = duplicateDelivery
+                ? new EventPresentation(
+                        "Workflow inbox", "DUPLICATE_IGNORED",
+                        "Duplicate logical event observed; the workflow inbox rejected a second state change")
+                : presentation(envelope.eventType());
         TimelineEvent saved = events.save(new TimelineEvent(
                 envelope.eventId(), envelope.workflowId(), envelope.eventType(),
                 presentation.service(), presentation.state(), presentation.description(),
-                envelope.occurredAt(), clock.instant(), traceId, json(envelope.payload())));
+                envelope.occurredAt(), clock.instant(), traceId, json(envelope.payload()), duplicateDelivery));
         TimelineEventResponse response = TimelineEventResponse.from(saved);
-        stream.publish(response);
+        publishAfterCommit(response);
         return response;
     }
 
@@ -55,6 +64,15 @@ public class TimelineProjectionService {
         } catch (JsonProcessingException exception) {
             throw new IllegalArgumentException("Cannot store timeline payload", exception);
         }
+    }
+
+    private void publishAfterCommit(TimelineEventResponse event) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                stream.publish(event);
+            }
+        });
     }
 
     private EventPresentation presentation(String eventType) {

@@ -17,7 +17,6 @@ import pt.eventlab.contracts.MessageTypes;
 import pt.eventlab.contracts.messages.PaymentAuthorized;
 import pt.eventlab.messaging.ServiceBusEnvelopeCodec;
 import pt.eventlab.messaging.ServiceBusTraceContext;
-import pt.eventlab.workflow.domain.WorkflowApplicationService;
 
 @Component
 @ConditionalOnProperty(name = "eventlab.messaging.enabled", havingValue = "true")
@@ -29,18 +28,18 @@ class PaymentAuthorizedProcessor {
     private final ObservationRegistry observations;
     private final ServiceBusProcessorClient processor;
     private final ServiceBusTraceContext traceContext;
-    private final WorkflowApplicationService workflows;
+    private final PaymentAuthorizedHandler handler;
 
     PaymentAuthorizedProcessor(
             WorkflowMessagingProperties properties,
             ServiceBusEnvelopeCodec codec,
             ServiceBusTraceContext traceContext,
             ObservationRegistry observations,
-            WorkflowApplicationService workflows) {
+            PaymentAuthorizedHandler handler) {
         this.codec = codec;
         this.traceContext = traceContext;
         this.observations = observations;
-        this.workflows = workflows;
+        this.handler = handler;
         this.processor = new ServiceBusClientBuilder()
                 .connectionString(properties.connectionString())
                 .processor()
@@ -75,7 +74,7 @@ class PaymentAuthorizedProcessor {
     private void handle(ServiceBusReceivedMessageContext context) {
         EventEnvelope<PaymentAuthorized> event = codec.decode(
                 context.getMessage().getBody(), PaymentAuthorized.class);
-        workflows.recordPaymentAuthorized(event);
+        handler.handle(event);
         context.complete();
     }
 

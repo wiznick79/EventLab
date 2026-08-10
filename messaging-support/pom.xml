@@ -17,5 +17,8 @@
         <dependency><groupId>io.opentelemetry</groupId><artifactId>opentelemetry-api</artifactId></dependency>
         <dependency><groupId>io.micrometer</groupId><artifactId>micrometer-tracing</artifactId></dependency>
         <dependency><groupId>org.springframework</groupId><artifactId>spring-context</artifactId></dependency>
+        <dependency><groupId>org.springframework</groupId><artifactId>spring-jdbc</artifactId></dependency>
+        <dependency><groupId>org.springframework</groupId><artifactId>spring-tx</artifactId></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-autoconfigure</artifactId></dependency>
     </dependencies>
 </project>

@@ -48,7 +48,8 @@ public class WorkflowApplicationService {
         messages.sendPaymentCommand(new EventEnvelope<>(
                 UUID.randomUUID(), MessageTypes.AUTHORIZE_PAYMENT, 1, workflow.id(), null,
                 correlationId, now,
-                new AuthorizePayment(workflow.id(), workflow.amount(), workflow.currency())));
+                new AuthorizePayment(
+                        workflow.id(), workflow.scenarioId(), workflow.amount(), workflow.currency())));
         return workflow;
     }
 

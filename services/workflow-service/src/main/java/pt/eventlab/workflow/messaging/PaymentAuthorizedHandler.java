@@ -1,0 +1,31 @@
+package pt.eventlab.workflow.messaging;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import pt.eventlab.contracts.EventEnvelope;
+import pt.eventlab.contracts.messages.PaymentAuthorized;
+import pt.eventlab.messaging.InboxStore;
+import pt.eventlab.workflow.domain.WorkflowApplicationService;
+
+@Service
+class PaymentAuthorizedHandler {
+
+    private static final String HANDLER = "workflow.payment-authorized";
+
+    private final InboxStore inbox;
+    private final WorkflowApplicationService workflows;
+
+    PaymentAuthorizedHandler(InboxStore inbox, WorkflowApplicationService workflows) {
+        this.inbox = inbox;
+        this.workflows = workflows;
+    }
+
+    @Transactional
+    public boolean handle(EventEnvelope<PaymentAuthorized> event) {
+        if (!inbox.claim(event.eventId(), HANDLER)) {
+            return false;
+        }
+        workflows.recordPaymentAuthorized(event);
+        return true;
+    }
+}

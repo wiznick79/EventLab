@@ -10,12 +10,12 @@ type TimelineEvent = {
   description: string
   occurredAt: string
   traceId?: string
+  duplicateDelivery: boolean
 }
 
 type RunResponse = { workflowId: string; state: string }
 
 const futureScenarios = [
-  ['Duplicate payment result', 'Observe at-least-once delivery while inbox idempotency protects workflow state.', 'Idempotency'],
   ['Fulfilment unavailable', 'Follow retries and exponential backoff into the dead-letter queue and recovery.', 'Retry + DLQ'],
   ['Fulfilment rejected', 'Watch the saga reverse an authorized payment through a compensation command.', 'Compensation'],
 ]
@@ -32,20 +32,22 @@ export function App() {
   const [events, setEvents] = useState<TimelineEvent[]>([])
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState('')
+  const [activeScenario, setActiveScenario] = useState('')
   const streamRef = useRef<EventSource | null>(null)
 
   useEffect(() => () => streamRef.current?.close(), [])
 
-  async function startHappyPath() {
+  async function startScenario(scenarioId: string) {
     streamRef.current?.close()
     setStarting(true)
     setError('')
     setEvents([])
+    setActiveScenario(scenarioId)
     try {
       const response = await fetch('/api/v1/runs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenarioId: 'happy-path', amount: 129.90, currency: 'EUR' }),
+        body: JSON.stringify({ scenarioId, amount: 129.90, currency: 'EUR' }),
       })
       if (!response.ok) throw new Error(`The Lab Console returned HTTP ${response.status}`)
       const created: RunResponse = await response.json()
@@ -54,7 +56,7 @@ export function App() {
       const source = new EventSource(`/api/v1/runs/${created.workflowId}/stream`)
       source.addEventListener('timeline-event', (message) => {
         const next: TimelineEvent = JSON.parse((message as MessageEvent).data)
-        setEvents((current) => current.some((event) => event.eventId === next.eventId)
+        setEvents((current) => current.some((event) => event.sequence === next.sequence)
           ? current
           : [...current, next].sort((a, b) => a.sequence - b.sequence))
       })
@@ -68,13 +70,14 @@ export function App() {
   }
 
   const completed = events.some((event) => event.state === 'COMPLETED')
+  const duplicateCount = events.filter((event) => event.duplicateDelivery).length
 
   return (
     <main>
       <header className="hero">
         <nav aria-label="Primary navigation">
           <a className="wordmark" href="#top" aria-label="EventLab home"><span className="mark">EL</span>EventLab</a>
-          <span className="build-status"><i /> Milestone 1 · live workflow</span>
+          <span className="build-status"><i /> Milestone 2 · reliable delivery</span>
         </nav>
         <div className="hero-copy" id="top">
           <p className="eyebrow">Distributed systems under pressure</p>
@@ -94,13 +97,21 @@ export function App() {
             <span className="scenario-number">01</span><span className="scenario-tag">Baseline</span>
             <h3>Successful payment workflow</h3>
             <p>Start a workflow, authorize payment over Azure Service Bus, and watch the projected event timeline update live.</p>
-            <button className="run-button" type="button" onClick={startHappyPath} disabled={starting}>
-              {starting ? 'Starting…' : 'Run experiment'} <span>→</span>
+            <button className="run-button" type="button" onClick={() => startScenario('happy-path')} disabled={starting}>
+              {starting && activeScenario === 'happy-path' ? 'Starting…' : 'Run experiment'} <span>→</span>
+            </button>
+          </article>
+          <article className="scenario-card active-card">
+            <span className="scenario-number">02</span><span className="scenario-tag">Idempotency</span>
+            <h3>Duplicate payment result</h3>
+            <p>Deliver one logical payment result twice while the Workflow inbox permits exactly one state transition.</p>
+            <button className="run-button" type="button" onClick={() => startScenario('duplicate-payment-result')} disabled={starting}>
+              {starting && activeScenario === 'duplicate-payment-result' ? 'Starting…' : 'Run experiment'} <span>→</span>
             </button>
           </article>
           {futureScenarios.map(([label, description, tag], index) => (
             <article className="scenario-card" key={label}>
-              <span className="scenario-number">0{index + 2}</span><span className="scenario-tag">{tag}</span>
+              <span className="scenario-number">0{index + 3}</span><span className="scenario-tag">{tag}</span>
               <h3>{label}</h3><p>{description}</p>
               <button type="button" disabled aria-label={`${label} is not implemented yet`}>Coming next <span>→</span></button>
             </article>
@@ -112,12 +123,16 @@ export function App() {
             <div><p className="eyebrow">Live experiment</p><h2>{completed ? 'Workflow completed' : 'Workflow in progress'}</h2></div>
             {run && <code>{run.workflowId}</code>}
           </div>
+          {activeScenario === 'duplicate-payment-result' && completed && duplicateCount > 0 && <div className="invariant">
+            <strong>Invariant protected</strong>
+            <span>{duplicateCount} duplicate delivery observed · 1 workflow completion</span>
+          </div>}
           {error && <p className="run-error">{error}</p>}
           <ol className="timeline">
-            {events.map((event) => <li key={event.eventId}>
+            {events.map((event) => <li key={event.sequence}>
               <span className="timeline-dot" />
               <div className="timeline-meta"><strong>{event.service}</strong><time>{new Date(event.occurredAt).toLocaleTimeString()}</time></div>
-              <div><h3>{event.state.replaceAll('_', ' ')}</h3><p>{event.description}</p></div>
+              <div><h3>{event.state.replaceAll('_', ' ')} {event.duplicateDelivery && <mark>duplicate</mark>}</h3><p>{event.description}</p></div>
               {event.traceId && <a href={`http://localhost:3000/explore?schemaVersion=1&panes=%7B%22trace%22:%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22query%22:%22${event.traceId}%22,%22queryType%22:%22traceql%22%7D%5D%7D%7D&orgId=1`} target="_blank" rel="noreferrer">Open trace ↗</a>}
             </li>)}
             {events.length === 0 && run && <li className="waiting">Waiting for the first business event…</li>}

@@ -37,9 +37,11 @@ public class PaymentApplicationService {
         Payment payment = payments.saveAndFlush(Payment.authorize(
                 payload.workflowId(), payload.amount(), payload.currency(), now));
 
-        messages.publish(new EventEnvelope<>(
+        EventEnvelope<PaymentAuthorized> event = new EventEnvelope<>(
                 UUID.randomUUID(), MessageTypes.PAYMENT_AUTHORIZED, 1,
                 command.workflowId(), command.eventId(), command.correlationId(), now,
-                new PaymentAuthorized(payment.id(), payment.workflowId(), payment.amount(), payment.currency())));
+                new PaymentAuthorized(payment.id(), payment.workflowId(), payment.amount(), payment.currency()));
+        int copies = "duplicate-payment-result".equals(payload.scenarioId()) ? 2 : 1;
+        messages.publish(event, copies);
     }
 }

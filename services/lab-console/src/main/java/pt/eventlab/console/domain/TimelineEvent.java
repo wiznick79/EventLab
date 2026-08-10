@@ -16,6 +16,7 @@ public class TimelineEvent {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long sequenceNumber;
     private UUID id;
+    private UUID logicalEventId;
     private UUID workflowId;
     private String eventType;
     private String serviceName;
@@ -25,12 +26,13 @@ public class TimelineEvent {
     private Instant observedAt;
     private String traceId;
     private String payloadJson;
+    private boolean duplicateDelivery;
 
     protected TimelineEvent() {
     }
 
     public TimelineEvent(
-            UUID id,
+            UUID logicalEventId,
             UUID workflowId,
             String eventType,
             String serviceName,
@@ -39,8 +41,10 @@ public class TimelineEvent {
             Instant occurredAt,
             Instant observedAt,
             String traceId,
-            String payloadJson) {
-        this.id = id;
+            String payloadJson,
+            boolean duplicateDelivery) {
+        this.id = UUID.randomUUID();
+        this.logicalEventId = logicalEventId;
         this.workflowId = workflowId;
         this.eventType = eventType;
         this.serviceName = serviceName;
@@ -50,10 +54,11 @@ public class TimelineEvent {
         this.observedAt = observedAt;
         this.traceId = traceId;
         this.payloadJson = payloadJson;
+        this.duplicateDelivery = duplicateDelivery;
     }
 
     public long sequenceNumber() { return sequenceNumber; }
-    public UUID id() { return id; }
+    public UUID logicalEventId() { return logicalEventId; }
     public UUID workflowId() { return workflowId; }
     public String eventType() { return eventType; }
     public String serviceName() { return serviceName; }
@@ -62,4 +67,5 @@ public class TimelineEvent {
     public Instant occurredAt() { return occurredAt; }
     public String traceId() { return traceId; }
     public String payloadJson() { return payloadJson; }
+    public boolean duplicateDelivery() { return duplicateDelivery; }
 }

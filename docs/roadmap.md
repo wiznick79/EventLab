@@ -23,7 +23,7 @@ Implemented with four independently runnable Spring Boot service skeletons, a sh
 
 Implemented with PostgreSQL-owned service state, the official local Azure Service Bus emulator, a payment command queue, a business-event topic with independent Workflow and Lab Console subscriptions, W3C trace-context propagation, a Tempo/Grafana trace backend, and a React console that streams the projected timeline over SSE. The verified baseline produces `workflow.started`, `payment.authorized`, and `workflow.completed` under one trace.
 
-## Milestone 2: reliable delivery
+## Milestone 2: reliable delivery — completed 2026-08-10
 
 - Add transactional outbox dispatch.
 - Add inbox/idempotent consumption.
@@ -31,6 +31,8 @@ Implemented with PostgreSQL-owned service state, the official local Azure Servic
 - Add multi-service integration tests.
 
 **Demonstration:** deliver one logical result multiple times while producing one state change.
+
+Implemented with transactional Workflow and Payment outboxes, scheduled Service Bus dispatch, transactional consumer inboxes, separate delivery-row and logical-event identity in the Lab Console, persistence-level integration tests, and a repeatable multi-service emulator check. The executable duplicate-payment scenario records two deliveries while proving one payment row and one workflow completion.
 
 ## Milestone 3: retry, DLQ, and recovery
 

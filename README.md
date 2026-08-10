@@ -6,7 +6,7 @@ The project is a portfolio and learning system, not a parcel-management product.
 
 ## Status
 
-Milestone 1 is complete. The successful path is implemented and verified across Workflow, Payment, the Lab Console timeline projection, Azure Service Bus messaging, PostgreSQL persistence, OpenTelemetry tracing, Tempo/Grafana, and the React console.
+Milestone 2 is complete. The project now demonstrates transactional outbox delivery, inbox idempotency, duplicate logical-message delivery, and a visible proof that one workflow state transition survives two payment-result deliveries.
 
 ## Target technology
 
@@ -100,6 +100,13 @@ Open `http://localhost:5173`, run **Successful payment workflow**, and follow an
 
 The emulator connection string is deliberately static and local-only. The emulator does not persist broker state across restarts; its queues, topic, and subscriptions are recreated from `infrastructure/servicebus/Config.json`.
 
-### Current reliability boundary
+After packaging the backend and starting the Compose infrastructure, the cross-service duplicate-delivery check can be repeated without the UI:
 
-Milestone 1 intentionally performs database state changes and Service Bus sends as separate operations. That establishes the observable walking skeleton, but a crash between those operations can lose or duplicate a logical message. Milestone 2 replaces this dual-write path with transactional outbox dispatch and idempotent inbox consumption.
+```powershell
+mvn package
+.\scripts\verify-duplicate-scenario.ps1
+```
+
+### Reliability model
+
+Workflow and Payment persist business state and outgoing messages in the same database transaction. Scheduled dispatchers send pending outbox rows and mark successful delivery. A crash after the broker accepts a message but before the row is marked can still produce a duplicate—as expected under at-least-once delivery—so consumers claim the logical message ID in an inbox within the same transaction as their state change.

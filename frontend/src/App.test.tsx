@@ -7,7 +7,9 @@ describe('EventLab experiment console', () => {
   it('presents the executable baseline and the three planned failure scenarios', () => {
     render(<App />)
 
-    expect(screen.getByRole('button', { name: /run experiment/i })).toBeEnabled()
+    const runButtons = screen.getAllByRole('button', { name: /run experiment/i })
+    expect(runButtons).toHaveLength(2)
+    expect(runButtons[0]).toBeEnabled()
     expect(screen.getByRole('heading', { name: 'Successful payment workflow' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Duplicate payment result' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Fulfilment unavailable' })).toBeInTheDocument()

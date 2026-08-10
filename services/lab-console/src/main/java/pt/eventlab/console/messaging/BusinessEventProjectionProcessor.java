@@ -13,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
-import pt.eventlab.console.domain.TimelineProjectionService;
 import pt.eventlab.contracts.EventEnvelope;
 import pt.eventlab.messaging.ServiceBusEnvelopeCodec;
 import pt.eventlab.messaging.ServiceBusTraceContext;
@@ -27,7 +26,7 @@ class BusinessEventProjectionProcessor {
     private final ServiceBusEnvelopeCodec codec;
     private final ObservationRegistry observations;
     private final ServiceBusProcessorClient processor;
-    private final TimelineProjectionService projection;
+    private final BusinessEventProjectionHandler handler;
     private final ServiceBusTraceContext traceContext;
 
     BusinessEventProjectionProcessor(
@@ -35,11 +34,11 @@ class BusinessEventProjectionProcessor {
             ServiceBusEnvelopeCodec codec,
             ServiceBusTraceContext traceContext,
             ObservationRegistry observations,
-            TimelineProjectionService projection) {
+            BusinessEventProjectionHandler handler) {
         this.codec = codec;
         this.traceContext = traceContext;
         this.observations = observations;
-        this.projection = projection;
+        this.handler = handler;
         this.processor = new ServiceBusClientBuilder()
                 .connectionString(properties.connectionString())
                 .processor()
@@ -68,7 +67,7 @@ class BusinessEventProjectionProcessor {
 
     private void handle(ServiceBusReceivedMessageContext context) {
         EventEnvelope<JsonNode> event = codec.decode(context.getMessage().getBody(), JsonNode.class);
-        projection.project(event, traceContext.traceId(context.getMessage()));
+        handler.handle(event, traceContext.traceId(context.getMessage()));
         context.complete();
     }
 
