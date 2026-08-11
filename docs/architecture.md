@@ -300,7 +300,7 @@ The local Compose environment uses:
 
 ### 10.3 Azure backend
 
-Azure uses Azure Monitor/Application Insights for application telemetry and Azure platform metrics for Container Apps, Service Bus, and PostgreSQL. Sampling, short retention, controlled log levels, and ingestion caps protect the student credit.
+Azure uses Azure Monitor for platform logs and metrics from Container Apps, Service Bus, and PostgreSQL. Application traces use the same Micrometer/OpenTelemetry-to-Tempo pipeline as local development so the demo remains portable and publicly inspectable. Sampling, short retention, controlled log levels, and ingestion caps protect the student credit.
 
 Ephemeral demonstration environments also run a minimal Tempo backend and anonymous Grafana viewer. This keeps the public trace experience self-contained while Azure Monitor remains available for owner-only operational learning. The portable stack is destroyed with the rest of the environment and does not run permanently.
 
