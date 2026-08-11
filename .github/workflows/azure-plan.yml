@@ -1,0 +1,69 @@
+name: Plan Azure environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment_name:
+        description: Short environment name
+        required: true
+        default: demo
+      lifetime_hours:
+        description: Planned lifetime
+        required: true
+        type: choice
+        options: ['2', '8', '24']
+      image_tag:
+        description: Full image commit SHA; defaults to the selected branch SHA
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: eventlab-azure-state
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    environment: azure
+    defaults:
+      run:
+        working-directory: infrastructure/terraform/application
+    env:
+      ARM_USE_OIDC: 'true'
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.15.8
+      - name: Initialize remote state
+        run: >-
+          terraform init -input=false
+          -backend-config="resource_group_name=${{ vars.TF_STATE_RESOURCE_GROUP }}"
+          -backend-config="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}"
+          -backend-config="container_name=${{ vars.TF_STATE_CONTAINER }}"
+          -backend-config="key=${{ vars.TF_STATE_KEY_PREFIX }}/${{ inputs.environment_name }}.tfstate"
+          -backend-config="use_oidc=true"
+      - name: Plan
+        env:
+          REQUESTED_IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          IMAGE_TAG="${REQUESTED_IMAGE_TAG:-${GITHUB_SHA}}"
+          DESTROY_AFTER="$(date -u -d '+${{ inputs.lifetime_hours }} hours' '+%Y-%m-%dT%H:%M:%SZ')"
+          terraform plan -input=false -lock-timeout=5m \
+            -var="subscription_id=${{ vars.AZURE_SUBSCRIPTION_ID }}" \
+            -var="environment_name=${{ inputs.environment_name }}" \
+            -var="destroy_after=${DESTROY_AFTER}" \
+            -var="image_tag=${IMAGE_TAG}" \
+            -out=application.tfplan
+          terraform show -no-color application.tfplan >> "$GITHUB_STEP_SUMMARY"

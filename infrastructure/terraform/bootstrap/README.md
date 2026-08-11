@@ -23,4 +23,4 @@ terraform output
 
 Keep `terraform.tfstate` secure and backed up after the initial apply. The application root migrates its own state into the storage account created here; the bootstrap state remains local so destroying an application environment cannot remove its backend or identity.
 
-Create a GitHub environment named `azure`, then copy the three Azure identity outputs and backend outputs into its variables. Protect that environment with required reviewers before enabling deployment workflows.
+Create a GitHub environment named `azure`, then copy the three Azure identity outputs and backend outputs into its variables. The `backend_key_prefix` output is combined with each requested environment name to isolate its state. Protect that environment with required reviewers before enabling deployment workflows.

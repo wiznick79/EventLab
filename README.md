@@ -6,7 +6,7 @@ The project is a portfolio and learning system, not a parcel-management product.
 
 ## Status
 
-Milestone 5 is complete. In addition to the MVP saga, the project demonstrates versioned business updates, optimistic database concurrency, visible out-of-order delivery, and rejection of stale events without state regression.
+Milestone 5 is complete and Milestone 6 infrastructure is being prepared for its first ephemeral Azure deployment. The local lab demonstrates versioned business updates, optimistic database concurrency, visible out-of-order delivery, and rejection of stale events without state regression.
 
 ## Target technology
 
@@ -25,6 +25,7 @@ Milestone 5 is complete. In addition to the MVP saga, the project demonstrates v
 
 - [Proposed architecture](docs/architecture.md)
 - [Incremental roadmap](docs/roadmap.md)
+- [Ephemeral Azure runbook](docs/runbooks/azure-environment.md)
 - [Architecture decisions](docs/decisions/README.md)
 
 ## Guiding rule

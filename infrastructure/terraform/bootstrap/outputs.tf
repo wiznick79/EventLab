@@ -25,8 +25,8 @@ output "backend_container_name" {
   value = azurerm_storage_container.state.name
 }
 
-output "backend_key" {
-  value = "eventlab/application.tfstate"
+output "backend_key_prefix" {
+  value = "eventlab"
 }
 
 output "github_oidc_subject" {

@@ -1,0 +1,61 @@
+name: Destroy Azure environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment_name:
+        description: Environment to destroy
+        required: true
+        default: demo
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: eventlab-azure-state
+  cancel-in-progress: false
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    environment: azure
+    defaults:
+      run:
+        working-directory: infrastructure/terraform/application
+    env:
+      ARM_USE_OIDC: 'true'
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.15.8
+      - name: Initialize remote state
+        run: >-
+          terraform init -input=false
+          -backend-config="resource_group_name=${{ vars.TF_STATE_RESOURCE_GROUP }}"
+          -backend-config="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}"
+          -backend-config="container_name=${{ vars.TF_STATE_CONTAINER }}"
+          -backend-config="key=${{ vars.TF_STATE_KEY_PREFIX }}/${{ inputs.environment_name }}.tfstate"
+          -backend-config="use_oidc=true"
+      - name: Destroy all state-owned resources
+        run: >-
+          terraform destroy -input=false -auto-approve -lock-timeout=5m
+          -var="subscription_id=${{ vars.AZURE_SUBSCRIPTION_ID }}"
+          -var="environment_name=${{ inputs.environment_name }}"
+          -var="destroy_after=2099-01-01T00:00:00Z"
+          -var="image_tag=0000000000000000000000000000000000000000"
+      - name: Verify resource group deletion
+        run: |
+          if az group show --name "rg-eventlab-${{ inputs.environment_name }}" >/dev/null 2>&1; then
+            echo "Resource group rg-eventlab-${{ inputs.environment_name }} remains after destroy" >&2
+            exit 1
+          fi

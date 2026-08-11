@@ -80,6 +80,7 @@ Implemented with explicit Fulfilment aggregate versions, a persisted highest-app
 ## Milestone 7: portfolio polish
 
 - Add explanatory copy, diagrams, and trace links.
+- Make every frontend invariant claim independently verifiable through explicit business-decision spans and attributes.
 - Create Azure and local dashboards, runbooks, and cost controls.
 - Record the primary scenarios.
 - Publish a permanent static portfolio page for times when Azure is offline.
