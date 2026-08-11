@@ -243,6 +243,8 @@ Faults are scoped to a workflow run so concurrent visitors do not affect each ot
 
 Deliver the same logical result more than once. The timeline shows multiple deliveries but only one valid state transition, supported by the consumer inbox record.
 
+The Workflow consumer also emits an `eventlab.workflow.inbox.decision` span for each payment-result delivery. Its `eventlab.decision` and `eventlab.state_change_applied` attributes distinguish `PAYMENT_ACCEPTED` from `DUPLICATE_IGNORED`, while the event and workflow identifiers connect the trace evidence to the timeline row.
+
 ### Fulfilment unavailable
 
 Fulfilment fails for configured attempts. The UI shows retry delay, delivery count, exhaustion, DLQ placement, operator replay, and recovery.
