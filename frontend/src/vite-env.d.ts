@@ -2,6 +2,6 @@
 
 interface Window {
   EVENTLAB_CONFIG?: {
-    traceExplorerUrl?: string
+    applicationInsightsResourceId?: string
   }
 }

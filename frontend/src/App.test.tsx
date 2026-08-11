@@ -29,7 +29,12 @@ describe('EventLab experiment console', () => {
   })
 
   it('uses the runtime Azure trace explorer when configured', () => {
-    expect(traceUrl('0123456789abcdef', 'https://portal.azure.com/#resource/app/searchV1'))
-      .toBe('https://portal.azure.com/#resource/app/searchV1')
+    const url = traceUrl(
+      '0123456789abcdef',
+      '/subscriptions/example/resourceGroups/demo/providers/Microsoft.Insights/components/eventlab',
+    )
+
+    expect(url).toContain('Microsoft_Azure_Monitoring_Logs/LogsBlade')
+    expect(decodeURIComponent(url)).toContain("OperationId == '0123456789abcdef'")
   })
 })

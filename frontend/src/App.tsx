@@ -32,8 +32,19 @@ export function grafanaTraceUrl(traceId: string) {
   return `http://localhost:3000/explore?left=${encodeURIComponent(JSON.stringify(left))}`
 }
 
-export function traceUrl(traceId: string, traceExplorerUrl = window.EVENTLAB_CONFIG?.traceExplorerUrl) {
-  return traceExplorerUrl || grafanaTraceUrl(traceId)
+export function traceUrl(
+  traceId: string,
+  applicationInsightsResourceId = window.EVENTLAB_CONFIG?.applicationInsightsResourceId,
+) {
+  if (!applicationInsightsResourceId) return grafanaTraceUrl(traceId)
+
+  const query = `union withsource=TelemetryType AppRequests, AppDependencies, AppTraces, AppExceptions
+| where OperationId == '${traceId}'
+| order by TimeGenerated asc`
+  const resourceId = encodeURIComponent(applicationInsightsResourceId)
+  const encodedQuery = encodeURIComponent(query)
+
+  return `https://portal.azure.com/#blade/Microsoft_Azure_Monitoring_Logs/LogsBlade/resourceId/${resourceId}/source/LogsBlade.AnalyticsShareLinkToQuery/query/${encodedQuery}/timespan/PT24H`
 }
 
 export function App() {
@@ -198,13 +209,8 @@ export function App() {
                 href={traceUrl(event.traceId)}
                 target="_blank"
                 rel="noreferrer"
-                title={window.EVENTLAB_CONFIG?.traceExplorerUrl ? 'Trace ID copied for Azure Transaction search' : undefined}
-                onClick={() => {
-                  if (window.EVENTLAB_CONFIG?.traceExplorerUrl) {
-                    void navigator.clipboard?.writeText(event.traceId!)
-                  }
-                }}
-              >{window.EVENTLAB_CONFIG?.traceExplorerUrl ? 'Search trace in Azure ↗' : 'Open trace ↗'}</a>}
+                title={window.EVENTLAB_CONFIG?.applicationInsightsResourceId ? 'Open this trace in Azure Logs' : undefined}
+              >{window.EVENTLAB_CONFIG?.applicationInsightsResourceId ? 'Open trace in Azure ↗' : 'Open trace ↗'}</a>}
             </li>)}
             {events.length === 0 && run && <li className="waiting">Waiting for the first business event…</li>}
           </ol>

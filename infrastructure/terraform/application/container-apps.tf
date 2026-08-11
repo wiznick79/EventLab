@@ -300,8 +300,8 @@ resource "azurerm_container_app" "frontend" {
         value = azurerm_container_app.console.ingress[0].fqdn
       }
       env {
-        name  = "TRACE_EXPLORER_URL"
-        value = "https://portal.azure.com/#resource${azurerm_application_insights.environment.id}/searchV1"
+        name  = "APPLICATION_INSIGHTS_RESOURCE_ID"
+        value = azurerm_application_insights.environment.id
       }
       liveness_probe {
         transport = "HTTP"
