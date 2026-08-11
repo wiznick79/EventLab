@@ -52,10 +52,12 @@ resource "azurerm_container_app" "workflow" {
         }
       }
       liveness_probe {
-        transport     = "HTTP"
-        port          = 8080
-        path          = "/actuator/health/liveness"
-        initial_delay = 120
+        transport               = "HTTP"
+        port                    = 8080
+        path                    = "/actuator/health/liveness"
+        initial_delay           = 60
+        interval_seconds        = 30
+        failure_count_threshold = 10
       }
       readiness_probe {
         transport = "HTTP"
@@ -119,10 +121,12 @@ resource "azurerm_container_app" "payment" {
         }
       }
       liveness_probe {
-        transport     = "HTTP"
-        port          = 8080
-        path          = "/actuator/health/liveness"
-        initial_delay = 120
+        transport               = "HTTP"
+        port                    = 8080
+        path                    = "/actuator/health/liveness"
+        initial_delay           = 60
+        interval_seconds        = 30
+        failure_count_threshold = 10
       }
       readiness_probe {
         transport = "HTTP"
@@ -176,10 +180,12 @@ resource "azurerm_container_app" "fulfilment" {
         }
       }
       liveness_probe {
-        transport     = "HTTP"
-        port          = 8080
-        path          = "/actuator/health/liveness"
-        initial_delay = 120
+        transport               = "HTTP"
+        port                    = 8080
+        path                    = "/actuator/health/liveness"
+        initial_delay           = 60
+        interval_seconds        = 30
+        failure_count_threshold = 10
       }
       readiness_probe {
         transport = "HTTP"
@@ -250,10 +256,12 @@ resource "azurerm_container_app" "console" {
         }
       }
       liveness_probe {
-        transport     = "HTTP"
-        port          = 8080
-        path          = "/actuator/health/liveness"
-        initial_delay = 120
+        transport               = "HTTP"
+        port                    = 8080
+        path                    = "/actuator/health/liveness"
+        initial_delay           = 60
+        interval_seconds        = 30
+        failure_count_threshold = 10
       }
       readiness_probe {
         transport = "HTTP"
