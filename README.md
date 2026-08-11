@@ -72,26 +72,32 @@ docker volume rm eventlab_eventlab-postgres-data
 docker compose up -d postgres
 ```
 
-Start the four backend processes in separate PowerShell terminals from the repository root:
+Package the multi-module backend once from the repository root:
+
+```powershell
+mvn package
+```
+
+Then start the four backend processes in separate PowerShell terminals from the repository root. Each terminal must enable messaging before launching its service JAR:
 
 ```powershell
 $env:EVENTLAB_MESSAGING_ENABLED='true'
-mvn -pl services/workflow-service -am spring-boot:run
+java -jar services/workflow-service/target/workflow-service-0.1.0-SNAPSHOT.jar
 ```
 
 ```powershell
 $env:EVENTLAB_MESSAGING_ENABLED='true'
-mvn -pl services/payment-service -am spring-boot:run
+java -jar services/payment-service/target/payment-service-0.1.0-SNAPSHOT.jar
 ```
 
 ```powershell
 $env:EVENTLAB_MESSAGING_ENABLED='true'
-mvn -pl services/fulfilment-service -am spring-boot:run
+java -jar services/fulfilment-service/target/fulfilment-service-0.1.0-SNAPSHOT.jar
 ```
 
 ```powershell
 $env:EVENTLAB_MESSAGING_ENABLED='true'
-mvn -pl services/lab-console -am spring-boot:run
+java -jar services/lab-console/target/lab-console-0.1.0-SNAPSHOT.jar
 ```
 
 Then start the UI:
