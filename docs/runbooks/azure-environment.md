@@ -7,8 +7,9 @@ EventLab Azure environments are deliberately disposable. Service Bus Standard an
 1. Sign in with `az login` and select the Azure for Students subscription.
 2. Copy `infrastructure/terraform/bootstrap/terraform.tfvars.example` to the ignored `terraform.tfvars` file and set the subscription and tenant IDs. France Central is the project default because the current subscription policy permits it while rejecting West Europe. Recheck the `Allowed resource deployment regions` policy before changing regions.
 3. Run `terraform init`, `terraform plan -out bootstrap.tfplan`, inspect the plan, and apply that saved plan.
-4. Create a GitHub environment named `azure`. Add required reviewers for manual deployments while ensuring scheduled cleanup can still run unattended.
-5. Add these bootstrap outputs as GitHub environment variables:
+4. Register the Container Apps resource provider with `az provider register --namespace Microsoft.App --wait`. The deployment workflow repeats this idempotently before each apply.
+5. Create a GitHub environment named `azure`. Add required reviewers for manual deployments while ensuring scheduled cleanup can still run unattended.
+6. Add these bootstrap outputs as GitHub environment variables:
 
 | GitHub variable | Terraform output |
 | --- | --- |

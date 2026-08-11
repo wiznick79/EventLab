@@ -9,6 +9,8 @@ This one-time Terraform root deliberately uses local state. It creates the small
 
 The second role permits the deployment workflow to grant managed identities access to Service Bus, PostgreSQL, and monitoring resources. No client secret is created.
 
+The deployment workflow also ensures the subscription is registered for the `Microsoft.App` resource provider before Terraform creates the Container Apps environment. Provider registration is a persistent, subscription-level prerequisite and is safe to repeat.
+
 ## Bootstrap manually
 
 ```powershell

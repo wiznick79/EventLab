@@ -43,6 +43,8 @@ jobs:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Register Container Apps provider
+        run: az provider register --namespace Microsoft.App --wait
       - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.15.8
