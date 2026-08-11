@@ -283,6 +283,10 @@ resource "azurerm_container_app" "frontend" {
       image  = local.service_images.frontend
       cpu    = 0.25
       memory = "0.5Gi"
+      env {
+        name  = "LAB_CONSOLE_HOST"
+        value = azurerm_container_app.console.ingress[0].fqdn
+      }
       liveness_probe {
         transport = "HTTP"
         port      = 8080

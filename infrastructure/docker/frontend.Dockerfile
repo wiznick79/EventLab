@@ -7,6 +7,6 @@ COPY frontend/ ./
 RUN npm run build
 
 FROM nginx:1.29-alpine
-COPY infrastructure/nginx/eventlab.conf /etc/nginx/conf.d/default.conf
+COPY infrastructure/nginx/eventlab.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /workspace/dist /usr/share/nginx/html
 EXPOSE 8080
