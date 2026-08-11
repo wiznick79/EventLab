@@ -9,15 +9,18 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ServiceBusOutboxTransport implements OutboxTransport {
 
     private final String connectionString;
+    private final String fullyQualifiedNamespace;
     private final ServiceBusEnvelopeCodec codec;
     private final ServiceBusMessageFactory messages;
     private final Map<String, ServiceBusSenderClient> senders = new ConcurrentHashMap<>();
 
     public ServiceBusOutboxTransport(
             String connectionString,
+            String fullyQualifiedNamespace,
             ServiceBusEnvelopeCodec codec,
             ServiceBusMessageFactory messages) {
         this.connectionString = connectionString;
+        this.fullyQualifiedNamespace = fullyQualifiedNamespace;
         this.codec = codec;
         this.messages = messages;
     }
@@ -33,8 +36,8 @@ public final class ServiceBusOutboxTransport implements OutboxTransport {
     private ServiceBusSenderClient sender(OutboxMessage message) {
         String key = message.destinationType() + ":" + message.destinationName();
         return senders.computeIfAbsent(key, ignored -> {
-            ServiceBusClientBuilder.ServiceBusSenderClientBuilder builder = new ServiceBusClientBuilder()
-                    .connectionString(connectionString)
+            ServiceBusClientBuilder.ServiceBusSenderClientBuilder builder = ServiceBusClients
+                    .create(connectionString, fullyQualifiedNamespace)
                     .sender();
             if (message.destinationType() == OutboxDestination.QUEUE) {
                 builder.queueName(message.destinationName());

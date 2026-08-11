@@ -1,6 +1,5 @@
 package pt.eventlab.workflow.messaging;
 
-import com.azure.messaging.servicebus.ServiceBusClientBuilder;
 import com.azure.messaging.servicebus.ServiceBusProcessorClient;
 import com.azure.messaging.servicebus.ServiceBusReceivedMessageContext;
 import io.micrometer.observation.Observation;
@@ -20,6 +19,7 @@ import pt.eventlab.contracts.messages.FulfilmentRejected;
 import pt.eventlab.contracts.messages.PaymentCompensated;
 import pt.eventlab.contracts.messages.FulfilmentStatusChanged;
 import pt.eventlab.messaging.ServiceBusEnvelopeCodec;
+import pt.eventlab.messaging.ServiceBusClients;
 import pt.eventlab.messaging.ServiceBusTraceContext;
 
 @Component
@@ -56,8 +56,8 @@ class PaymentAuthorizedProcessor {
         this.rejectionHandler = rejectionHandler;
         this.compensationHandler = compensationHandler;
         this.statusChangedHandler = statusChangedHandler;
-        this.processor = new ServiceBusClientBuilder()
-                .connectionString(properties.connectionString())
+        this.processor = ServiceBusClients
+                .create(properties.connectionString(), properties.fullyQualifiedNamespace())
                 .processor()
                 .topicName(properties.businessEventsTopic())
                 .subscriptionName(properties.workflowEventsSubscription())

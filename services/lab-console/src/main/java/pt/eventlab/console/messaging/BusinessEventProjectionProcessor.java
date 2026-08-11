@@ -1,6 +1,5 @@
 package pt.eventlab.console.messaging;
 
-import com.azure.messaging.servicebus.ServiceBusClientBuilder;
 import com.azure.messaging.servicebus.ServiceBusProcessorClient;
 import com.azure.messaging.servicebus.ServiceBusReceivedMessageContext;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -15,6 +14,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import pt.eventlab.contracts.EventEnvelope;
 import pt.eventlab.messaging.ServiceBusEnvelopeCodec;
+import pt.eventlab.messaging.ServiceBusClients;
 import pt.eventlab.messaging.ServiceBusTraceContext;
 
 @Component
@@ -39,8 +39,8 @@ class BusinessEventProjectionProcessor {
         this.traceContext = traceContext;
         this.observations = observations;
         this.handler = handler;
-        this.processor = new ServiceBusClientBuilder()
-                .connectionString(properties.connectionString())
+        this.processor = ServiceBusClients
+                .create(properties.connectionString(), properties.fullyQualifiedNamespace())
                 .processor()
                 .topicName(properties.businessEventsTopic())
                 .subscriptionName(properties.labConsoleEventsSubscription())

@@ -5,6 +5,7 @@
 **/node_modules
 **/target
 frontend/dist
+infrastructure/terraform
 docs
 *.log
 *.tfstate*

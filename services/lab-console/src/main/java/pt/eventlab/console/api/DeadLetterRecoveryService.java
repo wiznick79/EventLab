@@ -1,6 +1,5 @@
 package pt.eventlab.console.api;
 
-import com.azure.messaging.servicebus.ServiceBusClientBuilder;
 import com.azure.messaging.servicebus.ServiceBusMessage;
 import com.azure.messaging.servicebus.ServiceBusReceiverClient;
 import com.azure.messaging.servicebus.ServiceBusReceivedMessage;
@@ -12,6 +11,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import pt.eventlab.console.messaging.LabConsoleMessagingProperties;
 import pt.eventlab.contracts.messages.FulfilmentRecoveryRequested;
+import pt.eventlab.messaging.ServiceBusClients;
 
 @Service
 class DeadLetterRecoveryService {
@@ -25,8 +25,8 @@ class DeadLetterRecoveryService {
 
     void recover(UUID workflowId) {
         if (!properties.enabled()) throw new IllegalStateException("Messaging is disabled");
-        ServiceBusClientBuilder clients = new ServiceBusClientBuilder()
-                .connectionString(properties.connectionString());
+        var clients = ServiceBusClients.create(
+                properties.connectionString(), properties.fullyQualifiedNamespace());
         try (ServiceBusReceiverClient receiver = clients.receiver()
                      .queueName(properties.fulfilmentCommandsQueue()).subQueue(SubQueue.DEAD_LETTER_QUEUE)
                      .receiveMode(ServiceBusReceiveMode.PEEK_LOCK).buildClient();

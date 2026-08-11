@@ -1,0 +1,16 @@
+output "frontend_url" {
+  value = "https://${azurerm_container_app.frontend.ingress[0].fqdn}"
+}
+
+output "resource_group_name" {
+  value = azurerm_resource_group.environment.name
+}
+
+output "destroy_after" {
+  value = var.destroy_after
+}
+
+output "application_insights_connection_string" {
+  value     = azurerm_application_insights.environment.connection_string
+  sensitive = true
+}

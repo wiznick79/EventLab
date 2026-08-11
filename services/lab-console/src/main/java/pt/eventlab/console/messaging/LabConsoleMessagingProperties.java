@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record LabConsoleMessagingProperties(
         boolean enabled,
         String connectionString,
+        String fullyQualifiedNamespace,
         String fulfilmentCommandsQueue,
         String businessEventsTopic,
         String labConsoleEventsSubscription) {

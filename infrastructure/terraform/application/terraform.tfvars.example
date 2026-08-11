@@ -1,0 +1,4 @@
+subscription_id = "00000000-0000-0000-0000-000000000000"
+environment_name = "demo"
+destroy_after = "2026-08-12T00:00:00Z"
+image_tag = "0123456789abcdef0123456789abcdef01234567"

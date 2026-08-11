@@ -19,7 +19,8 @@ class PaymentOutboxConfiguration {
             PaymentMessagingProperties properties,
             ServiceBusEnvelopeCodec codec,
             ServiceBusMessageFactory messages) {
-        return new ServiceBusOutboxTransport(properties.connectionString(), codec, messages);
+        return new ServiceBusOutboxTransport(
+                properties.connectionString(), properties.fullyQualifiedNamespace(), codec, messages);
     }
 
     @Bean

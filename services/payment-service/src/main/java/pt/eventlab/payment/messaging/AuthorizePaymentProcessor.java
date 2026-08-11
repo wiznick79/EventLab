@@ -1,6 +1,5 @@
 package pt.eventlab.payment.messaging;
 
-import com.azure.messaging.servicebus.ServiceBusClientBuilder;
 import com.azure.messaging.servicebus.ServiceBusProcessorClient;
 import com.azure.messaging.servicebus.ServiceBusReceivedMessageContext;
 import io.micrometer.observation.Observation;
@@ -17,6 +16,7 @@ import pt.eventlab.contracts.messages.AuthorizePayment;
 import pt.eventlab.contracts.MessageTypes;
 import pt.eventlab.contracts.messages.CompensatePayment;
 import pt.eventlab.messaging.ServiceBusEnvelopeCodec;
+import pt.eventlab.messaging.ServiceBusClients;
 import pt.eventlab.messaging.ServiceBusTraceContext;
 
 @Component
@@ -44,8 +44,8 @@ class AuthorizePaymentProcessor {
         this.observations = observations;
         this.handler = handler;
         this.compensationHandler = compensationHandler;
-        this.processor = new ServiceBusClientBuilder()
-                .connectionString(properties.connectionString())
+        this.processor = ServiceBusClients
+                .create(properties.connectionString(), properties.fullyQualifiedNamespace())
                 .processor()
                 .queueName(properties.paymentCommandsQueue())
                 .disableAutoComplete()

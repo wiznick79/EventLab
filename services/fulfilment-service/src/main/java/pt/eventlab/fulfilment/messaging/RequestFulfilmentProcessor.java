@@ -1,6 +1,5 @@
 package pt.eventlab.fulfilment.messaging;
 
-import com.azure.messaging.servicebus.ServiceBusClientBuilder;
 import com.azure.messaging.servicebus.ServiceBusProcessorClient;
 import com.azure.messaging.servicebus.ServiceBusReceivedMessageContext;
 import com.azure.messaging.servicebus.models.DeadLetterOptions;
@@ -15,6 +14,7 @@ import pt.eventlab.contracts.messages.RequestFulfilment;
 import pt.eventlab.fulfilment.domain.FulfilmentApplicationService;
 import pt.eventlab.fulfilment.domain.FulfilmentAttemptResult;
 import pt.eventlab.messaging.ServiceBusEnvelopeCodec;
+import pt.eventlab.messaging.ServiceBusClients;
 
 @Component
 @ConditionalOnProperty(name = "eventlab.messaging.enabled", havingValue = "true")
@@ -28,7 +28,8 @@ class RequestFulfilmentProcessor {
             ServiceBusEnvelopeCodec codec, FulfilmentApplicationService fulfilments) {
         this.codec = codec;
         this.fulfilments = fulfilments;
-        this.processor = new ServiceBusClientBuilder().connectionString(properties.connectionString())
+        this.processor = ServiceBusClients.create(
+                        properties.connectionString(), properties.fullyQualifiedNamespace())
                 .processor().queueName(properties.fulfilmentCommandsQueue()).disableAutoComplete()
                 .maxConcurrentCalls(1).processMessage(this::process)
                 .processError(error -> LOGGER.error("Fulfilment processor error", error.getException()))

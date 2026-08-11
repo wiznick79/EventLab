@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record WorkflowMessagingProperties(
         boolean enabled,
         String connectionString,
+        String fullyQualifiedNamespace,
         String paymentCommandsQueue,
         String fulfilmentCommandsQueue,
         String businessEventsTopic,

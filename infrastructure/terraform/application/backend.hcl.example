@@ -1,0 +1,5 @@
+resource_group_name  = "rg-eventlab-bootstrap"
+storage_account_name = "steventlabxxxxxxxx"
+container_name       = "tfstate"
+key                  = "eventlab/application.tfstate"
+use_oidc             = true

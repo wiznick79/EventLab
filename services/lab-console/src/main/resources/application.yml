@@ -36,6 +36,7 @@ eventlab:
   messaging:
     enabled: ${EVENTLAB_MESSAGING_ENABLED:false}
     connection-string: ${EVENTLAB_SERVICEBUS_CONNECTION_STRING:Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;}
+    fully-qualified-namespace: ${EVENTLAB_SERVICEBUS_FULLY_QUALIFIED_NAMESPACE:}
     fulfilment-commands-queue: fulfilment-commands
     business-events-topic: business-events
     lab-console-events-subscription: lab-console-events
