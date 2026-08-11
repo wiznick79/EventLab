@@ -34,7 +34,9 @@ The bootstrap resource group may retain an older metadata location after an allo
 1. Run **Build immutable images** for the chosen commit and confirm all five matrix jobs pass.
 2. Run **Plan Azure environment** with the same full commit SHA and inspect the Terraform summary.
 3. Run **Deploy Azure environment** with a 2-hour lifetime for the first test.
-4. The deployment applies the saved plan and runs the happy-path scenario through the public frontend URL. A successful smoke test requires the projected workflow timeline to reach `COMPLETED`.
+4. The deployment applies the saved plan and runs the happy-path scenario through the public frontend URL. It then runs the duplicate-delivery scenario and requires the ignored duplicate's exact trace ID to be retrievable anonymously through the deployed Grafana/Tempo datasource.
+
+The workflow summary publishes separate EventLab and Grafana URLs. Both are public for the lifetime of the disposable environment; visitors do not need an Azure or Grafana account.
 
 Flyway runs during each Java service startup against its owned database. Service Bus access uses each Container App's system-assigned managed identity; namespace SAS authentication is disabled.
 

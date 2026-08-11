@@ -91,9 +91,51 @@ jobs:
           done
           echo "Happy-path did not complete" >&2
           exit 1
+      - name: Smoke test public trace viewer
+        run: |
+          URL="$(terraform output -raw frontend_url)"
+          GRAFANA_URL="$(terraform output -raw grafana_url)"
+          RUN="$(curl --fail --connect-timeout 10 --max-time 30 \
+            -H 'Content-Type: application/json' \
+            -d '{"scenarioId":"duplicate-payment-result","amount":129.90,"currency":"EUR"}' \
+            "${URL}/api/v1/runs")"
+          WORKFLOW_ID="$(jq -er '.workflowId' <<< "$RUN")"
+
+          for _ in $(seq 1 30); do
+            TIMELINE="$(curl --fail --connect-timeout 10 --max-time 30 \
+              "${URL}/api/v1/runs/${WORKFLOW_ID}/timeline")"
+            TRACE_ID="$(jq -er \
+              '[.[] | select(.duplicateDelivery == true and .state == "DUPLICATE_IGNORED")][0].traceId // empty' \
+              <<< "$TIMELINE" 2>/dev/null || true)"
+            COMPLETED="$(jq -r 'any(.[]; .state == "COMPLETED")' <<< "$TIMELINE")"
+            if [[ -n "$TRACE_ID" && "$COMPLETED" == "true" ]]; then
+              break
+            fi
+            sleep 5
+          done
+
+          if [[ -z "$TRACE_ID" || "$COMPLETED" != "true" ]]; then
+            echo "Duplicate scenario did not expose its ignored delivery and completion" >&2
+            exit 1
+          fi
+
+          for _ in $(seq 1 30); do
+            if curl --fail --silent --show-error --connect-timeout 10 --max-time 30 \
+              "${GRAFANA_URL}/api/datasources/proxy/uid/tempo/api/traces/${TRACE_ID}" \
+              | jq -e '.batches | length > 0' >/dev/null; then
+              echo "Public Grafana resolved duplicate trace ${TRACE_ID} for ${WORKFLOW_ID}" \
+                >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo "Public Grafana could not resolve trace ${TRACE_ID}" >&2
+          exit 1
       - name: Publish environment summary
         if: always()
         run: |
           echo "### EventLab Azure environment" >> "$GITHUB_STEP_SUMMARY"
           echo "- Expires: ${{ steps.plan.outputs.destroy_after }}" >> "$GITHUB_STEP_SUMMARY"
-          terraform output -raw frontend_url 2>/dev/null | sed 's/^/- URL: /' >> "$GITHUB_STEP_SUMMARY" || true
+          terraform output -raw frontend_url 2>/dev/null | sed 's/^/- EventLab: /' >> "$GITHUB_STEP_SUMMARY" || true
+          terraform output -raw grafana_url 2>/dev/null | sed 's/^/- Grafana: /' >> "$GITHUB_STEP_SUMMARY" || true

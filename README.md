@@ -6,7 +6,7 @@ The project is a portfolio and learning system, not a parcel-management product.
 
 ## Status
 
-Milestone 5 is complete and Milestone 6 infrastructure is being prepared for its first ephemeral Azure deployment. The local lab demonstrates versioned business updates, optimistic database concurrency, visible out-of-order delivery, and rejection of stale events without state regression.
+Milestone 6 is complete. EventLab can be deployed as a time-limited Azure environment through GitHub OIDC, with managed Service Bus access, isolated PostgreSQL databases, automated expiry cleanup, and a public self-contained Grafana/Tempo trace viewer. The next phase is portfolio polish and permanent static documentation.
 
 ## Target technology
 
@@ -55,7 +55,7 @@ Set-Location ..
 docker compose config --quiet
 ```
 
-## Run the Milestone 1 stack
+## Run the local stack
 
 The local broker is Microsoft's official Azure Service Bus emulator. It depends on an Azure SQL Edge container and requires you to accept Microsoft's container EULA explicitly. Review the applicable terms, then copy the environment template and change `ACCEPT_EULA=N` to `ACCEPT_EULA=Y`. EventLab never accepts it automatically.
 

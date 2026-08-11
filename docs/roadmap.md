@@ -67,15 +67,17 @@ Implemented with a deterministic `fulfilment-rejected` outcome, persisted saga s
 
 Implemented with explicit Fulfilment aggregate versions, a persisted highest-applied version in Workflow, the existing JPA optimistic lock for concurrent database writers, and a deterministic scheduler that publishes a version-1 rejection after version 2 has completed. The Lab Console shows both the late delivery and `STALE_IGNORED`; the emulator check proves the persisted workflow remains `COMPLETED`. Service Bus sessions are documented as a selective serialization option rather than enabled globally, because they reduce reordering but do not replace version checks or idempotency.
 
-## Milestone 6: ephemeral Azure deployment
+## Milestone 6: ephemeral Azure deployment — completed 2026-08-12
 
 - Create persistent bootstrap and disposable application Terraform roots.
 - Configure Entra/GitHub OIDC and managed identities.
 - Build immutable GHCR images in CI.
 - Add `plan`, `deploy`, `destroy`, Flyway, seed, smoke-test, and TTL cleanup workflows.
-- Export telemetry to Azure Monitor/Application Insights.
+- Export portable application traces to the environment's Tempo instance while retaining Azure Monitor for platform telemetry.
 
 **Demonstration:** create an environment with a chosen lifetime, run a scenario in Azure, and destroy it completely.
+
+Implemented with separate persistent-bootstrap and disposable-application Terraform roots, GitHub-to-Azure OIDC, managed identities for Service Bus and PostgreSQL access, immutable public GHCR images, reviewed plan/deploy/destroy workflows, scheduled TTL cleanup, and startup Flyway migrations. The time-limited environment exposes EventLab plus an anonymous Grafana/Tempo trace viewer. Deployment smoke tests prove both a completed workflow and that the exact trace attached to an ignored duplicate can be retrieved through public Grafana without an Azure account.
 
 ## Milestone 7: portfolio polish
 
