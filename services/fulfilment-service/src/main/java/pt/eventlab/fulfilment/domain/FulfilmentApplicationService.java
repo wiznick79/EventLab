@@ -12,6 +12,7 @@ import pt.eventlab.contracts.messages.FulfilmentCompleted;
 import pt.eventlab.contracts.messages.FulfilmentDeadLettered;
 import pt.eventlab.contracts.messages.FulfilmentRecoveryRequested;
 import pt.eventlab.contracts.messages.FulfilmentRejected;
+import pt.eventlab.contracts.messages.FulfilmentStatusChanged;
 import pt.eventlab.contracts.messages.RequestFulfilment;
 import pt.eventlab.fulfilment.messaging.FulfilmentMessagePublisher;
 import pt.eventlab.messaging.InboxStore;
@@ -59,13 +60,28 @@ public class FulfilmentApplicationService {
         if ("fulfilment-rejected".equals(command.payload().scenarioId())) {
             job.reject(now);
             messages.publish(event(command, MessageTypes.FULFILMENT_REJECTED,
-                    new FulfilmentRejected(command.workflowId(), "Simulated capacity rejection")));
+                    new FulfilmentRejected(command.workflowId(), "Simulated capacity rejection", 2)));
             return new FulfilmentAttemptResult(true, false, attempt, 0);
         }
         job.complete(now);
+        if ("out-of-order-event".equals(command.payload().scenarioId())) {
+            job.scheduleStaleEvent(now.plusSeconds(1));
+        }
         messages.publish(event(command, MessageTypes.FULFILMENT_COMPLETED,
-                new FulfilmentCompleted(command.workflowId(), job.id())));
+                new FulfilmentCompleted(command.workflowId(), job.id(), 2)));
         return new FulfilmentAttemptResult(true, false, attempt, 0);
+    }
+
+    @Transactional
+    public void publishDueStaleEvents() {
+        Instant now = clock.instant();
+        for (Fulfilment job : fulfilments.findByStaleEventSentFalseAndStaleEventDueAtBefore(now)) {
+            messages.publish(new EventEnvelope<>(
+                    UUID.randomUUID(), MessageTypes.FULFILMENT_STATUS_CHANGED, 1,
+                    job.workflowId(), null, job.workflowId(), now,
+                    new FulfilmentStatusChanged(job.workflowId(), 1, "REJECTED")));
+            job.markStaleEventSent();
+        }
     }
 
     @Transactional

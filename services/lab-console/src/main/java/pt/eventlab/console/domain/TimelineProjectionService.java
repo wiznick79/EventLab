@@ -102,6 +102,14 @@ public class TimelineProjectionService {
             case MessageTypes.WORKFLOW_INTERVENTION_REQUIRED -> new EventPresentation(
                     "Workflow", "FAILED_REQUIRES_INTERVENTION",
                     "A persisted saga deadline expired; operator intervention is required");
+            case MessageTypes.FULFILMENT_STATUS_CHANGED -> new EventPresentation(
+                    "Fulfilment", "LATE_UPDATE_OBSERVED", "Delayed version "
+                            + envelope.payload().path("aggregateVersion").asLong()
+                            + " update arrived after the terminal outcome");
+            case MessageTypes.STALE_EVENT_IGNORED -> new EventPresentation(
+                    "Workflow", "STALE_IGNORED", "Version "
+                            + envelope.payload().path("receivedVersion").asLong() + " was rejected; current version is "
+                            + envelope.payload().path("currentVersion").asLong());
             case MessageTypes.WORKFLOW_COMPLETED -> new EventPresentation(
                     "Workflow", "COMPLETED", "Workflow reached its successful terminal state");
             default -> new EventPresentation("Unknown", "OBSERVED", "Observed " + envelope.eventType());

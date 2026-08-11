@@ -6,7 +6,7 @@ The project is a portfolio and learning system, not a parcel-management product.
 
 ## Status
 
-Milestone 4 and the MVP workflow boundary are complete. The project demonstrates transactional delivery, consumer idempotency, retries and dead-letter recovery, persisted saga deadlines, fulfilment rejection, and idempotent payment compensation.
+Milestone 5 is complete. In addition to the MVP saga, the project demonstrates versioned business updates, optimistic database concurrency, visible out-of-order delivery, and rejection of stale events without state regression.
 
 ## Target technology
 
@@ -112,6 +112,7 @@ mvn package
 .\scripts\verify-duplicate-scenario.ps1
 .\scripts\verify-dlq-recovery.ps1
 .\scripts\verify-compensation-scenario.ps1
+.\scripts\verify-ordering-scenario.ps1
 ```
 
 ### Reliability model

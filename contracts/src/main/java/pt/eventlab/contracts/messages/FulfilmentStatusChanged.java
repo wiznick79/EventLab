@@ -3,11 +3,10 @@ package pt.eventlab.contracts.messages;
 import java.util.Objects;
 import java.util.UUID;
 
-public record FulfilmentCompleted(UUID workflowId, UUID fulfilmentId, long aggregateVersion) {
-
-    public FulfilmentCompleted {
+public record FulfilmentStatusChanged(UUID workflowId, long aggregateVersion, String outcome) {
+    public FulfilmentStatusChanged {
         Objects.requireNonNull(workflowId, "workflowId is required");
-        Objects.requireNonNull(fulfilmentId, "fulfilmentId is required");
         if (aggregateVersion < 1) throw new IllegalArgumentException("aggregateVersion must be positive");
+        Objects.requireNonNull(outcome, "outcome is required");
     }
 }

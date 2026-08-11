@@ -18,6 +18,7 @@ import pt.eventlab.contracts.messages.PaymentAuthorized;
 import pt.eventlab.contracts.messages.FulfilmentCompleted;
 import pt.eventlab.contracts.messages.FulfilmentRejected;
 import pt.eventlab.contracts.messages.PaymentCompensated;
+import pt.eventlab.contracts.messages.FulfilmentStatusChanged;
 import pt.eventlab.messaging.ServiceBusEnvelopeCodec;
 import pt.eventlab.messaging.ServiceBusTraceContext;
 
@@ -35,6 +36,7 @@ class PaymentAuthorizedProcessor {
     private final FulfilmentCompletedHandler fulfilmentHandler;
     private final FulfilmentRejectedHandler rejectionHandler;
     private final PaymentCompensatedHandler compensationHandler;
+    private final FulfilmentStatusChangedHandler statusChangedHandler;
 
     PaymentAuthorizedProcessor(
             WorkflowMessagingProperties properties,
@@ -44,7 +46,8 @@ class PaymentAuthorizedProcessor {
             PaymentAuthorizedHandler handler,
             FulfilmentCompletedHandler fulfilmentHandler,
             FulfilmentRejectedHandler rejectionHandler,
-            PaymentCompensatedHandler compensationHandler) {
+            PaymentCompensatedHandler compensationHandler,
+            FulfilmentStatusChangedHandler statusChangedHandler) {
         this.codec = codec;
         this.traceContext = traceContext;
         this.observations = observations;
@@ -52,6 +55,7 @@ class PaymentAuthorizedProcessor {
         this.fulfilmentHandler = fulfilmentHandler;
         this.rejectionHandler = rejectionHandler;
         this.compensationHandler = compensationHandler;
+        this.statusChangedHandler = statusChangedHandler;
         this.processor = new ServiceBusClientBuilder()
                 .connectionString(properties.connectionString())
                 .processor()
@@ -75,8 +79,10 @@ class PaymentAuthorizedProcessor {
                 && !MessageTypes.FULFILMENT_COMPLETED.equals(context.getMessage().getSubject())) {
             if (!MessageTypes.FULFILMENT_REJECTED.equals(context.getMessage().getSubject())
                     && !MessageTypes.PAYMENT_COMPENSATED.equals(context.getMessage().getSubject())) {
-                context.complete();
-                return;
+                if (!MessageTypes.FULFILMENT_STATUS_CHANGED.equals(context.getMessage().getSubject())) {
+                    context.complete();
+                    return;
+                }
             }
         }
 
@@ -100,10 +106,14 @@ class PaymentAuthorizedProcessor {
             EventEnvelope<FulfilmentRejected> event = codec.decode(
                     context.getMessage().getBody(), FulfilmentRejected.class);
             rejectionHandler.handle(event);
-        } else {
+        } else if (MessageTypes.PAYMENT_COMPENSATED.equals(context.getMessage().getSubject())) {
             EventEnvelope<PaymentCompensated> event = codec.decode(
                     context.getMessage().getBody(), PaymentCompensated.class);
             compensationHandler.handle(event);
+        } else {
+            EventEnvelope<FulfilmentStatusChanged> event = codec.decode(
+                    context.getMessage().getBody(), FulfilmentStatusChanged.class);
+            statusChangedHandler.handle(event);
         }
         context.complete();
     }

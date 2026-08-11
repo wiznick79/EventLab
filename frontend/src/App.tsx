@@ -83,13 +83,14 @@ export function App() {
   const duplicateCount = events.filter((event) => event.duplicateDelivery).length
   const deadLettered = events.some((event) => event.state === 'DEAD_LETTERED')
   const compensated = events.some((event) => event.state === 'COMPENSATED')
+  const staleIgnored = events.some((event) => event.state === 'STALE_IGNORED')
 
   return (
     <main>
       <header className="hero">
         <nav aria-label="Primary navigation">
           <a className="wordmark" href="#top" aria-label="EventLab home"><span className="mark">EL</span>EventLab</a>
-          <span className="build-status"><i /> Milestone 4 · saga compensation</span>
+          <span className="build-status"><i /> Milestone 5 · ordering and concurrency</span>
         </nav>
         <div className="hero-copy" id="top">
           <p className="eyebrow">Distributed systems under pressure</p>
@@ -111,6 +112,14 @@ export function App() {
             <p>Start a workflow, authorize payment over Azure Service Bus, and watch the projected event timeline update live.</p>
             <button className="run-button" type="button" onClick={() => startScenario('happy-path')} disabled={starting}>
               {starting && activeScenario === 'happy-path' ? 'Starting…' : 'Run experiment'} <span>→</span>
+            </button>
+          </article>
+          <article className="scenario-card active-card">
+            <span className="scenario-number">05</span><span className="scenario-tag">Versioning</span>
+            <h3>Out-of-order update</h3>
+            <p>Complete fulfilment at version 2, then deliver a delayed version-1 rejection without regressing state.</p>
+            <button className="run-button" type="button" onClick={() => startScenario('out-of-order-event')} disabled={starting}>
+              {starting && activeScenario === 'out-of-order-event' ? 'Starting…' : 'Run experiment'} <span>→</span>
             </button>
           </article>
           <article className="scenario-card active-card">
@@ -160,6 +169,10 @@ export function App() {
           {activeScenario === 'fulfilment-rejected' && compensated && <div className="invariant">
             <strong>Invariant restored</strong>
             <span>Fulfilment rejected · payment compensated · workflow terminal state COMPENSATED</span>
+          </div>}
+          {activeScenario === 'out-of-order-event' && staleIgnored && <div className="invariant">
+            <strong>Version invariant protected</strong>
+            <span>Workflow remained COMPLETED · delayed version 1 ignored behind current version 2</span>
           </div>}
           {error && <p className="run-error">{error}</p>}
           <ol className="timeline">

@@ -27,6 +27,7 @@ public class WorkflowRun {
     private Instant createdAt;
     private Instant updatedAt;
     private Instant stepDeadline;
+    private long lastFulfilmentVersion;
 
     protected WorkflowRun() {
     }
@@ -92,6 +93,12 @@ public class WorkflowRun {
         return timedOutState;
     }
 
+    public boolean observeFulfilmentVersion(long receivedVersion) {
+        if (receivedVersion <= lastFulfilmentVersion) return false;
+        lastFulfilmentVersion = receivedVersion;
+        return true;
+    }
+
     public void complete(Instant now) {
         if (state != WorkflowState.FULFILMENT_PENDING) {
             throw new IllegalStateException("Only a fulfilment-pending workflow can complete");
@@ -110,4 +117,5 @@ public class WorkflowRun {
     public Instant createdAt() { return createdAt; }
     public Instant updatedAt() { return updatedAt; }
     public Instant stepDeadline() { return stepDeadline; }
+    public long lastFulfilmentVersion() { return lastFulfilmentVersion; }
 }

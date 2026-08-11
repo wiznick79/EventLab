@@ -23,6 +23,8 @@ import pt.eventlab.contracts.messages.WorkflowCompleted;
 import pt.eventlab.contracts.messages.WorkflowStarted;
 import pt.eventlab.contracts.messages.WorkflowCompensated;
 import pt.eventlab.contracts.messages.WorkflowInterventionRequired;
+import pt.eventlab.contracts.messages.FulfilmentStatusChanged;
+import pt.eventlab.contracts.messages.StaleEventIgnored;
 import pt.eventlab.workflow.messaging.WorkflowMessagePublisher;
 
 @Service
@@ -87,6 +89,10 @@ public class WorkflowApplicationService {
     @Transactional
     public void recordFulfilmentRejected(EventEnvelope<FulfilmentRejected> event) {
         WorkflowRun workflow = workflow(event.workflowId());
+        if (!workflow.observeFulfilmentVersion(event.payload().aggregateVersion())) {
+            publishStaleIgnored(workflow, event.eventType(), event.payload().aggregateVersion(), event.eventId());
+            return;
+        }
         Instant now = clock.instant();
         workflow.beginCompensation(now, now.plus(STEP_TIMEOUT));
         messages.sendPaymentCommand(new EventEnvelope<>(
@@ -121,6 +127,10 @@ public class WorkflowApplicationService {
     @Transactional
     public void recordFulfilmentCompleted(EventEnvelope<FulfilmentCompleted> event) {
         WorkflowRun workflow = workflow(event.workflowId());
+        if (!workflow.observeFulfilmentVersion(event.payload().aggregateVersion())) {
+            publishStaleIgnored(workflow, event.eventType(), event.payload().aggregateVersion(), event.eventId());
+            return;
+        }
         workflow.complete(clock.instant());
         workflows.flush();
 
@@ -128,6 +138,26 @@ public class WorkflowApplicationService {
                 UUID.randomUUID(), MessageTypes.WORKFLOW_COMPLETED, 1, workflow.id(), event.eventId(),
                 event.correlationId(), clock.instant(),
                 new WorkflowCompleted(workflow.id(), WorkflowState.COMPLETED)));
+    }
+
+    @Transactional
+    public void observeFulfilmentStatus(EventEnvelope<FulfilmentStatusChanged> event) {
+        WorkflowRun workflow = workflow(event.workflowId());
+        long received = event.payload().aggregateVersion();
+        if (received <= workflow.lastFulfilmentVersion()) {
+            publishStaleIgnored(workflow, event.eventType(), received, event.eventId());
+            return;
+        }
+        throw new IllegalStateException("Unexpected future fulfilment version " + received);
+    }
+
+    private void publishStaleIgnored(
+            WorkflowRun workflow, String eventType, long receivedVersion, UUID causationId) {
+        messages.publishBusinessEvent(new EventEnvelope<>(
+                UUID.randomUUID(), MessageTypes.STALE_EVENT_IGNORED, 1,
+                workflow.id(), causationId, workflow.id(), clock.instant(),
+                new StaleEventIgnored(
+                        workflow.id(), eventType, receivedVersion, workflow.lastFulfilmentVersion())));
     }
 
     private WorkflowRun workflow(UUID workflowId) {

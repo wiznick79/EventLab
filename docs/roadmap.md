@@ -57,13 +57,15 @@ This is the MVP boundary.
 
 Implemented with a deterministic `fulfilment-rejected` outcome, persisted saga step deadlines, an orchestration timeout monitor, an idempotent payment-compensation command handler, and distinct compensated/intervention terminal events. The Lab Console displays the forward and reversing paths, while the repeatable emulator scenario proves that an authorized payment is compensated and the workflow ends in `COMPENSATED`, never `COMPLETED`.
 
-## Milestone 5: ordering and concurrency
+## Milestone 5: ordering and concurrency — completed 2026-08-11
 
 - Add optimistic concurrency and workflow versions.
 - Demonstrate stale or out-of-order delivery.
 - Compare unordered processing with Service Bus sessions where useful.
 
 **Demonstration:** a delayed stale event is visible but cannot regress workflow state.
+
+Implemented with explicit Fulfilment aggregate versions, a persisted highest-applied version in Workflow, the existing JPA optimistic lock for concurrent database writers, and a deterministic scheduler that publishes a version-1 rejection after version 2 has completed. The Lab Console shows both the late delivery and `STALE_IGNORED`; the emulator check proves the persisted workflow remains `COMPLETED`. Service Bus sessions are documented as a selective serialization option rather than enabled globally, because they reduce reordering but do not replace version checks or idempotency.
 
 ## Milestone 6: ephemeral Azure deployment
 

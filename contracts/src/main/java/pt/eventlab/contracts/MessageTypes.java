@@ -16,6 +16,8 @@ public final class MessageTypes {
     public static final String WORKFLOW_COMPLETED = "workflow.completed";
     public static final String WORKFLOW_COMPENSATED = "workflow.compensated";
     public static final String WORKFLOW_INTERVENTION_REQUIRED = "workflow.intervention-required";
+    public static final String FULFILMENT_STATUS_CHANGED = "fulfilment.status-changed";
+    public static final String STALE_EVENT_IGNORED = "workflow.stale-event-ignored";
 
     private MessageTypes() {
     }

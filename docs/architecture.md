@@ -195,7 +195,19 @@ Delivery attempts are transport observations and are not trusted as immutable bu
 
 Workflow messages carry an aggregate/workflow version. Consumers reject or safely ignore stale transitions using persisted version and idempotency information.
 
-Service Bus sessions are introduced in a comparison scenario rather than enabled globally. This lets the project demonstrate both unordered concurrent handling and per-workflow ordered processing.
+Workflow uses two separate concurrency controls: JPA's optimistic `@Version` prevents concurrent database writers from silently overwriting one another, while the persisted `lastFulfilmentVersion` prevents an older business update from regressing saga state. The Milestone 5 scenario completes Fulfilment at version 2 and deliberately publishes a delayed version-1 rejection. Workflow records `workflow.stale-event-ignored` and remains `COMPLETED`.
+
+Service Bus sessions remain a selective transport option rather than a global setting:
+
+| Concern | Current unordered entities | Session-enabled entity keyed by workflow |
+| --- | --- | --- |
+| Same-workflow processing | May overlap or arrive out of order | Serialized in broker acceptance order |
+| Different workflows | Concurrent | Concurrent across different session IDs |
+| Consumer complexity | Ordinary processor | Session processor plus session ownership/lock handling |
+| Stale producer data | Version check required | Version check still required |
+| Duplicate delivery | Inbox required | Inbox still required |
+
+The experiment intentionally uses the unordered path so the correctness guard is observable. Sessions would be appropriate for a handler whose throughput and operational constraints justify broker-managed per-workflow serialization, but they cannot establish causal truth when a producer sends stale data.
 
 ### 6.5 Replay
 

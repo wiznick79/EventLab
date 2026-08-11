@@ -17,6 +17,8 @@ public class Fulfilment {
     private String status;
     private Instant createdAt;
     private Instant completedAt;
+    private Instant staleEventDueAt;
+    private boolean staleEventSent;
 
     protected Fulfilment() { }
 
@@ -38,6 +40,9 @@ public class Fulfilment {
     void recover() { available = true; }
     void complete(Instant now) { status = "COMPLETED"; completedAt = now; }
     void reject(Instant now) { status = "REJECTED"; completedAt = now; }
+    void scheduleStaleEvent(Instant dueAt) { staleEventDueAt = dueAt; }
+    void markStaleEventSent() { staleEventSent = true; }
+    Instant staleEventDueAt() { return staleEventDueAt; }
     public UUID id() { return id; }
     public UUID workflowId() { return workflowId; }
 }

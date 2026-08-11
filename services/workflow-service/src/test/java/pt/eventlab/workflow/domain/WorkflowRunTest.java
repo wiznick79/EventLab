@@ -2,6 +2,8 @@ package pt.eventlab.workflow.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -30,5 +32,14 @@ class WorkflowRunTest {
         assertEquals(WorkflowState.FULFILMENT_PENDING, workflow.requireIntervention(NOW.plusSeconds(121)));
         assertEquals(WorkflowState.FAILED_REQUIRES_INTERVENTION, workflow.state());
         assertNull(workflow.stepDeadline());
+    }
+
+    @Test
+    void staleFulfilmentVersionCannotReplaceCurrentVersion() {
+        WorkflowRun workflow = WorkflowRun.start("out-of-order-event", new BigDecimal("129.90"), "EUR", NOW);
+
+        assertTrue(workflow.observeFulfilmentVersion(2));
+        assertFalse(workflow.observeFulfilmentVersion(1));
+        assertEquals(2, workflow.lastFulfilmentVersion());
     }
 }
