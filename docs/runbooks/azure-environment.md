@@ -27,7 +27,7 @@ The bootstrap resource group may retain an older metadata location after an allo
 
 ## Image publication
 
-`images.yml` builds all five images for every main-branch commit and publishes only the full commit SHA tag. Make the five GHCR packages public before the first Container Apps deployment; no registry password is stored in Azure.
+`images.yml` builds the five application images plus the Tempo, telemetry-gateway, and Grafana images for every main-branch commit and publishes only the full commit SHA tag. Make all eight GHCR packages public before deployment; no registry password is stored in Azure.
 
 ## Plan and deploy
 

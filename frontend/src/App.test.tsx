@@ -28,13 +28,10 @@ describe('EventLab experiment console', () => {
     expect(left.range).toEqual({ from: 'now-1h', to: 'now' })
   })
 
-  it('uses the runtime Azure trace explorer when configured', () => {
-    const url = traceUrl(
-      '0123456789abcdef',
-      '/subscriptions/example/resourceGroups/demo/providers/Microsoft.Insights/components/eventlab',
-    )
+  it('uses the runtime Grafana instance when configured', () => {
+    const url = traceUrl('0123456789abcdef', 'https://grafana.example.test')
 
-    expect(url).toContain('Microsoft_Azure_Monitoring_Logs/LogsBlade')
-    expect(decodeURIComponent(url)).toContain("OperationId == '0123456789abcdef'")
+    expect(url).toMatch(/^https:\/\/grafana\.example\.test\/explore\?left=/)
+    expect(decodeURIComponent(url)).toContain('0123456789abcdef')
   })
 })

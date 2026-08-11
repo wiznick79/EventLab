@@ -34,17 +34,16 @@ export function grafanaTraceUrl(traceId: string) {
 
 export function traceUrl(
   traceId: string,
-  applicationInsightsResourceId = window.EVENTLAB_CONFIG?.applicationInsightsResourceId,
+  grafanaBaseUrl = window.EVENTLAB_CONFIG?.grafanaBaseUrl,
 ) {
-  if (!applicationInsightsResourceId) return grafanaTraceUrl(traceId)
+  if (!grafanaBaseUrl) return grafanaTraceUrl(traceId)
+  const left = {
+    range: { from: 'now-1h', to: 'now' },
+    datasource: 'tempo',
+    queries: [{ query: traceId, queryType: 'traceql' }],
+  }
 
-  const query = `union withsource=TelemetryType AppRequests, AppDependencies, AppTraces, AppExceptions
-| where OperationId == '${traceId}'
-| order by TimeGenerated asc`
-  const resourceId = encodeURIComponent(applicationInsightsResourceId)
-  const encodedQuery = encodeURIComponent(query)
-
-  return `https://portal.azure.com/#blade/Microsoft_Azure_Monitoring_Logs/LogsBlade/resourceId/${resourceId}/source/LogsBlade.AnalyticsShareLinkToQuery/query/${encodedQuery}/timespan/PT24H`
+  return `${grafanaBaseUrl}/explore?left=${encodeURIComponent(JSON.stringify(left))}`
 }
 
 export function App() {
@@ -209,8 +208,7 @@ export function App() {
                 href={traceUrl(event.traceId)}
                 target="_blank"
                 rel="noreferrer"
-                title={window.EVENTLAB_CONFIG?.applicationInsightsResourceId ? 'Open this trace in Azure Logs' : undefined}
-              >{window.EVENTLAB_CONFIG?.applicationInsightsResourceId ? 'Open trace in Azure ↗' : 'Open trace ↗'}</a>}
+              >Open trace ↗</a>}
             </li>)}
             {events.length === 0 && run && <li className="waiting">Waiting for the first business event…</li>}
           </ol>

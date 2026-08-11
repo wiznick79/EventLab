@@ -69,6 +69,7 @@ services:
   grafana:
     image: grafana/grafana:12.1.0
     environment:
+      TEMPO_URL: http://tempo:3200
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
       # The lab links directly to Explore; Viewers can query and make only temporary edits.

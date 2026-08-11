@@ -17,7 +17,7 @@ Milestone 5 is complete and Milestone 6 infrastructure is being prepared for its
 - Docker and Docker Compose.
 - Azure Container Apps.
 - Terraform.
-- OpenTelemetry, with Grafana/Tempo/Prometheus locally and Azure Monitor/Application Insights in Azure.
+- OpenTelemetry, with Grafana/Tempo for self-contained trace demos and Azure Monitor/Application Insights for Azure operations.
 - JUnit 5 and Testcontainers.
 - GitHub Actions, GitHub Container Registry, and GitHub OIDC federation with Microsoft Entra ID.
 

@@ -300,7 +300,7 @@ The local Compose environment uses:
 
 Azure uses Azure Monitor/Application Insights for application telemetry and Azure platform metrics for Container Apps, Service Bus, and PostgreSQL. Sampling, short retention, controlled log levels, and ingestion caps protect the student credit.
 
-A complete Grafana/Tempo/Loki deployment will not run permanently in Azure. Local observability demonstrates the portable stack; Azure demonstrates native operational tooling.
+Ephemeral demonstration environments also run a minimal Tempo backend and anonymous Grafana viewer. This keeps the public trace experience self-contained while Azure Monitor remains available for owner-only operational learning. The portable stack is destroyed with the rest of the environment and does not run permanently.
 
 ## 11. Local deployment
 

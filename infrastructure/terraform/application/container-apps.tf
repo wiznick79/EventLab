@@ -4,6 +4,7 @@ locals {
     EVENTLAB_SERVICEBUS_CONNECTION_STRING         = ""
     EVENTLAB_SERVICEBUS_FULLY_QUALIFIED_NAMESPACE = "${azurerm_servicebus_namespace.environment.name}.servicebus.windows.net"
     APPLICATIONINSIGHTS_CONNECTION_STRING         = azurerm_application_insights.environment.connection_string
+    OTEL_TRACES_ENDPOINT                          = "https://${azurerm_container_app.tempo.ingress[0].fqdn}/v1/traces"
   }
 }
 
@@ -281,6 +282,117 @@ resource "azurerm_container_app" "console" {
   }
 }
 
+resource "azurerm_container_app" "tempo" {
+  name                         = "tempo"
+  container_app_environment_id = azurerm_container_app_environment.environment.id
+  resource_group_name          = azurerm_resource_group.environment.name
+  revision_mode                = "Single"
+  tags                         = local.tags
+
+  template {
+    min_replicas = 1
+    max_replicas = 1
+
+    container {
+      name   = "tempo"
+      image  = local.service_images.tempo
+      cpu    = 0.25
+      memory = "0.5Gi"
+    }
+
+    container {
+      name   = "telemetry-gateway"
+      image  = local.service_images.telemetry_gateway
+      cpu    = 0.25
+      memory = "0.5Gi"
+
+      liveness_probe {
+        transport               = "HTTP"
+        port                    = 8080
+        path                    = "/ready"
+        initial_delay           = 30
+        failure_count_threshold = 10
+      }
+      readiness_probe {
+        transport = "HTTP"
+        port      = 8080
+        path      = "/ready"
+      }
+    }
+  }
+
+  ingress {
+    external_enabled = false
+    target_port      = 8080
+    transport        = "http"
+    traffic_weight {
+      percentage      = 100
+      latest_revision = true
+    }
+  }
+}
+
+resource "azurerm_container_app" "grafana" {
+  name                         = "grafana"
+  container_app_environment_id = azurerm_container_app_environment.environment.id
+  resource_group_name          = azurerm_resource_group.environment.name
+  revision_mode                = "Single"
+  tags                         = local.tags
+
+  template {
+    min_replicas = 1
+    max_replicas = 1
+    container {
+      name   = "grafana"
+      image  = local.service_images.grafana
+      cpu    = 0.25
+      memory = "0.5Gi"
+      env {
+        name  = "TEMPO_URL"
+        value = "https://${azurerm_container_app.tempo.ingress[0].fqdn}"
+      }
+      env {
+        name  = "GF_AUTH_ANONYMOUS_ENABLED"
+        value = "true"
+      }
+      env {
+        name  = "GF_AUTH_ANONYMOUS_ORG_ROLE"
+        value = "Viewer"
+      }
+      env {
+        name  = "GF_USERS_VIEWERS_CAN_EDIT"
+        value = "true"
+      }
+      env {
+        name  = "GF_AUTH_DISABLE_LOGIN_FORM"
+        value = "true"
+      }
+      liveness_probe {
+        transport     = "HTTP"
+        port          = 3000
+        path          = "/api/health"
+        initial_delay = 30
+      }
+      readiness_probe {
+        transport = "HTTP"
+        port      = 3000
+        path      = "/api/health"
+      }
+    }
+  }
+
+  ingress {
+    external_enabled           = true
+    target_port                = 3000
+    transport                  = "http"
+    allow_insecure_connections = false
+    traffic_weight {
+      percentage      = 100
+      latest_revision = true
+    }
+  }
+}
+
 resource "azurerm_container_app" "frontend" {
   name                         = "eventlab"
   container_app_environment_id = azurerm_container_app_environment.environment.id
@@ -300,8 +412,8 @@ resource "azurerm_container_app" "frontend" {
         value = azurerm_container_app.console.ingress[0].fqdn
       }
       env {
-        name  = "APPLICATION_INSIGHTS_RESOURCE_ID"
-        value = azurerm_application_insights.environment.id
+        name  = "GRAFANA_BASE_URL"
+        value = "https://${azurerm_container_app.grafana.ingress[0].fqdn}"
       }
       liveness_probe {
         transport = "HTTP"

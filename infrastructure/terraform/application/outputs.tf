@@ -2,6 +2,10 @@ output "frontend_url" {
   value = "https://${azurerm_container_app.frontend.ingress[0].fqdn}"
 }
 
+output "grafana_url" {
+  value = "https://${azurerm_container_app.grafana.ingress[0].fqdn}"
+}
+
 output "resource_group_name" {
   value = azurerm_resource_group.environment.name
 }

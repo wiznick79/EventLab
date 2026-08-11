@@ -2,6 +2,6 @@
 
 interface Window {
   EVENTLAB_CONFIG?: {
-    applicationInsightsResourceId?: string
+    grafanaBaseUrl?: string
   }
 }

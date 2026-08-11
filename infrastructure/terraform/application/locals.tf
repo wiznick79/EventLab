@@ -17,10 +17,13 @@ locals {
   }
 
   service_images = {
-    workflow   = "${var.image_registry}/workflow-service:${var.image_tag}"
-    payment    = "${var.image_registry}/payment-service:${var.image_tag}"
-    fulfilment = "${var.image_registry}/fulfilment-service:${var.image_tag}"
-    console    = "${var.image_registry}/lab-console:${var.image_tag}"
-    frontend   = "${var.image_registry}/frontend:${var.image_tag}"
+    workflow          = "${var.image_registry}/workflow-service:${var.image_tag}"
+    payment           = "${var.image_registry}/payment-service:${var.image_tag}"
+    fulfilment        = "${var.image_registry}/fulfilment-service:${var.image_tag}"
+    console           = "${var.image_registry}/lab-console:${var.image_tag}"
+    frontend          = "${var.image_registry}/frontend:${var.image_tag}"
+    tempo             = "${var.image_registry}/tempo:${var.image_tag}"
+    telemetry_gateway = "${var.image_registry}/telemetry-gateway:${var.image_tag}"
+    grafana           = "${var.image_registry}/grafana:${var.image_tag}"
   }
 }
