@@ -6,7 +6,6 @@ locals {
     APPLICATIONINSIGHTS_CONNECTION_STRING         = azurerm_application_insights.environment.connection_string
     OTEL_TRACES_ENDPOINT                          = "https://${azurerm_container_app.tempo.ingress[0].fqdn}/v1/traces"
     SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE    = "3"
-    JAVA_TOOL_OPTIONS                             = ""
   }
 }
 

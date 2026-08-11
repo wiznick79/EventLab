@@ -21,11 +21,7 @@ FROM eclipse-temurin:21-jre-alpine
 RUN addgroup -S eventlab && adduser -S eventlab -G eventlab
 WORKDIR /app
 ARG SERVICE
-ARG APPLICATION_INSIGHTS_AGENT_VERSION=3.7.8
-ADD https://github.com/microsoft/ApplicationInsights-Java/releases/download/${APPLICATION_INSIGHTS_AGENT_VERSION}/applicationinsights-agent-${APPLICATION_INSIGHTS_AGENT_VERSION}.jar /opt/applicationinsights-agent.jar
-RUN chmod 0444 /opt/applicationinsights-agent.jar
 COPY --from=build "/workspace/services/${SERVICE}/target/${SERVICE}-0.1.0-SNAPSHOT.jar" app.jar
-ENV JAVA_TOOL_OPTIONS="-javaagent:/opt/applicationinsights-agent.jar"
 USER eventlab
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
