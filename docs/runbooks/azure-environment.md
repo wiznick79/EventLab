@@ -5,7 +5,7 @@ EventLab Azure environments are deliberately disposable. Service Bus Standard an
 ## One-time bootstrap
 
 1. Sign in with `az login` and select the Azure for Students subscription.
-2. Copy `infrastructure/terraform/bootstrap/terraform.tfvars.example` to the ignored `terraform.tfvars` file and set the subscription and tenant IDs.
+2. Copy `infrastructure/terraform/bootstrap/terraform.tfvars.example` to the ignored `terraform.tfvars` file and set the subscription and tenant IDs. France Central is the project default because the current subscription policy permits it while rejecting West Europe. Recheck the `Allowed resource deployment regions` policy before changing regions.
 3. Run `terraform init`, `terraform plan -out bootstrap.tfplan`, inspect the plan, and apply that saved plan.
 4. Create a GitHub environment named `azure`. Add required reviewers for manual deployments while ensuring scheduled cleanup can still run unattended.
 5. Add these bootstrap outputs as GitHub environment variables:
@@ -21,6 +21,8 @@ EventLab Azure environments are deliberately disposable. Service Bus Standard an
 | `TF_STATE_KEY_PREFIX` | `backend_key_prefix` |
 
 No client secret is required. GitHub receives a short-lived Azure token only when a workflow uses the repository's `azure` environment.
+
+The bootstrap resource group may retain an older metadata location after an allowed-region policy change. Terraform intentionally preserves it because resource-group location does not constrain contained resources; the state storage and disposable application resources use the configured deployment location.
 
 ## Image publication
 

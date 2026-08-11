@@ -14,12 +14,18 @@ resource "azurerm_resource_group" "bootstrap" {
   name     = "rg-eventlab-bootstrap"
   location = var.location
   tags     = var.tags
+
+  lifecycle {
+    # Resource-group location is metadata; preserving an existing group avoids
+    # destructive replacement when subscription policy changes allowed regions.
+    ignore_changes = [location]
+  }
 }
 
 resource "azurerm_storage_account" "state" {
   name                            = "steventlab${random_string.state_suffix.result}"
   resource_group_name             = azurerm_resource_group.bootstrap.name
-  location                        = azurerm_resource_group.bootstrap.location
+  location                        = var.location
   account_tier                    = "Standard"
   account_replication_type        = "LRS"
   min_tls_version                 = "TLS1_2"

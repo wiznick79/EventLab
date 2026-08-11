@@ -11,7 +11,7 @@ variable "tenant_id" {
 variable "location" {
   description = "Azure region for the persistent Terraform state storage."
   type        = string
-  default     = "westeurope"
+  default     = "francecentral"
 }
 
 variable "github_owner" {

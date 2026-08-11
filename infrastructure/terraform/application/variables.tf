@@ -5,7 +5,7 @@ variable "subscription_id" {
 
 variable "location" {
   type    = string
-  default = "westeurope"
+  default = "francecentral"
 }
 
 variable "environment_name" {
