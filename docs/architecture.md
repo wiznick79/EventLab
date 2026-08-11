@@ -265,6 +265,8 @@ Planned immediately after the MVP: a delayed older update arrives after a newer 
 
 Azure initially uses one small PostgreSQL Flexible Server without high availability. Local development uses one PostgreSQL container.
 
+The disposable Azure environment caps each service connection pool at three connections. This leaves enough capacity for health-gated rolling revisions on the smallest PostgreSQL tier while preserving separate logical databases.
+
 Each backend component owns a separate database or schema and credentials:
 
 - Workflow: workflow, saga, timeout, outbox, and inbox data;
