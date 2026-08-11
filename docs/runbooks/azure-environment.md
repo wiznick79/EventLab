@@ -27,7 +27,7 @@ The bootstrap resource group may retain an older metadata location after an allo
 
 ## Image publication
 
-`images.yml` builds the five application images plus the Tempo, telemetry-gateway, and Grafana images for every main-branch commit and publishes only the full commit SHA tag. Make all eight GHCR packages public before deployment; no registry password is stored in Azure.
+`images.yml` builds the five application images plus Tempo, the telemetry gateway, and Grafana for every main-branch commit. The observability images use suffixed immutable tags in the existing public `frontend` package, so the deployment needs only the five public GHCR packages and stores no registry password in Azure.
 
 ## Plan and deploy
 

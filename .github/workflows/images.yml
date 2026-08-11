@@ -33,12 +33,18 @@ jobs:
             dockerfile: infrastructure/docker/frontend.Dockerfile
             service: ''
           - image: tempo
+            package: frontend
+            tag_suffix: -tempo
             dockerfile: infrastructure/docker/tempo.Dockerfile
             service: ''
           - image: telemetry-gateway
+            package: frontend
+            tag_suffix: -telemetry-gateway
             dockerfile: infrastructure/docker/telemetry-gateway.Dockerfile
             service: ''
           - image: grafana
+            package: frontend
+            tag_suffix: -grafana
             dockerfile: infrastructure/docker/grafana.Dockerfile
             service: ''
     steps:
@@ -56,7 +62,7 @@ jobs:
           file: ${{ matrix.dockerfile }}
           push: true
           build-args: ${{ matrix.service && format('SERVICE={0}', matrix.service) || '' }}
-          tags: ghcr.io/${{ github.repository_owner }}/eventlab/${{ matrix.image }}:${{ github.sha }}
+          tags: ghcr.io/${{ github.repository_owner }}/eventlab/${{ matrix.package || matrix.image }}:${{ github.sha }}${{ matrix.tag_suffix }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
           provenance: mode=max
