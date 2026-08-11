@@ -20,10 +20,22 @@ variable "github_owner" {
   default     = "wiznick79"
 }
 
+variable "github_owner_id" {
+  description = "Immutable GitHub organization or user ID used in OIDC subjects."
+  type        = string
+  default     = "49661706"
+}
+
 variable "github_repository" {
   description = "GitHub repository name without its owner."
   type        = string
   default     = "EventLab"
+}
+
+variable "github_repository_id" {
+  description = "Immutable GitHub repository ID used in OIDC subjects."
+  type        = string
+  default     = "1330006750"
 }
 
 variable "github_environment" {

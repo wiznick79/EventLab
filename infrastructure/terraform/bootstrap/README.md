@@ -4,7 +4,7 @@ This one-time Terraform root deliberately uses local state. It creates the small
 
 - a resource group, storage account, and private versioned container for remote Terraform state;
 - a Microsoft Entra application and service principal for GitHub Actions;
-- one federated credential restricted to the repository's protected `azure` environment;
+- one federated credential restricted to the repository's protected `azure` environment, using immutable GitHub owner and repository IDs in its OIDC subject;
 - subscription-scoped `Contributor` and `Role Based Access Control Administrator` assignments.
 
 The second role permits the deployment workflow to grant managed identities access to Service Bus, PostgreSQL, and monitoring resources. No client secret is created.
