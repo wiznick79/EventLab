@@ -26,6 +26,7 @@ Milestone 6 is complete. EventLab can be deployed as a time-limited Azure enviro
 - [Proposed architecture](docs/architecture.md)
 - [Incremental roadmap](docs/roadmap.md)
 - [Ephemeral Azure runbook](docs/runbooks/azure-environment.md)
+- [How to verify frontend claims in traces](docs/runbooks/reading-traces.md)
 - [Architecture decisions](docs/decisions/README.md)
 
 ## Guiding rule

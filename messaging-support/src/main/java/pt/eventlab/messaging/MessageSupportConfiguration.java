@@ -42,4 +42,9 @@ public class MessageSupportConfiguration {
     InboxStore inboxStore(JdbcTemplate jdbcTemplate) {
         return new InboxStore(jdbcTemplate);
     }
+
+    @Bean
+    BusinessDecisionTrace businessDecisionTrace(Tracer tracer) {
+        return new BusinessDecisionTrace(tracer);
+    }
 }

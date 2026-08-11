@@ -141,12 +141,12 @@ public class WorkflowApplicationService {
     }
 
     @Transactional
-    public void observeFulfilmentStatus(EventEnvelope<FulfilmentStatusChanged> event) {
+    public long observeFulfilmentStatus(EventEnvelope<FulfilmentStatusChanged> event) {
         WorkflowRun workflow = workflow(event.workflowId());
         long received = event.payload().aggregateVersion();
         if (received <= workflow.lastFulfilmentVersion()) {
             publishStaleIgnored(workflow, event.eventType(), received, event.eventId());
-            return;
+            return workflow.lastFulfilmentVersion();
         }
         throw new IllegalStateException("Unexpected future fulfilment version " + received);
     }

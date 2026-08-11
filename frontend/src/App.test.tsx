@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { App, grafanaTraceUrl, traceUrl } from './App'
+import { App, grafanaTraceUrl, traceEvidence, traceUrl } from './App'
 
 describe('EventLab experiment console', () => {
   it('presents the executable baseline and the three planned failure scenarios', () => {
@@ -33,5 +33,17 @@ describe('EventLab experiment console', () => {
 
     expect(url).toMatch(/^https:\/\/grafana\.example\.test\/explore\?left=/)
     expect(decodeURIComponent(url)).toContain('0123456789abcdef')
+  })
+
+  it('maps invariant claims to explicit trace evidence', () => {
+    expect(traceEvidence('DUPLICATE_IGNORED')).toEqual({
+      span: 'eventlab.workflow.inbox.decision',
+      decision: 'DUPLICATE_IGNORED',
+    })
+    expect(traceEvidence('STALE_IGNORED')).toEqual({
+      span: 'eventlab.workflow.version.decision',
+      decision: 'STALE_IGNORED',
+    })
+    expect(traceEvidence('COMPLETED')).toBeUndefined()
   })
 })

@@ -15,6 +15,8 @@ type TimelineEvent = {
 
 type RunResponse = { workflowId: string; state: string }
 
+type TraceEvidence = { span: string; decision: string }
+
 const services = [
   ['Workflow', 'Orchestrator'],
   ['Payment', 'Participant'],
@@ -44,6 +46,25 @@ export function traceUrl(
   }
 
   return `${grafanaBaseUrl}/explore?left=${encodeURIComponent(JSON.stringify(left))}`
+}
+
+export function traceEvidence(state: string): TraceEvidence | undefined {
+  switch (state) {
+    case 'DUPLICATE_IGNORED':
+      return { span: 'eventlab.workflow.inbox.decision', decision: 'DUPLICATE_IGNORED' }
+    case 'STALE_IGNORED':
+      return { span: 'eventlab.workflow.version.decision', decision: 'STALE_IGNORED' }
+    case 'RETRY_SCHEDULED':
+      return { span: 'eventlab.fulfilment.attempt.decision', decision: 'RETRY_SCHEDULED' }
+    case 'DEAD_LETTERED':
+      return { span: 'eventlab.fulfilment.attempt.decision', decision: 'DEAD_LETTERED' }
+    case 'RECOVERY_REQUESTED':
+      return { span: 'eventlab.fulfilment.recovery.decision', decision: 'RECOVERY_ACCEPTED' }
+    case 'PAYMENT_COMPENSATED':
+      return { span: 'eventlab.payment.compensation.decision', decision: 'PAYMENT_COMPENSATED' }
+    default:
+      return undefined
+  }
 }
 
 export function App() {
@@ -200,16 +221,18 @@ export function App() {
           </div>}
           {error && <p className="run-error">{error}</p>}
           <ol className="timeline">
-            {events.map((event) => <li key={event.sequence}>
-              <span className="timeline-dot" />
-              <div className="timeline-meta"><strong>{event.service}</strong><time>{new Date(event.occurredAt).toLocaleTimeString()}</time></div>
-              <div><h3>{event.state.replaceAll('_', ' ')} {event.duplicateDelivery && <mark>duplicate</mark>}</h3><p>{event.description}</p></div>
-              {event.traceId && <a
-                href={traceUrl(event.traceId)}
-                target="_blank"
-                rel="noreferrer"
-              >Open trace ↗</a>}
-            </li>)}
+            {events.map((event) => {
+              const evidence = traceEvidence(event.state)
+              return <li key={event.sequence}>
+                <span className="timeline-dot" />
+                <div className="timeline-meta"><strong>{event.service}</strong><time>{new Date(event.occurredAt).toLocaleTimeString()}</time></div>
+                <div><h3>{event.state.replaceAll('_', ' ')} {event.duplicateDelivery && <mark>duplicate</mark>}</h3><p>{event.description}</p></div>
+                {event.traceId && <div className="trace-evidence">
+                  <a href={traceUrl(event.traceId)} target="_blank" rel="noreferrer">Open trace ↗</a>
+                  {evidence && <small>Find <code>{evidence.span}</code><br />decision = {evidence.decision}</small>}
+                </div>}
+              </li>
+            })}
             {events.length === 0 && run && <li className="waiting">Waiting for the first business event…</li>}
           </ol>
         </section>}

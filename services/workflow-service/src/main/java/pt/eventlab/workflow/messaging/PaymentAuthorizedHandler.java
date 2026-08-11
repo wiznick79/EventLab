@@ -1,11 +1,10 @@
 package pt.eventlab.workflow.messaging;
 
-import io.micrometer.tracing.Span;
-import io.micrometer.tracing.Tracer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.eventlab.contracts.EventEnvelope;
 import pt.eventlab.contracts.messages.PaymentAuthorized;
+import pt.eventlab.messaging.BusinessDecisionTrace;
 import pt.eventlab.messaging.InboxStore;
 import pt.eventlab.workflow.domain.WorkflowApplicationService;
 
@@ -14,37 +13,28 @@ class PaymentAuthorizedHandler {
 
     private static final String HANDLER = "workflow.payment-authorized";
 
+    private final BusinessDecisionTrace decisions;
     private final InboxStore inbox;
-    private final Tracer tracer;
     private final WorkflowApplicationService workflows;
 
-    PaymentAuthorizedHandler(InboxStore inbox, Tracer tracer, WorkflowApplicationService workflows) {
+    PaymentAuthorizedHandler(
+            InboxStore inbox,
+            BusinessDecisionTrace decisions,
+            WorkflowApplicationService workflows) {
         this.inbox = inbox;
-        this.tracer = tracer;
+        this.decisions = decisions;
         this.workflows = workflows;
     }
 
     @Transactional
     public boolean handle(EventEnvelope<PaymentAuthorized> event) {
-        Span decision = tracer.nextSpan().name("eventlab.workflow.inbox.decision").start();
-        decision.tag("eventlab.inbox.handler", HANDLER);
-        decision.tag("eventlab.message.event_id", event.eventId().toString());
-        decision.tag("eventlab.workflow.id", event.payload().workflowId().toString());
-        try (Tracer.SpanInScope ignored = tracer.withSpan(decision)) {
+        return decisions.record(
+                "eventlab.workflow.inbox.decision", event.eventId(), event.workflowId(), () -> {
             if (!inbox.claim(event.eventId(), HANDLER)) {
-                decision.tag("eventlab.decision", "DUPLICATE_IGNORED");
-                decision.tag("eventlab.state_change_applied", "false");
-                return false;
+                return new BusinessDecisionTrace.Outcome<>("DUPLICATE_IGNORED", false, false);
             }
             workflows.recordPaymentAuthorized(event);
-            decision.tag("eventlab.decision", "PAYMENT_ACCEPTED");
-            decision.tag("eventlab.state_change_applied", "true");
-            return true;
-        } catch (RuntimeException exception) {
-            decision.error(exception);
-            throw exception;
-        } finally {
-            decision.end();
-        }
+            return new BusinessDecisionTrace.Outcome<>("PAYMENT_ACCEPTED", true, true);
+        });
     }
 }

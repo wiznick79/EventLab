@@ -2,6 +2,7 @@ package pt.eventlab.fulfilment.domain;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,28 +16,41 @@ import pt.eventlab.contracts.messages.FulfilmentRejected;
 import pt.eventlab.contracts.messages.FulfilmentStatusChanged;
 import pt.eventlab.contracts.messages.RequestFulfilment;
 import pt.eventlab.fulfilment.messaging.FulfilmentMessagePublisher;
+import pt.eventlab.messaging.BusinessDecisionTrace;
 import pt.eventlab.messaging.InboxStore;
 
 @Service
 public class FulfilmentApplicationService {
     private static final int MAX_ATTEMPTS = 4;
     private static final String HANDLER = "fulfilment.request";
+    private final BusinessDecisionTrace decisions;
     private final Clock clock = Clock.systemUTC();
     private final FulfilmentRepository fulfilments;
     private final FulfilmentMessagePublisher messages;
     private final InboxStore inbox;
 
     FulfilmentApplicationService(FulfilmentRepository fulfilments,
-            FulfilmentMessagePublisher messages, InboxStore inbox) {
+            FulfilmentMessagePublisher messages,
+            InboxStore inbox,
+            BusinessDecisionTrace decisions) {
         this.fulfilments = fulfilments;
         this.messages = messages;
         this.inbox = inbox;
+        this.decisions = decisions;
     }
 
     @Transactional
     public FulfilmentAttemptResult attempt(EventEnvelope<RequestFulfilment> command) {
+        return decisions.record(
+                "eventlab.fulfilment.attempt.decision",
+                command.eventId(), command.workflowId(), () -> attemptWithDecision(command));
+    }
+
+    private BusinessDecisionTrace.Outcome<FulfilmentAttemptResult> attemptWithDecision(
+            EventEnvelope<RequestFulfilment> command) {
         if (inbox.contains(command.eventId(), HANDLER)) {
-            return new FulfilmentAttemptResult(true, false, 0, 0);
+            return outcome("DUPLICATE_IGNORED", false,
+                    new FulfilmentAttemptResult(true, false, 0, 0));
         }
         Instant now = clock.instant();
         Fulfilment job = fulfilments.findByWorkflowId(command.workflowId())
@@ -52,16 +66,19 @@ public class FulfilmentApplicationService {
                 messages.publish(event(command, MessageTypes.FULFILMENT_DEAD_LETTERED,
                         new FulfilmentDeadLettered(command.workflowId(), attempt, "Simulated provider unavailable")));
             }
-            return new FulfilmentAttemptResult(false, exhausted, attempt, delay);
+            return outcome(exhausted ? "DEAD_LETTERED" : "RETRY_SCHEDULED", true,
+                    new FulfilmentAttemptResult(false, exhausted, attempt, delay));
         }
         if (!inbox.claim(command.eventId(), HANDLER)) {
-            return new FulfilmentAttemptResult(true, false, attempt, 0);
+            return outcome("DUPLICATE_IGNORED", false,
+                    new FulfilmentAttemptResult(true, false, attempt, 0));
         }
         if ("fulfilment-rejected".equals(command.payload().scenarioId())) {
             job.reject(now);
             messages.publish(event(command, MessageTypes.FULFILMENT_REJECTED,
                     new FulfilmentRejected(command.workflowId(), "Simulated capacity rejection", 2)));
-            return new FulfilmentAttemptResult(true, false, attempt, 0);
+            return outcome("FULFILMENT_REJECTED", true,
+                    new FulfilmentAttemptResult(true, false, attempt, 0));
         }
         job.complete(now);
         if ("out-of-order-event".equals(command.payload().scenarioId())) {
@@ -69,7 +86,8 @@ public class FulfilmentApplicationService {
         }
         messages.publish(event(command, MessageTypes.FULFILMENT_COMPLETED,
                 new FulfilmentCompleted(command.workflowId(), job.id(), 2)));
-        return new FulfilmentAttemptResult(true, false, attempt, 0);
+        return outcome("FULFILMENT_COMPLETED", true,
+                new FulfilmentAttemptResult(true, false, attempt, 0));
     }
 
     @Transactional
@@ -86,6 +104,18 @@ public class FulfilmentApplicationService {
 
     @Transactional
     public void recover(FulfilmentRecoveryRequested recovery) {
+        decisions.record(
+                "eventlab.fulfilment.recovery.decision",
+                UUID.fromString(recovery.replayMessageId()), recovery.workflowId(), () -> {
+            recoverDependency(recovery);
+            return new BusinessDecisionTrace.Outcome<>("RECOVERY_ACCEPTED", true, null, Map.of(
+                    "eventlab.recovery.original_message_id", recovery.originalMessageId(),
+                    "eventlab.recovery.replay_message_id", recovery.replayMessageId(),
+                    "eventlab.recovery.initiated_by", recovery.initiatedBy()));
+        });
+    }
+
+    private void recoverDependency(FulfilmentRecoveryRequested recovery) {
         UUID workflowId = recovery.workflowId();
         Fulfilment job = fulfilments.findByWorkflowId(workflowId)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown fulfilment " + workflowId));
@@ -98,5 +128,13 @@ public class FulfilmentApplicationService {
     private <T> EventEnvelope<T> event(EventEnvelope<?> source, String type, T payload) {
         return new EventEnvelope<>(UUID.randomUUID(), type, 1, source.workflowId(), source.eventId(),
                 source.correlationId(), clock.instant(), payload);
+    }
+
+    private BusinessDecisionTrace.Outcome<FulfilmentAttemptResult> outcome(
+            String decision, boolean stateChangeApplied, FulfilmentAttemptResult result) {
+        return new BusinessDecisionTrace.Outcome<>(decision, stateChangeApplied, result, Map.of(
+                "eventlab.delivery.attempt", Integer.toString(result.attempt()),
+                "eventlab.delivery.retry_delay_ms", Long.toString(result.retryDelayMs()),
+                "eventlab.delivery.dead_lettered", Boolean.toString(result.deadLetter())));
     }
 }
