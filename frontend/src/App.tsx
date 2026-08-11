@@ -22,6 +22,18 @@ const services = [
   ['Lab Console', 'Control plane'],
 ]
 
+export function grafanaTraceUrl(traceId: string) {
+  const panes = {
+    trace: {
+      datasource: 'tempo',
+      queries: [{ refId: 'A', query: traceId, queryType: 'traceId' }],
+      range: { from: 'now-1h', to: 'now' },
+    },
+  }
+
+  return `http://localhost:3000/explore?schemaVersion=1&panes=${encodeURIComponent(JSON.stringify(panes))}&orgId=1`
+}
+
 export function App() {
   const [run, setRun] = useState<RunResponse | null>(null)
   const [events, setEvents] = useState<TimelineEvent[]>([])
@@ -180,7 +192,7 @@ export function App() {
               <span className="timeline-dot" />
               <div className="timeline-meta"><strong>{event.service}</strong><time>{new Date(event.occurredAt).toLocaleTimeString()}</time></div>
               <div><h3>{event.state.replaceAll('_', ' ')} {event.duplicateDelivery && <mark>duplicate</mark>}</h3><p>{event.description}</p></div>
-              {event.traceId && <a href={`http://localhost:3000/explore?schemaVersion=1&panes=%7B%22trace%22:%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22query%22:%22${event.traceId}%22,%22queryType%22:%22traceql%22%7D%5D%7D%7D&orgId=1`} target="_blank" rel="noreferrer">Open trace ↗</a>}
+              {event.traceId && <a href={grafanaTraceUrl(event.traceId)} target="_blank" rel="noreferrer">Open trace ↗</a>}
             </li>)}
             {events.length === 0 && run && <li className="waiting">Waiting for the first business event…</li>}
           </ol>
