@@ -1,0 +1,1 @@
+window.EVENTLAB_CONFIG = {}

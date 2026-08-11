@@ -32,6 +32,10 @@ export function grafanaTraceUrl(traceId: string) {
   return `http://localhost:3000/explore?left=${encodeURIComponent(JSON.stringify(left))}`
 }
 
+export function traceUrl(traceId: string, traceExplorerUrl = window.EVENTLAB_CONFIG?.traceExplorerUrl) {
+  return traceExplorerUrl || grafanaTraceUrl(traceId)
+}
+
 export function App() {
   const [run, setRun] = useState<RunResponse | null>(null)
   const [events, setEvents] = useState<TimelineEvent[]>([])
@@ -190,7 +194,17 @@ export function App() {
               <span className="timeline-dot" />
               <div className="timeline-meta"><strong>{event.service}</strong><time>{new Date(event.occurredAt).toLocaleTimeString()}</time></div>
               <div><h3>{event.state.replaceAll('_', ' ')} {event.duplicateDelivery && <mark>duplicate</mark>}</h3><p>{event.description}</p></div>
-              {event.traceId && <a href={grafanaTraceUrl(event.traceId)} target="_blank" rel="noreferrer">Open trace ↗</a>}
+              {event.traceId && <a
+                href={traceUrl(event.traceId)}
+                target="_blank"
+                rel="noreferrer"
+                title={window.EVENTLAB_CONFIG?.traceExplorerUrl ? 'Trace ID copied for Azure Transaction search' : undefined}
+                onClick={() => {
+                  if (window.EVENTLAB_CONFIG?.traceExplorerUrl) {
+                    void navigator.clipboard?.writeText(event.traceId!)
+                  }
+                }}
+              >{window.EVENTLAB_CONFIG?.traceExplorerUrl ? 'Search trace in Azure ↗' : 'Open trace ↗'}</a>}
             </li>)}
             {events.length === 0 && run && <li className="waiting">Waiting for the first business event…</li>}
           </ol>

@@ -299,6 +299,10 @@ resource "azurerm_container_app" "frontend" {
         name  = "LAB_CONSOLE_HOST"
         value = azurerm_container_app.console.ingress[0].fqdn
       }
+      env {
+        name  = "TRACE_EXPLORER_URL"
+        value = "https://portal.azure.com/#resource${azurerm_application_insights.environment.id}/searchV1"
+      }
       liveness_probe {
         transport = "HTTP"
         port      = 8080

@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { App, grafanaTraceUrl } from './App'
+import { App, grafanaTraceUrl, traceUrl } from './App'
 
 describe('EventLab experiment console', () => {
   it('presents the executable baseline and the three planned failure scenarios', () => {
@@ -26,5 +26,10 @@ describe('EventLab experiment console', () => {
       { query: '0123456789abcdef', queryType: 'traceql' },
     ])
     expect(left.range).toEqual({ from: 'now-1h', to: 'now' })
+  })
+
+  it('uses the runtime Azure trace explorer when configured', () => {
+    expect(traceUrl('0123456789abcdef', 'https://portal.azure.com/#resource/app/searchV1'))
+      .toBe('https://portal.azure.com/#resource/app/searchV1')
   })
 })
