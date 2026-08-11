@@ -44,7 +44,7 @@ Implemented with transactional Workflow and Payment outboxes, scheduled Service 
 
 Implemented with a persisted Fulfilment participant, deterministic per-workflow availability, four visible delivery attempts with 250/500/1000 ms backoff, explicit dead-letter settlement, workflow-scoped DLQ lookup, dependency recovery through the Fulfilment API, and replay through the original command queue. The consumer inbox is claimed only after successful handling, so retries remain possible while a replayed logical command still completes at most once.
 
-## Milestone 4: saga compensation
+## Milestone 4: saga compensation — completed 2026-08-11
 
 - Complete Payment and Fulfilment boundaries.
 - Persist orchestration state and timeouts.
@@ -54,6 +54,8 @@ Implemented with a persisted Fulfilment participant, deterministic per-workflow 
 **Demonstration:** payment authorization followed by fulfilment rejection and successful compensation.
 
 This is the MVP boundary.
+
+Implemented with a deterministic `fulfilment-rejected` outcome, persisted saga step deadlines, an orchestration timeout monitor, an idempotent payment-compensation command handler, and distinct compensated/intervention terminal events. The Lab Console displays the forward and reversing paths, while the repeatable emulator scenario proves that an authorized payment is compensated and the workflow ends in `COMPENSATED`, never `COMPLETED`.
 
 ## Milestone 5: ordering and concurrency
 

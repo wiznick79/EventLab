@@ -18,6 +18,7 @@ public class Payment {
     private String currency;
     private String status;
     private Instant authorizedAt;
+    private Instant compensatedAt;
 
     protected Payment() {
     }
@@ -35,8 +36,18 @@ public class Payment {
         return new Payment(UUID.randomUUID(), workflowId, amount, currency, now);
     }
 
+    void compensate(Instant now) {
+        if ("COMPENSATED".equals(status)) return;
+        if (!"AUTHORIZED".equals(status)) {
+            throw new IllegalStateException("Only an authorized payment can be compensated");
+        }
+        status = "COMPENSATED";
+        compensatedAt = now;
+    }
+
     public UUID id() { return id; }
     public UUID workflowId() { return workflowId; }
     public BigDecimal amount() { return amount; }
     public String currency() { return currency; }
+    public String status() { return status; }
 }

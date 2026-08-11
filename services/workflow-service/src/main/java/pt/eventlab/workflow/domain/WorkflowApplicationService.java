@@ -3,6 +3,8 @@ package pt.eventlab.workflow.domain;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -13,13 +15,20 @@ import pt.eventlab.contracts.WorkflowState;
 import pt.eventlab.contracts.messages.AuthorizePayment;
 import pt.eventlab.contracts.messages.PaymentAuthorized;
 import pt.eventlab.contracts.messages.FulfilmentCompleted;
+import pt.eventlab.contracts.messages.FulfilmentRejected;
+import pt.eventlab.contracts.messages.CompensatePayment;
+import pt.eventlab.contracts.messages.PaymentCompensated;
 import pt.eventlab.contracts.messages.RequestFulfilment;
 import pt.eventlab.contracts.messages.WorkflowCompleted;
 import pt.eventlab.contracts.messages.WorkflowStarted;
+import pt.eventlab.contracts.messages.WorkflowCompensated;
+import pt.eventlab.contracts.messages.WorkflowInterventionRequired;
 import pt.eventlab.workflow.messaging.WorkflowMessagePublisher;
 
 @Service
 public class WorkflowApplicationService {
+
+    private static final Duration STEP_TIMEOUT = Duration.ofMinutes(2);
 
     private final Clock clock;
     private final WorkflowMessagePublisher messages;
@@ -65,7 +74,8 @@ public class WorkflowApplicationService {
     public void recordPaymentAuthorized(EventEnvelope<PaymentAuthorized> event) {
         WorkflowRun workflow = workflows.findById(event.workflowId())
                 .orElseThrow(() -> new IllegalArgumentException("Unknown workflow " + event.workflowId()));
-        workflow.recordPaymentAuthorized(clock.instant());
+        Instant now = clock.instant();
+        workflow.recordPaymentAuthorized(now, now.plus(STEP_TIMEOUT));
         workflows.flush();
 
         messages.sendFulfilmentCommand(new EventEnvelope<>(
@@ -75,9 +85,42 @@ public class WorkflowApplicationService {
     }
 
     @Transactional
+    public void recordFulfilmentRejected(EventEnvelope<FulfilmentRejected> event) {
+        WorkflowRun workflow = workflow(event.workflowId());
+        Instant now = clock.instant();
+        workflow.beginCompensation(now, now.plus(STEP_TIMEOUT));
+        messages.sendPaymentCommand(new EventEnvelope<>(
+                UUID.randomUUID(), MessageTypes.COMPENSATE_PAYMENT, 1, workflow.id(), event.eventId(),
+                event.correlationId(), now, new CompensatePayment(workflow.id(), event.payload().reason())));
+    }
+
+    @Transactional
+    public void recordPaymentCompensated(EventEnvelope<PaymentCompensated> event) {
+        WorkflowRun workflow = workflow(event.workflowId());
+        workflow.compensated(clock.instant());
+        messages.publishBusinessEvent(new EventEnvelope<>(
+                UUID.randomUUID(), MessageTypes.WORKFLOW_COMPENSATED, 1, workflow.id(), event.eventId(),
+                event.correlationId(), clock.instant(),
+                new WorkflowCompensated(workflow.id(), WorkflowState.COMPENSATED)));
+    }
+
+    @Transactional
+    public void expireTimedOutSteps() {
+        Instant now = clock.instant();
+        List<WorkflowRun> expired = workflows.findByStateInAndStepDeadlineBefore(
+                List.of(WorkflowState.FULFILMENT_PENDING, WorkflowState.COMPENSATION_PENDING), now);
+        for (WorkflowRun workflow : expired) {
+            WorkflowState timedOut = workflow.requireIntervention(now);
+            messages.publishBusinessEvent(new EventEnvelope<>(
+                    UUID.randomUUID(), MessageTypes.WORKFLOW_INTERVENTION_REQUIRED, 1,
+                    workflow.id(), null, workflow.id(), now,
+                    new WorkflowInterventionRequired(workflow.id(), timedOut.name())));
+        }
+    }
+
+    @Transactional
     public void recordFulfilmentCompleted(EventEnvelope<FulfilmentCompleted> event) {
-        WorkflowRun workflow = workflows.findById(event.workflowId())
-                .orElseThrow(() -> new IllegalArgumentException("Unknown workflow " + event.workflowId()));
+        WorkflowRun workflow = workflow(event.workflowId());
         workflow.complete(clock.instant());
         workflows.flush();
 
@@ -85,5 +128,10 @@ public class WorkflowApplicationService {
                 UUID.randomUUID(), MessageTypes.WORKFLOW_COMPLETED, 1, workflow.id(), event.eventId(),
                 event.correlationId(), clock.instant(),
                 new WorkflowCompleted(workflow.id(), WorkflowState.COMPLETED)));
+    }
+
+    private WorkflowRun workflow(UUID workflowId) {
+        return workflows.findById(workflowId)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown workflow " + workflowId));
     }
 }

@@ -243,6 +243,8 @@ Recovery is workflow-scoped. The Lab Console searches the dead-letter subqueue f
 
 Payment succeeds and fulfilment rejects the order. The saga commands payment compensation and displays the forward and compensating paths.
 
+The implemented Milestone 4 saga persists a deadline for each non-terminal fulfilment or compensation step. Fulfilment rejection is a business outcome and is completed at the broker rather than retried. Workflow atomically moves to `COMPENSATION_PENDING` and places `payment.compensate` in its outbox. Payment claims the command through its inbox, changes the authorization to `COMPENSATED`, and emits `payment.compensated` in the same transaction. Workflow then reaches the distinct `COMPENSATED` terminal state. A scheduled timeout monitor moves overdue active steps to `FAILED_REQUIRES_INTERVENTION` and publishes an explicit operational event.
+
 ### Stale or out-of-order update
 
 Planned immediately after the MVP: a delayed older update arrives after a newer version and is rejected without corrupting workflow state.

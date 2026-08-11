@@ -11,6 +11,7 @@ import pt.eventlab.contracts.messages.FulfilmentAttemptFailed;
 import pt.eventlab.contracts.messages.FulfilmentCompleted;
 import pt.eventlab.contracts.messages.FulfilmentDeadLettered;
 import pt.eventlab.contracts.messages.FulfilmentRecoveryRequested;
+import pt.eventlab.contracts.messages.FulfilmentRejected;
 import pt.eventlab.contracts.messages.RequestFulfilment;
 import pt.eventlab.fulfilment.messaging.FulfilmentMessagePublisher;
 import pt.eventlab.messaging.InboxStore;
@@ -53,6 +54,12 @@ public class FulfilmentApplicationService {
             return new FulfilmentAttemptResult(false, exhausted, attempt, delay);
         }
         if (!inbox.claim(command.eventId(), HANDLER)) {
+            return new FulfilmentAttemptResult(true, false, attempt, 0);
+        }
+        if ("fulfilment-rejected".equals(command.payload().scenarioId())) {
+            job.reject(now);
+            messages.publish(event(command, MessageTypes.FULFILMENT_REJECTED,
+                    new FulfilmentRejected(command.workflowId(), "Simulated capacity rejection")));
             return new FulfilmentAttemptResult(true, false, attempt, 0);
         }
         job.complete(now);

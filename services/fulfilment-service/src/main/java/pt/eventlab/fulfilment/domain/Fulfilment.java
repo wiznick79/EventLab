@@ -37,6 +37,7 @@ public class Fulfilment {
     boolean available() { return available; }
     void recover() { available = true; }
     void complete(Instant now) { status = "COMPLETED"; completedAt = now; }
+    void reject(Instant now) { status = "REJECTED"; completedAt = now; }
     public UUID id() { return id; }
     public UUID workflowId() { return workflowId; }
 }

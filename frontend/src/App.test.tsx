@@ -8,7 +8,7 @@ describe('EventLab experiment console', () => {
     render(<App />)
 
     const runButtons = screen.getAllByRole('button', { name: /run experiment/i })
-    expect(runButtons).toHaveLength(3)
+    expect(runButtons).toHaveLength(4)
     expect(runButtons[0]).toBeEnabled()
     expect(screen.getByRole('heading', { name: 'Successful payment workflow' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Duplicate payment result' })).toBeInTheDocument()

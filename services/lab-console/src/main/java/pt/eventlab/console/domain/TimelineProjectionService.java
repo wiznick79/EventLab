@@ -92,6 +92,16 @@ public class TimelineProjectionService {
                             + envelope.payload().path("initiatedBy").asText());
             case MessageTypes.FULFILMENT_COMPLETED -> new EventPresentation(
                     "Fulfilment", "FULFILLED", "Fulfilment completed after a successful command delivery");
+            case MessageTypes.FULFILMENT_REJECTED -> new EventPresentation(
+                    "Fulfilment", "COMPENSATION_PENDING",
+                    "Fulfilment rejected the request; payment compensation was requested");
+            case MessageTypes.PAYMENT_COMPENSATED -> new EventPresentation(
+                    "Payment", "PAYMENT_COMPENSATED", "The authorized payment was voided successfully");
+            case MessageTypes.WORKFLOW_COMPENSATED -> new EventPresentation(
+                    "Workflow", "COMPENSATED", "Saga reached its compensated terminal state");
+            case MessageTypes.WORKFLOW_INTERVENTION_REQUIRED -> new EventPresentation(
+                    "Workflow", "FAILED_REQUIRES_INTERVENTION",
+                    "A persisted saga deadline expired; operator intervention is required");
             case MessageTypes.WORKFLOW_COMPLETED -> new EventPresentation(
                     "Workflow", "COMPLETED", "Workflow reached its successful terminal state");
             default -> new EventPresentation("Unknown", "OBSERVED", "Observed " + envelope.eventType());

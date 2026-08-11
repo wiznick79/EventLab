@@ -14,6 +14,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import pt.eventlab.contracts.EventEnvelope;
 import pt.eventlab.contracts.messages.AuthorizePayment;
+import pt.eventlab.contracts.MessageTypes;
+import pt.eventlab.contracts.messages.CompensatePayment;
 import pt.eventlab.messaging.ServiceBusEnvelopeCodec;
 import pt.eventlab.messaging.ServiceBusTraceContext;
 
@@ -28,17 +30,20 @@ class AuthorizePaymentProcessor {
     private final ServiceBusProcessorClient processor;
     private final ServiceBusTraceContext traceContext;
     private final AuthorizePaymentHandler handler;
+    private final CompensatePaymentHandler compensationHandler;
 
     AuthorizePaymentProcessor(
             PaymentMessagingProperties properties,
             ServiceBusEnvelopeCodec codec,
             ServiceBusTraceContext traceContext,
             ObservationRegistry observations,
-            AuthorizePaymentHandler handler) {
+            AuthorizePaymentHandler handler,
+            CompensatePaymentHandler compensationHandler) {
         this.codec = codec;
         this.traceContext = traceContext;
         this.observations = observations;
         this.handler = handler;
+        this.compensationHandler = compensationHandler;
         this.processor = new ServiceBusClientBuilder()
                 .connectionString(properties.connectionString())
                 .processor()
@@ -65,9 +70,15 @@ class AuthorizePaymentProcessor {
     }
 
     private void handle(ServiceBusReceivedMessageContext context) {
-        EventEnvelope<AuthorizePayment> command = codec.decode(
-                context.getMessage().getBody(), AuthorizePayment.class);
-        handler.handle(command);
+        if (MessageTypes.COMPENSATE_PAYMENT.equals(context.getMessage().getSubject())) {
+            EventEnvelope<CompensatePayment> command = codec.decode(
+                    context.getMessage().getBody(), CompensatePayment.class);
+            compensationHandler.handle(command);
+        } else {
+            EventEnvelope<AuthorizePayment> command = codec.decode(
+                    context.getMessage().getBody(), AuthorizePayment.class);
+            handler.handle(command);
+        }
         context.complete();
     }
 

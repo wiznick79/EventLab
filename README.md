@@ -6,7 +6,7 @@ The project is a portfolio and learning system, not a parcel-management product.
 
 ## Status
 
-Milestone 3 is complete. The project demonstrates transactional delivery, consumer idempotency, deterministic exponential retries, explicit dead-lettering, guarded workflow-scoped replay, and successful recovery after a simulated Fulfilment outage.
+Milestone 4 and the MVP workflow boundary are complete. The project demonstrates transactional delivery, consumer idempotency, retries and dead-letter recovery, persisted saga deadlines, fulfilment rejection, and idempotent payment compensation.
 
 ## Target technology
 
@@ -111,6 +111,7 @@ After packaging the backend and starting the Compose infrastructure, the cross-s
 mvn package
 .\scripts\verify-duplicate-scenario.ps1
 .\scripts\verify-dlq-recovery.ps1
+.\scripts\verify-compensation-scenario.ps1
 ```
 
 ### Reliability model

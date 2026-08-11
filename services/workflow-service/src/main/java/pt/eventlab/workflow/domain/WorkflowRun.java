@@ -26,6 +26,7 @@ public class WorkflowRun {
     private long version;
     private Instant createdAt;
     private Instant updatedAt;
+    private Instant stepDeadline;
 
     protected WorkflowRun() {
     }
@@ -53,12 +54,42 @@ public class WorkflowRun {
         return new WorkflowRun(UUID.randomUUID(), scenarioId, amount, currency.toUpperCase(), now);
     }
 
-    public void recordPaymentAuthorized(Instant now) {
+    public void recordPaymentAuthorized(Instant now, Instant deadline) {
         if (state != WorkflowState.PAYMENT_PENDING) {
             throw new IllegalStateException("Only a payment-pending workflow can accept a payment result");
         }
         state = WorkflowState.FULFILMENT_PENDING;
         updatedAt = now;
+        stepDeadline = deadline;
+    }
+
+    public void beginCompensation(Instant now, Instant deadline) {
+        if (state != WorkflowState.FULFILMENT_PENDING) {
+            throw new IllegalStateException("Only a fulfilment-pending workflow can compensate");
+        }
+        state = WorkflowState.COMPENSATION_PENDING;
+        updatedAt = now;
+        stepDeadline = deadline;
+    }
+
+    public void compensated(Instant now) {
+        if (state != WorkflowState.COMPENSATION_PENDING) {
+            throw new IllegalStateException("Only a compensation-pending workflow can be compensated");
+        }
+        state = WorkflowState.COMPENSATED;
+        updatedAt = now;
+        stepDeadline = null;
+    }
+
+    public WorkflowState requireIntervention(Instant now) {
+        if (state != WorkflowState.FULFILMENT_PENDING && state != WorkflowState.COMPENSATION_PENDING) {
+            throw new IllegalStateException("Only an active saga step can time out");
+        }
+        WorkflowState timedOutState = state;
+        state = WorkflowState.FAILED_REQUIRES_INTERVENTION;
+        updatedAt = now;
+        stepDeadline = null;
+        return timedOutState;
     }
 
     public void complete(Instant now) {
@@ -67,6 +98,7 @@ public class WorkflowRun {
         }
         state = WorkflowState.COMPLETED;
         updatedAt = now;
+        stepDeadline = null;
     }
 
     public UUID id() { return id; }
@@ -77,4 +109,5 @@ public class WorkflowRun {
     public long version() { return version; }
     public Instant createdAt() { return createdAt; }
     public Instant updatedAt() { return updatedAt; }
+    public Instant stepDeadline() { return stepDeadline; }
 }

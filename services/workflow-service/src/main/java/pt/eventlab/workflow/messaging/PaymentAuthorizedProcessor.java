@@ -16,6 +16,8 @@ import pt.eventlab.contracts.EventEnvelope;
 import pt.eventlab.contracts.MessageTypes;
 import pt.eventlab.contracts.messages.PaymentAuthorized;
 import pt.eventlab.contracts.messages.FulfilmentCompleted;
+import pt.eventlab.contracts.messages.FulfilmentRejected;
+import pt.eventlab.contracts.messages.PaymentCompensated;
 import pt.eventlab.messaging.ServiceBusEnvelopeCodec;
 import pt.eventlab.messaging.ServiceBusTraceContext;
 
@@ -31,6 +33,8 @@ class PaymentAuthorizedProcessor {
     private final ServiceBusTraceContext traceContext;
     private final PaymentAuthorizedHandler handler;
     private final FulfilmentCompletedHandler fulfilmentHandler;
+    private final FulfilmentRejectedHandler rejectionHandler;
+    private final PaymentCompensatedHandler compensationHandler;
 
     PaymentAuthorizedProcessor(
             WorkflowMessagingProperties properties,
@@ -38,12 +42,16 @@ class PaymentAuthorizedProcessor {
             ServiceBusTraceContext traceContext,
             ObservationRegistry observations,
             PaymentAuthorizedHandler handler,
-            FulfilmentCompletedHandler fulfilmentHandler) {
+            FulfilmentCompletedHandler fulfilmentHandler,
+            FulfilmentRejectedHandler rejectionHandler,
+            PaymentCompensatedHandler compensationHandler) {
         this.codec = codec;
         this.traceContext = traceContext;
         this.observations = observations;
         this.handler = handler;
         this.fulfilmentHandler = fulfilmentHandler;
+        this.rejectionHandler = rejectionHandler;
+        this.compensationHandler = compensationHandler;
         this.processor = new ServiceBusClientBuilder()
                 .connectionString(properties.connectionString())
                 .processor()
@@ -65,8 +73,11 @@ class PaymentAuthorizedProcessor {
     private void process(ServiceBusReceivedMessageContext context) {
         if (!MessageTypes.PAYMENT_AUTHORIZED.equals(context.getMessage().getSubject())
                 && !MessageTypes.FULFILMENT_COMPLETED.equals(context.getMessage().getSubject())) {
-            context.complete();
-            return;
+            if (!MessageTypes.FULFILMENT_REJECTED.equals(context.getMessage().getSubject())
+                    && !MessageTypes.PAYMENT_COMPENSATED.equals(context.getMessage().getSubject())) {
+                context.complete();
+                return;
+            }
         }
 
         try (Scope ignored = traceContext.makeCurrent(context.getMessage())) {
@@ -81,10 +92,18 @@ class PaymentAuthorizedProcessor {
             EventEnvelope<PaymentAuthorized> event = codec.decode(
                     context.getMessage().getBody(), PaymentAuthorized.class);
             handler.handle(event);
-        } else {
+        } else if (MessageTypes.FULFILMENT_COMPLETED.equals(context.getMessage().getSubject())) {
             EventEnvelope<FulfilmentCompleted> event = codec.decode(
                     context.getMessage().getBody(), FulfilmentCompleted.class);
             fulfilmentHandler.handle(event);
+        } else if (MessageTypes.FULFILMENT_REJECTED.equals(context.getMessage().getSubject())) {
+            EventEnvelope<FulfilmentRejected> event = codec.decode(
+                    context.getMessage().getBody(), FulfilmentRejected.class);
+            rejectionHandler.handle(event);
+        } else {
+            EventEnvelope<PaymentCompensated> event = codec.decode(
+                    context.getMessage().getBody(), PaymentCompensated.class);
+            compensationHandler.handle(event);
         }
         context.complete();
     }

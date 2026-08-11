@@ -15,10 +15,6 @@ type TimelineEvent = {
 
 type RunResponse = { workflowId: string; state: string }
 
-const futureScenarios = [
-  ['Fulfilment rejected', 'Watch the saga reverse an authorized payment through a compensation command.', 'Compensation'],
-]
-
 const services = [
   ['Workflow', 'Orchestrator'],
   ['Payment', 'Participant'],
@@ -86,13 +82,14 @@ export function App() {
   const completed = events.some((event) => event.state === 'COMPLETED')
   const duplicateCount = events.filter((event) => event.duplicateDelivery).length
   const deadLettered = events.some((event) => event.state === 'DEAD_LETTERED')
+  const compensated = events.some((event) => event.state === 'COMPENSATED')
 
   return (
     <main>
       <header className="hero">
         <nav aria-label="Primary navigation">
           <a className="wordmark" href="#top" aria-label="EventLab home"><span className="mark">EL</span>EventLab</a>
-          <span className="build-status"><i /> Milestone 3 · retry and recovery</span>
+          <span className="build-status"><i /> Milestone 4 · saga compensation</span>
         </nav>
         <div className="hero-copy" id="top">
           <p className="eyebrow">Distributed systems under pressure</p>
@@ -132,18 +129,21 @@ export function App() {
               {starting && activeScenario === 'fulfilment-unavailable' ? 'Starting…' : 'Run experiment'} <span>→</span>
             </button>
           </article>
-          {futureScenarios.map(([label, description, tag], index) => (
-            <article className="scenario-card" key={label}>
-              <span className="scenario-number">0{index + 4}</span><span className="scenario-tag">{tag}</span>
-              <h3>{label}</h3><p>{description}</p>
-              <button type="button" disabled aria-label={`${label} is not implemented yet`}>Coming next <span>→</span></button>
-            </article>
-          ))}
+          <article className="scenario-card active-card">
+            <span className="scenario-number">04</span><span className="scenario-tag">Compensation</span>
+            <h3>Fulfilment rejected</h3>
+            <p>Authorize payment, reject fulfilment, and watch the persisted saga void the payment.</p>
+            <button className="run-button" type="button" onClick={() => startScenario('fulfilment-rejected')} disabled={starting}>
+              {starting && activeScenario === 'fulfilment-rejected' ? 'Starting…' : 'Run experiment'} <span>→</span>
+            </button>
+          </article>
         </div>
 
         {(run || error) && <section className="run-panel" aria-live="polite">
           <div className="run-heading">
-            <div><p className="eyebrow">Live experiment</p><h2>{completed ? 'Workflow completed' : 'Workflow in progress'}</h2></div>
+            <div><p className="eyebrow">Live experiment</p><h2>{completed
+              ? 'Workflow completed'
+              : compensated ? 'Workflow compensated' : 'Workflow in progress'}</h2></div>
             {run && <code>{run.workflowId}</code>}
           </div>
           {activeScenario === 'duplicate-payment-result' && completed && duplicateCount > 0 && <div className="invariant">
@@ -156,6 +156,10 @@ export function App() {
             <button className="run-button" type="button" onClick={recover} disabled={recovering}>
               {recovering ? 'Recovering…' : 'Recover and replay'} <span>→</span>
             </button>
+          </div>}
+          {activeScenario === 'fulfilment-rejected' && compensated && <div className="invariant">
+            <strong>Invariant restored</strong>
+            <span>Fulfilment rejected · payment compensated · workflow terminal state COMPENSATED</span>
           </div>}
           {error && <p className="run-error">{error}</p>}
           <ol className="timeline">

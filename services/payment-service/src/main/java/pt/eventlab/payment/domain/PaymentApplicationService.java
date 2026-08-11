@@ -10,6 +10,8 @@ import pt.eventlab.contracts.EventEnvelope;
 import pt.eventlab.contracts.MessageTypes;
 import pt.eventlab.contracts.messages.AuthorizePayment;
 import pt.eventlab.contracts.messages.PaymentAuthorized;
+import pt.eventlab.contracts.messages.CompensatePayment;
+import pt.eventlab.contracts.messages.PaymentCompensated;
 import pt.eventlab.payment.messaging.PaymentMessagePublisher;
 
 @Service
@@ -43,5 +45,17 @@ public class PaymentApplicationService {
                 new PaymentAuthorized(payment.id(), payment.workflowId(), payment.amount(), payment.currency()));
         int copies = "duplicate-payment-result".equals(payload.scenarioId()) ? 2 : 1;
         messages.publish(event, copies);
+    }
+
+    @Transactional
+    public void compensate(EventEnvelope<CompensatePayment> command) {
+        Instant now = clock.instant();
+        Payment payment = payments.findByWorkflowId(command.workflowId())
+                .orElseThrow(() -> new IllegalArgumentException("Unknown payment for " + command.workflowId()));
+        payment.compensate(now);
+        messages.publish(new EventEnvelope<>(
+                UUID.randomUUID(), MessageTypes.PAYMENT_COMPENSATED, 1,
+                command.workflowId(), command.eventId(), command.correlationId(), now,
+                new PaymentCompensated(payment.id(), payment.workflowId())), 1);
     }
 }
