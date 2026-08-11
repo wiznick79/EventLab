@@ -19,12 +19,12 @@ describe('EventLab experiment console', () => {
 
   it('builds a Grafana Explore link that looks up a trace by ID', () => {
     const url = new URL(grafanaTraceUrl('0123456789abcdef'))
-    const panes = JSON.parse(url.searchParams.get('panes') ?? '{}')
+    const left = JSON.parse(url.searchParams.get('left') ?? '{}')
 
-    expect(panes.trace.datasource).toBe('tempo')
-    expect(panes.trace.queries).toEqual([
-      { refId: 'A', query: '0123456789abcdef', queryType: 'traceId' },
+    expect(left.datasource).toBe('tempo')
+    expect(left.queries).toEqual([
+      { query: '0123456789abcdef', queryType: 'traceql' },
     ])
-    expect(panes.trace.range).toEqual({ from: 'now-1h', to: 'now' })
+    expect(left.range).toEqual({ from: 'now-1h', to: 'now' })
   })
 })

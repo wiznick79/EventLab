@@ -23,15 +23,13 @@ const services = [
 ]
 
 export function grafanaTraceUrl(traceId: string) {
-  const panes = {
-    trace: {
-      datasource: 'tempo',
-      queries: [{ refId: 'A', query: traceId, queryType: 'traceId' }],
-      range: { from: 'now-1h', to: 'now' },
-    },
+  const left = {
+    range: { from: 'now-1h', to: 'now' },
+    datasource: 'tempo',
+    queries: [{ query: traceId, queryType: 'traceql' }],
   }
 
-  return `http://localhost:3000/explore?schemaVersion=1&panes=${encodeURIComponent(JSON.stringify(panes))}&orgId=1`
+  return `http://localhost:3000/explore?left=${encodeURIComponent(JSON.stringify(left))}`
 }
 
 export function App() {
