@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { App, grafanaDashboardUrl, grafanaTraceUrl, traceEvidence, traceUrl } from './App'
 import { PortfolioTour } from './PortfolioTour'
@@ -64,5 +64,16 @@ describe('EventLab experiment console', () => {
     expect(page.getByRole('heading', { name: 'Watch the invariant emerge' })).toBeInTheDocument()
     expect(page.getAllByRole('img', { name: /EventLab timeline recording/ })).toHaveLength(3)
     expect(page.queryByRole('button', { name: /run experiment/i })).not.toBeInTheDocument()
+  })
+
+  it('enlarges and closes a recorded demonstration', () => {
+    const tour = render(<PortfolioTour />)
+    const page = within(tour.container)
+
+    fireEvent.click(page.getByRole('button', { name: 'Enlarge Duplicate suppression recording' }))
+    expect(page.getByRole('dialog', { name: 'Duplicate suppression enlarged recording' })).toBeInTheDocument()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(page.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

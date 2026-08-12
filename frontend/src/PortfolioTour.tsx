@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 const scenarios = [
   {
     number: '01',
@@ -43,9 +45,23 @@ const recordings = [
 ]
 
 export function PortfolioTour() {
+  const [expandedRecording, setExpandedRecording] = useState<string | null>(null)
   const liveLabUrl = import.meta.env.VITE_STATIC_TOUR === 'true'
     ? 'https://github.com/wiznick79/EventLab/actions/workflows/azure-deploy.yml'
     : './'
+
+  useEffect(() => {
+    if (!expandedRecording) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setExpandedRecording(null)
+    }
+    document.addEventListener('keydown', closeOnEscape)
+    document.body.classList.add('modal-open')
+    return () => {
+      document.removeEventListener('keydown', closeOnEscape)
+      document.body.classList.remove('modal-open')
+    }
+  }, [expandedRecording])
 
   return <main className="tour-page">
     <header className="tour-hero" id="top">
@@ -94,7 +110,9 @@ export function PortfolioTour() {
       <ol><li><span>01</span><div><strong>Timeline</strong><p>Human-readable delivery and state history.</p></div></li><li><span>02</span><div><strong>Trace</strong><p>Correlated spans with explicit business decisions.</p></div></li><li><span>03</span><div><strong>Database invariant</strong><p>Inbox, outbox, aggregate version, and terminal state.</p></div></li></ol>
     </section>
 
-    <section className="tour-section recordings" aria-labelledby="recordings-title"><div className="section-heading"><div><p className="eyebrow">Recorded demonstrations</p><h2 id="recordings-title">Watch the invariant emerge</h2></div><p>Short deterministic captures preserve the primary teaching stories when the disposable Azure environment is offline.</p></div><div className="recording-grid">{recordings.map(([file, title, description]) => <figure key={file}><img src={`./recordings/${file}`} alt={`${title} EventLab timeline recording`} loading="lazy" /><figcaption><strong>{title}</strong><p>{description}</p></figcaption></figure>)}</div></section>
+    <section className="tour-section recordings" aria-labelledby="recordings-title"><div className="section-heading"><div><p className="eyebrow">Recorded demonstrations</p><h2 id="recordings-title">Watch the invariant emerge</h2></div><p>Short deterministic captures preserve the primary teaching stories when the disposable Azure environment is offline. Select a recording to inspect it full-size.</p></div><div className="recording-grid">{recordings.map(([file, title, description]) => <figure key={file}><button className="recording-preview" type="button" onClick={() => setExpandedRecording(file)} aria-label={`Enlarge ${title} recording`}><img src={`./recordings/${file}`} alt={`${title} EventLab timeline recording`} loading="lazy" /><span>Enlarge ↗</span></button><figcaption><strong>{title}</strong><p>{description}</p></figcaption></figure>)}</div></section>
+
+    {expandedRecording && <div className="recording-modal" role="dialog" aria-modal="true" aria-label={`${recordings.find(([file]) => file === expandedRecording)?.[1]} enlarged recording`} onClick={() => setExpandedRecording(null)}><div className="recording-modal-content" onClick={(event) => event.stopPropagation()}><button className="recording-close" type="button" onClick={() => setExpandedRecording(null)} aria-label="Close enlarged recording" autoFocus>Close ×</button><img src={`./recordings/${expandedRecording}`} alt={`${recordings.find(([file]) => file === expandedRecording)?.[1]} enlarged EventLab timeline recording`} /></div></div>}
 
     <section className="tour-section guarantees" aria-labelledby="guarantees-title"><p className="eyebrow">Engineering choices</p><h2 id="guarantees-title">Reliability mechanisms</h2><div>{guarantees.map(([title, copy]) => <article key={title}><strong>{title}</strong><p>{copy}</p></article>)}</div></section>
 
