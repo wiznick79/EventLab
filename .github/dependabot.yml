@@ -1,0 +1,79 @@
+version: 2
+
+updates:
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Lisbon
+    open-pull-requests-limit: 10
+    groups:
+      maven-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    commit-message:
+      prefix: deps(maven)
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:15"
+      timezone: Europe/Lisbon
+    open-pull-requests-limit: 10
+    groups:
+      npm-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    commit-message:
+      prefix: deps(npm)
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:30"
+      timezone: Europe/Lisbon
+    open-pull-requests-limit: 10
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: deps(actions)
+
+  - package-ecosystem: terraform
+    directory: /infrastructure/terraform/application
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:45"
+      timezone: Europe/Lisbon
+    open-pull-requests-limit: 5
+    groups:
+      terraform-application:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: deps(terraform)
+
+  - package-ecosystem: terraform
+    directory: /infrastructure/terraform/bootstrap
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Europe/Lisbon
+    open-pull-requests-limit: 5
+    groups:
+      terraform-bootstrap:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: deps(terraform)
