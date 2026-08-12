@@ -20,6 +20,22 @@ type RunResponse = { workflowId: string; experimentPlanId: string; state: string
 type TraceEvidence = { span: string; decision: string }
 type FulfilmentBehavior = 'SUCCESS' | 'TEMPORARY_UNAVAILABLE' | 'BUSINESS_REJECTION' | 'STALE_AFTER_SUCCESS'
 type ExperimentPlan = { paymentResultDeliveries: number; fulfilmentBehavior: FulfilmentBehavior }
+type RunSummary = RunResponse & {
+  scenarioId: string
+  experimentPlan: ExperimentPlan
+  expectedInvariant: string
+  createdAt: string
+}
+type RunDetails = RunSummary & { timeline: TimelineEvent[] }
+
+export function presetPlan(scenarioId: string): ExperimentPlan {
+  return {
+    'duplicate-payment-result': { paymentResultDeliveries: 2, fulfilmentBehavior: 'SUCCESS' as FulfilmentBehavior },
+    'fulfilment-unavailable': { paymentResultDeliveries: 1, fulfilmentBehavior: 'TEMPORARY_UNAVAILABLE' as FulfilmentBehavior },
+    'fulfilment-rejected': { paymentResultDeliveries: 1, fulfilmentBehavior: 'BUSINESS_REJECTION' as FulfilmentBehavior },
+    'out-of-order-event': { paymentResultDeliveries: 1, fulfilmentBehavior: 'STALE_AFTER_SUCCESS' as FulfilmentBehavior },
+  }[scenarioId] ?? { paymentResultDeliveries: 1, fulfilmentBehavior: 'SUCCESS' }
+}
 
 export function expectedInvariant(plan: ExperimentPlan) {
   const duplicate = plan.paymentResultDeliveries === 2
@@ -107,6 +123,9 @@ export function App() {
   const [activeScenario, setActiveScenario] = useState('')
   const [activePlan, setActivePlan] = useState<ExperimentPlan | null>(null)
   const [launchSequence, setLaunchSequence] = useState(0)
+  const [recentRuns, setRecentRuns] = useState<RunSummary[]>([])
+  const [comparison, setComparison] = useState<[string, string]>(['', ''])
+  const [copied, setCopied] = useState(false)
   const [builderPlan, setBuilderPlan] = useState<ExperimentPlan>({
     paymentResultDeliveries: 1,
     fulfilmentBehavior: 'SUCCESS',
@@ -114,7 +133,20 @@ export function App() {
   const streamRef = useRef<EventSource | null>(null)
   const runPanelRef = useRef<HTMLElement | null>(null)
 
-  useEffect(() => () => streamRef.current?.close(), [])
+  useEffect(() => {
+    void loadRecentRuns()
+    const route = window.location.pathname.match(/^\/runs\/([0-9a-f-]+)$/i)
+    if (route) void inspectRun(route[1], false)
+    const restoreRoute = () => {
+      const restored = window.location.pathname.match(/^\/runs\/([0-9a-f-]+)$/i)
+      if (restored) void inspectRun(restored[1], false)
+    }
+    window.addEventListener('popstate', restoreRoute)
+    return () => {
+      streamRef.current?.close()
+      window.removeEventListener('popstate', restoreRoute)
+    }
+  }, [])
   useEffect(() => {
     if (launchSequence === 0) return
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
@@ -131,7 +163,8 @@ export function App() {
     setError('')
     setEvents([])
     setActiveScenario(scenarioId)
-    setActivePlan(experimentPlan ?? null)
+    const resolvedPlan = experimentPlan ?? presetPlan(scenarioId)
+    setActivePlan(resolvedPlan)
     setLaunchSequence((current) => current + 1)
     try {
       const response = await fetch('/api/v1/runs', {
@@ -142,21 +175,71 @@ export function App() {
       if (!response.ok) throw new Error(`The Lab Console returned HTTP ${response.status}`)
       const created: RunResponse = await response.json()
       setRun(created)
-
-      const source = new EventSource(`/api/v1/runs/${created.workflowId}/stream`)
-      source.addEventListener('timeline-event', (message) => {
-        const next: TimelineEvent = JSON.parse((message as MessageEvent).data)
-        setEvents((current) => current.some((event) => event.sequence === next.sequence)
-          ? current
-          : [...current, next].sort((a, b) => a.sequence - b.sequence))
-      })
-      source.onerror = () => setError('Live updates disconnected. The recorded timeline remains visible.')
-      streamRef.current = source
+      window.history.pushState({}, '', `/runs/${created.workflowId}`)
+      subscribe(created.workflowId)
+      await loadRecentRuns()
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not start the workflow')
     } finally {
       setStarting(false)
     }
+  }
+
+  function subscribe(workflowId: string) {
+    streamRef.current?.close()
+    const source = new EventSource(`/api/v1/runs/${workflowId}/stream`)
+    source.addEventListener('timeline-event', (message) => {
+      const next: TimelineEvent = JSON.parse((message as MessageEvent).data)
+      setEvents((current) => current.some((event) => event.sequence === next.sequence)
+        ? current
+        : [...current, next].sort((a, b) => a.sequence - b.sequence))
+      if (['COMPLETED', 'COMPENSATED', 'FAILED_REQUIRES_INTERVENTION'].includes(next.state)) {
+        void loadRecentRuns()
+      }
+    })
+    source.onerror = () => setError('Live updates disconnected. The recorded timeline remains visible.')
+    streamRef.current = source
+  }
+
+  async function loadRecentRuns() {
+    try {
+      const response = await fetch('/api/v1/runs')
+      if (response.ok) setRecentRuns(await response.json())
+    } catch {
+      // History is supplementary; launching a new experiment remains available.
+    }
+  }
+
+  async function inspectRun(workflowId: string, navigate = true) {
+    streamRef.current?.close()
+    setStarting(true)
+    setError('')
+    try {
+      const response = await fetch(`/api/v1/runs/${workflowId}`)
+      if (!response.ok) throw new Error(response.status === 404
+        ? 'This experiment could not be found.'
+        : `The Run Inspector returned HTTP ${response.status}`)
+      const details: RunDetails = await response.json()
+      setRun(details)
+      setEvents(details.timeline)
+      setActiveScenario(details.scenarioId)
+      setActivePlan(details.experimentPlan)
+      setLaunchSequence((current) => current + 1)
+      if (navigate) window.history.pushState({}, '', `/runs/${workflowId}`)
+      subscribe(workflowId)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not inspect the experiment')
+      setLaunchSequence((current) => current + 1)
+    } finally {
+      setStarting(false)
+    }
+  }
+
+  async function copyEvidenceLink() {
+    if (!run) return
+    await navigator.clipboard.writeText(`${window.location.origin}/runs/${run.workflowId}`)
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1800)
   }
 
   async function recover() {
@@ -183,6 +266,7 @@ export function App() {
       : activePlan.fulfilmentBehavior === 'STALE_AFTER_SUCCESS' ? completed && staleIgnored
         : completed
   ) && (activePlan.paymentResultDeliveries === 1 || duplicateCount === 1)
+  const comparedRuns = comparison.map((workflowId) => recentRuns.find((item) => item.workflowId === workflowId))
 
   return (
     <main>
@@ -257,12 +341,35 @@ export function App() {
           <button className="builder-run" type="button" onClick={() => startScenario('custom-plan', builderPlan)} disabled={starting}>{starting && activeScenario === 'custom-plan' ? 'Starting…' : 'Run custom experiment →'}</button>
         </section>
 
+        <section className="run-history" aria-labelledby="history-title">
+          <div className="history-heading"><div><p className="eyebrow">Run Inspector</p><h2 id="history-title">Recent experiment evidence</h2></div><p>Every run has a durable URL. Reopen its plan, outcome, timeline, and exact trace evidence after a refresh.</p></div>
+          {recentRuns.length > 0 ? <ol className="history-list">{recentRuns.map((recent) => <li key={recent.workflowId}>
+            <button type="button" onClick={() => inspectRun(recent.workflowId)}>
+              <span><strong>{recent.state.replaceAll('_', ' ')}</strong><small>{new Date(recent.createdAt).toLocaleString()}</small></span>
+              <span className="history-plan">{recent.experimentPlan.paymentResultDeliveries}× payment result · {recent.experimentPlan.fulfilmentBehavior.replaceAll('_', ' ')}</span>
+              <code>{recent.workflowId.slice(0, 8)}</code>
+            </button>
+          </li>)}</ol> : <p className="history-empty">Run an experiment to create the first shareable evidence record.</p>}
+          {recentRuns.length >= 2 && <div className="run-comparison">
+            <div className="comparison-controls">
+              <label>First run<select aria-label="First comparison run" value={comparison[0]} onChange={(event) => setComparison([event.target.value, comparison[1]])}><option value="">Choose a run</option>{recentRuns.map((item) => <option key={item.workflowId} value={item.workflowId}>{item.workflowId.slice(0, 8)} · {item.state}</option>)}</select></label>
+              <span>versus</span>
+              <label>Second run<select aria-label="Second comparison run" value={comparison[1]} onChange={(event) => setComparison([comparison[0], event.target.value])}><option value="">Choose a run</option>{recentRuns.map((item) => <option key={item.workflowId} value={item.workflowId}>{item.workflowId.slice(0, 8)} · {item.state}</option>)}</select></label>
+            </div>
+            {comparedRuns[0] && comparedRuns[1] && <div className="comparison-grid">{comparedRuns.map((item) => item && <article key={item.workflowId}>
+              <strong>{item.state.replaceAll('_', ' ')}</strong><code>{item.workflowId}</code>
+              <dl><dt>Deliveries</dt><dd>{item.experimentPlan.paymentResultDeliveries}</dd><dt>Fulfilment</dt><dd>{item.experimentPlan.fulfilmentBehavior.replaceAll('_', ' ')}</dd><dt>Invariant</dt><dd>{item.expectedInvariant}</dd></dl>
+              <button type="button" onClick={() => inspectRun(item.workflowId)}>Inspect evidence →</button>
+            </article>)}</div>}
+          </div>}
+        </section>
+
         {(starting || run || error) && <section className="run-panel" ref={runPanelRef} tabIndex={-1} aria-live="polite">
           <div className="run-heading">
             <div><p className="eyebrow">Live experiment</p><h2>{completed
               ? 'Workflow completed'
               : compensated ? 'Workflow compensated' : 'Workflow in progress'}</h2></div>
-            {run && <div className="run-identifiers"><code>run {run.workflowId}</code><code>plan {run.experimentPlanId}</code></div>}
+            {run && <div className="run-identifiers"><code>run {run.workflowId}</code><code>plan {run.experimentPlanId}</code><button type="button" onClick={copyEvidenceLink}>{copied ? 'Copied' : 'Copy evidence link'}</button></div>}
           </div>
           {activeScenario === 'duplicate-payment-result' && completed && duplicateCount > 0 && <div className="invariant">
             <strong>Invariant protected</strong>

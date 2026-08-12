@@ -10,7 +10,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import pt.eventlab.console.domain.TimelineProjectionService;
+import pt.eventlab.console.domain.ExperimentRunRegistry;
+import pt.eventlab.console.api.RunResponse;
+import pt.eventlab.console.api.StartRunRequest;
 import pt.eventlab.contracts.EventEnvelope;
+import pt.eventlab.contracts.ExperimentPlan;
+import pt.eventlab.contracts.FulfilmentBehavior;
 import pt.eventlab.contracts.MessageTypes;
 
 @SpringBootTest(properties = {
@@ -27,6 +32,9 @@ class LabConsoleApplicationTest {
 
     @Autowired
     private TimelineProjectionService timeline;
+
+    @Autowired
+    private ExperimentRunRegistry runs;
 
     @Test
     void contextLoads() {
@@ -46,5 +54,22 @@ class LabConsoleApplicationTest {
         assertEquals(2, events.size());
         assertTrue(events.get(1).duplicateDelivery());
         assertEquals("DUPLICATE_IGNORED", events.get(1).state());
+    }
+
+    @Test
+    void persistsAPlanForShareableInspection() {
+        UUID workflowId = UUID.randomUUID();
+        UUID planId = UUID.randomUUID();
+        ExperimentPlan plan = new ExperimentPlan(2, FulfilmentBehavior.BUSINESS_REJECTION);
+
+        runs.register(new StartRunRequest("custom-plan", plan, java.math.BigDecimal.TEN, "EUR"),
+                new RunResponse(workflowId, planId, "PAYMENT_PENDING"));
+
+        var details = runs.details(workflowId);
+        assertEquals(planId, details.experimentPlanId());
+        assertEquals(plan, details.experimentPlan());
+        assertEquals(plan.expectedInvariant(), details.expectedInvariant());
+        assertEquals("PAYMENT_PENDING", details.state());
+        assertTrue(runs.recent(12).stream().anyMatch(run -> run.workflowId().equals(workflowId)));
     }
 }

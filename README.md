@@ -8,7 +8,7 @@ The project is a portfolio and learning system, not a parcel-management product.
 
 ## Status
 
-Milestones 0–9 are complete. EventLab includes a disposable Azure environment, a permanent portfolio tour, repeatable resilience measurements, and an interactive Scenario Builder that composes real backend behaviors.
+Milestones 0–10 are complete. EventLab includes a disposable Azure environment, a permanent portfolio tour, repeatable resilience measurements, an interactive Scenario Builder, and durable shareable Run Inspector evidence.
 
 ## Target technology
 

@@ -6,4 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 interface TimelineEventRepository extends JpaRepository<TimelineEvent, Long> {
     List<TimelineEvent> findByWorkflowIdOrderBySequenceNumber(UUID workflowId);
+    TimelineEvent findFirstByWorkflowIdOrderBySequenceNumberDesc(UUID workflowId);
 }

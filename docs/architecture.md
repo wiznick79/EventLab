@@ -239,6 +239,8 @@ Faults are scoped to a workflow run so concurrent visitors do not affect each ot
 
 The Scenario Builder combines a payment-result delivery count of one or two with Fulfilment success, temporary unavailability, business rejection, or a stale post-success update. The validated plan is assigned its own UUID and stored immutably with the Workflow run; its canonical representation crosses service boundaries in existing messages. Each participant owns the interpretation of its behavior, so the Lab Console remains a control plane and evidence projection rather than a simulator. Expected invariants are derived from the shared plan, then independently checked against the observed timeline and trace decisions.
 
+The Lab Console also owns an experiment-run registry for inspection. It stores the submitted plan, plan ID, expected invariant, and creation time alongside its existing event projection; it does not copy participant business state. Current and terminal outcomes are derived from the latest persisted timeline event. This projection supports recent history, stable `/runs/{workflowId}` evidence links, refresh recovery, and side-by-side comparisons without querying another service's database.
+
 ## 8. Initial scenarios
 
 ### Duplicate payment result

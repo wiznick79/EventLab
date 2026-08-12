@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { App, expectedInvariant, grafanaDashboardUrl, grafanaTraceUrl, traceEvidence, traceUrl } from './App'
+import { App, expectedInvariant, grafanaDashboardUrl, grafanaTraceUrl, presetPlan, traceEvidence, traceUrl } from './App'
 import { isLiveLabOnline, offlineLiveLabMessage, PortfolioTour } from './PortfolioTour'
 
 describe('EventLab experiment console', () => {
@@ -25,6 +25,14 @@ describe('EventLab experiment console', () => {
     expect(expectedInvariant({ paymentResultDeliveries: 2, fulfilmentBehavior: 'BUSINESS_REJECTION' })).toBe(
       'Two payment-result deliveries produce one payment state change; the payment is compensated and the workflow ends COMPENSATED.',
     )
+  })
+
+  it('maps curated scenarios to the same plans used by the builder', () => {
+    expect(presetPlan('duplicate-payment-result')).toEqual({
+      paymentResultDeliveries: 2,
+      fulfilmentBehavior: 'SUCCESS',
+    })
+    expect(presetPlan('out-of-order-event').fulfilmentBehavior).toBe('STALE_AFTER_SUCCESS')
   })
 
   it('reveals and scrolls to the live experiment after launch', async () => {

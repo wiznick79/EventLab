@@ -120,3 +120,15 @@ Completed with an invariant-aware k6 concurrency baseline, a deterministic Payme
 **Demonstration:** select duplicate payment-result delivery plus Fulfilment rejection, then observe two deliveries, one ignored duplicate, one payment compensation, terminal `COMPENSATED`, and no `COMPLETED` state.
 
 Implemented with a transport-neutral `ExperimentPlan`, per-participant plan interpretation, a persisted plan UUID, responsive React controls, expected-versus-observed evidence, and a reusable cross-service verification script.
+
+## Milestone 10: durable Run Inspector — completed 2026-08-12
+
+- Persist the immutable submitted plan in the Lab Console evidence projection.
+- List recent experiments with their latest observed state.
+- Restore plan, invariant, timeline, and trace links through `/runs/{workflowId}` after refresh.
+- Copy a stable evidence URL and compare two runs side by side.
+- Keep Workflow, Payment, and Fulfilment business state in their owning services.
+
+**Demonstration:** execute two different plans, compare their delivery behavior and outcomes, refresh either run's URL, and recover the same persisted evidence without rerunning it.
+
+Implemented with a Flyway-managed experiment registry, recent/detail APIs, SPA history routing, an accessible Run Inspector, evidence-link copying, and a two-run comparison view.
