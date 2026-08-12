@@ -29,6 +29,8 @@ Milestone 6 is complete. EventLab can be deployed as a time-limited Azure enviro
 - [How to verify frontend claims in traces](docs/runbooks/reading-traces.md)
 - [Architecture decisions](docs/decisions/README.md)
 
+The permanent static tour is published through GitHub Pages from the same frontend with `VITE_STATIC_TOUR=true`. It contains no API calls and remains useful while the disposable Azure lab is offline. Locally, open `http://localhost:5173/?tour` after starting Vite.
+
 ## Guiding rule
 
 A feature belongs in the MVP only if it enables, exposes, verifies, or explains a distributed-systems behavior.

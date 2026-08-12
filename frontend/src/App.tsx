@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { PortfolioTour } from './PortfolioTour'
 
 type TimelineEvent = {
   sequence: number
@@ -68,6 +69,10 @@ export function traceEvidence(state: string): TraceEvidence | undefined {
 }
 
 export function App() {
+  const staticTour = import.meta.env.VITE_STATIC_TOUR === 'true'
+    || new URLSearchParams(window.location.search).has('tour')
+  if (staticTour) return <PortfolioTour />
+
   const [run, setRun] = useState<RunResponse | null>(null)
   const [events, setEvents] = useState<TimelineEvent[]>([])
   const [starting, setStarting] = useState(false)
@@ -135,7 +140,7 @@ export function App() {
       <header className="hero">
         <nav aria-label="Primary navigation">
           <a className="wordmark" href="#top" aria-label="EventLab home"><span className="mark">EL</span>EventLab</a>
-          <span className="build-status"><i /> Milestone 5 · ordering and concurrency</span>
+          <div className="nav-links"><a href="./?tour">Project tour</a><span className="build-status"><i /> Milestone 7 · portfolio polish</span></div>
         </nav>
         <div className="hero-copy" id="top">
           <p className="eyebrow">Distributed systems under pressure</p>

@@ -1,7 +1,8 @@
 import '@testing-library/jest-dom/vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { App, grafanaTraceUrl, traceEvidence, traceUrl } from './App'
+import { PortfolioTour } from './PortfolioTour'
 
 describe('EventLab experiment console', () => {
   it('presents the executable baseline and the three planned failure scenarios', () => {
@@ -45,5 +46,15 @@ describe('EventLab experiment console', () => {
       decision: 'STALE_IGNORED',
     })
     expect(traceEvidence('COMPLETED')).toBeUndefined()
+  })
+
+  it('renders a backend-independent portfolio tour', () => {
+    const tour = render(<PortfolioTour />)
+    const page = within(tour.container)
+
+    expect(page.getByRole('heading', { name: /reliable messaging/i })).toBeInTheDocument()
+    expect(page.getByRole('heading', { name: 'What each experiment proves' })).toBeInTheDocument()
+    expect(page.getByText(/STALE_IGNORED · received 1 · current 2/)).toBeInTheDocument()
+    expect(page.queryByRole('button', { name: /run experiment/i })).not.toBeInTheDocument()
   })
 })

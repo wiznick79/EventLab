@@ -1,1 +1,1 @@
-window.EVENTLAB_CONFIG = {}
+window.EVENTLAB_CONFIG ??= {}
