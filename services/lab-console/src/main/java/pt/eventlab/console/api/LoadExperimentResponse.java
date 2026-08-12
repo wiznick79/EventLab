@@ -7,6 +7,7 @@ import java.util.UUID;
 public record LoadExperimentResponse(
         UUID id,
         String status,
+        String statusReason,
         String trafficPattern,
         int requestedWorkflows,
         int processedLaunches,

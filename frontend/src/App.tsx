@@ -59,6 +59,7 @@ type DeploymentStatus = {
 type LoadExperiment = {
   id: string
   status: 'LAUNCHING' | 'RUNNING' | 'PROVED' | 'FAILED'
+  statusReason?: 'LAUNCH_INTERRUPTED' | 'EVIDENCE_FAILED'
   trafficPattern: 'BURST' | 'STEADY'
   requestedWorkflows: number
   processedLaunches: number
@@ -256,7 +257,7 @@ export function App() {
       setLoadExperiment(created)
       window.setTimeout(() => loadPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
       if (loadTimerRef.current) window.clearInterval(loadTimerRef.current)
-      loadTimerRef.current = window.setInterval(() => void pollLoadExperiment(created.id), 1000)
+      loadTimerRef.current = window.setTimeout(() => void pollLoadExperiment(created.id), 1000)
     } catch (reason) {
       setLoadError(reason instanceof Error ? reason.message : 'Could not start the load experiment')
     } finally {
@@ -274,9 +275,12 @@ export function App() {
         if (loadTimerRef.current) window.clearInterval(loadTimerRef.current)
         loadTimerRef.current = null
         await loadRecentRuns()
+      } else {
+        loadTimerRef.current = window.setTimeout(() => void pollLoadExperiment(id), 1000)
       }
     } catch {
       setLoadError('Load metrics are temporarily unavailable; the accepted workflows continue running.')
+      loadTimerRef.current = window.setTimeout(() => void pollLoadExperiment(id), 2000)
     }
   }
 
@@ -571,7 +575,7 @@ export function App() {
             <div><dt>p95 latency</dt><dd>{(loadExperiment.p95LatencyMillis / 1000).toFixed(2)} s</dd></div>
             <div><dt>Duplicates observed</dt><dd>{loadExperiment.duplicateDeliveries}</dd></div>
           </dl>
-          <p className="load-verdict">{loadExperiment.status === 'PROVED' ? 'PROVED · every accepted workflow reached a terminal state and its individual evidence report passed.' : loadExperiment.status === 'FAILED' ? 'FAILED · at least one launch or distributed invariant did not pass.' : loadExperiment.status === 'LAUNCHING' ? 'LAUNCHING · accepted members appear immediately while the remaining requests are still in flight.' : 'IN PROGRESS · launch is complete; the accepted-work backlog and terminal evidence update once per second.'}</p>
+          <p className="load-verdict">{loadExperiment.status === 'PROVED' ? 'PROVED · every accepted workflow reached a terminal state and its individual evidence report passed.' : loadExperiment.statusReason === 'LAUNCH_INTERRUPTED' ? 'INTERRUPTED · the Lab Console restarted before every requested workflow could be launched. This is an incomplete experiment, not a capacity or invariant result.' : loadExperiment.status === 'FAILED' ? 'FAILED · at least one launch or distributed invariant did not pass.' : loadExperiment.status === 'LAUNCHING' ? 'LAUNCHING · accepted members appear immediately while the remaining requests are still in flight.' : 'IN PROGRESS · launch is complete; the accepted-work backlog and terminal evidence update once per second.'}</p>
           {loadExperiment.workflowIds.length > 0 && <button className="inspect-member" type="button" onClick={() => inspectRun(loadExperiment.workflowIds[0])}>Inspect one member’s timeline and traces →</button>}
         </section>}
 

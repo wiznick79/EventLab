@@ -49,6 +49,8 @@ The Lab Console returns immediately with a durable load-experiment ID, launches 
 
 The first progress bar measures workflow-creation responses and the second measures accepted workflows reaching terminal state. During a burst, accepted work is persisted member by member: the launch count can still be increasing while the processing backlog already contains work. This distinction prevents request-acceptance time from being mistaken for broker-processing latency.
 
+The Lab Console admits at most eight concurrent workflow-creation operations, even for a 100-workflow burst. The remaining tasks wait on virtual-thread-friendly admission and do not consume database connections. Browser polling is non-overlapping, aggregate reads do not retain a transaction across the complete member scan, and evidence evaluation reuses each member snapshot. These controls keep the health and reporting endpoints responsive under the lab's maximum local workload. If the Lab Console restarts before every requested member is launched, the durable group is marked `LAUNCH_INTERRUPTED`; it is an incomplete experiment rather than a capacity or invariant result.
+
 `PROVED` means every accepted member became terminal, every member evidence report passed, and every requested launch was accepted. These bounded results are portfolio evidence and regression feedback, not a production capacity claim. Continue to use k6 for repeatable scripted baselines.
 
 The first illustrative result is recorded in [the 2026-08-12 local baseline](../results/local-baseline-2026-08-12.md).

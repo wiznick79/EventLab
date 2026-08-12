@@ -12,6 +12,8 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.ReentrantLock;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -32,6 +34,8 @@ class LoadExperimentService {
     private final Clock clock = Clock.systemUTC();
     private final ExecutorService coordinator = Executors.newSingleThreadExecutor(Thread.ofVirtual().factory());
     private final ExecutorService launchers = Executors.newVirtualThreadPerTaskExecutor();
+    private final Semaphore launchAdmission = new Semaphore(8);
+    private final ReentrantLock progressLock = new ReentrantLock();
     private final LoadExperimentRepository experiments;
     private final ExperimentRunRegistry runs;
     private final WorkflowClient workflows;
@@ -65,19 +69,16 @@ class LoadExperimentService {
         return response(experiment);
     }
 
-    @Transactional(readOnly = true)
     public List<LoadExperimentResponse> recent() {
         return experiments.findAllByOrderByCreatedAtDesc(PageRequest.of(0, 5)).stream()
                 .map(this::response).toList();
     }
 
-    @Transactional(readOnly = true)
-    public LoadExperimentResponse inspect(UUID id) {
+    public synchronized LoadExperimentResponse inspect(UUID id) {
         return response(find(id));
     }
 
     @Scheduled(fixedDelay = 1000)
-    @Transactional
     public void assessRunningExperiments() {
         for (LoadExperiment experiment : experiments.findByStatus("LAUNCHING")) {
             long expectedLaunchSeconds = (long) experiment.requestedWorkflows()
@@ -103,6 +104,7 @@ class LoadExperimentService {
         for (int index = 0; index < experiment.requestedWorkflows(); index++) {
             int member = index;
             completions.submit(() -> {
+                launchAdmission.acquire();
                 try {
                     if (experiment.intervalMillis() > 0) {
                         Thread.sleep((long) member * experiment.intervalMillis());
@@ -117,6 +119,8 @@ class LoadExperimentService {
                     recordAccepted(experiment.id(), run.workflowId());
                 } catch (Exception exception) {
                     recordLaunchFailure(experiment.id());
+                } finally {
+                    launchAdmission.release();
                 }
                 return null;
             });
@@ -134,16 +138,26 @@ class LoadExperimentService {
         experiments.save(current);
     }
 
-    private synchronized void recordAccepted(UUID experimentId, UUID workflowId) {
-        LoadExperiment current = find(experimentId);
-        current.accepted(workflowId);
-        experiments.save(current);
+    private void recordAccepted(UUID experimentId, UUID workflowId) {
+        progressLock.lock();
+        try {
+            LoadExperiment current = find(experimentId);
+            current.accepted(workflowId);
+            experiments.save(current);
+        } finally {
+            progressLock.unlock();
+        }
     }
 
-    private synchronized void recordLaunchFailure(UUID experimentId) {
-        LoadExperiment current = find(experimentId);
-        current.launchFailed();
-        experiments.save(current);
+    private void recordLaunchFailure(UUID experimentId) {
+        progressLock.lock();
+        try {
+            LoadExperiment current = find(experimentId);
+            current.launchFailed();
+            experiments.save(current);
+        } finally {
+            progressLock.unlock();
+        }
     }
 
     private LoadExperimentResponse response(LoadExperiment experiment) {
@@ -156,7 +170,12 @@ class LoadExperimentService {
         int maxInFlight = maxInFlight(members);
         double throughput = throughput(terminal);
         int processedLaunches = members.size() + experiment.launchFailures();
-        return new LoadExperimentResponse(experiment.id(), experiment.status(), experiment.trafficPattern(),
+        String statusReason = "FAILED".equals(experiment.status())
+                && processedLaunches < experiment.requestedWorkflows()
+                ? "LAUNCH_INTERRUPTED"
+                : "FAILED".equals(experiment.status()) ? "EVIDENCE_FAILED" : null;
+        return new LoadExperimentResponse(experiment.id(), experiment.status(), statusReason,
+                experiment.trafficPattern(),
                 experiment.requestedWorkflows(), processedLaunches,
                 experiment.requestedWorkflows() - processedLaunches,
                 members.size(), experiment.launchFailures(),
@@ -171,7 +190,7 @@ class LoadExperimentService {
         boolean terminal = TERMINAL_STATES.contains(run.state());
         Instant ended = terminal && !run.timeline().isEmpty()
                 ? run.timeline().get(run.timeline().size() - 1).occurredAt() : null;
-        boolean proved = terminal && "PROVED".equals(evidence.report(workflowId).assessment());
+        boolean proved = terminal && "PROVED".equals(evidence.report(run).assessment());
         int duplicates = (int) run.timeline().stream().filter(TimelineEventResponse::duplicateDelivery).count();
         return new Member(run.createdAt(), ended, terminal, proved, duplicates);
     }

@@ -16,6 +16,8 @@ The aggregate report derives its claims from those individual backend evidence r
 
 Each accepted workflow is attached to the persistent group as soon as its creation request completes. Launch progress and asynchronous processing progress are reported separately, so a large burst does not appear idle while its requests are being accepted.
 
+The control plane must remain responsive during the experiment. Launch-side admission is therefore bounded below the database connection-pool size, virtual-thread coordination uses parking-friendly locks rather than intrinsic monitors, aggregate reads avoid a long transaction, and the browser never overlaps report requests. A coordinator restart before all launches complete produces an explicit interrupted result rather than a misleading business-invariant failure.
+
 Limits are part of the product contract: local development permits at most 100 workflows; a public deployment permits at most 25; and only one load experiment may run at a time. The coordinator persists the group and member workflow identifiers so results remain inspectable after browser refreshes or a Lab Console restart.
 
 ## Consequences

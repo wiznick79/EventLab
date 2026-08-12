@@ -20,7 +20,10 @@ class EvidenceReportService {
     }
 
     EvidenceReportResponse report(java.util.UUID workflowId) {
-        RunDetailsResponse run = runs.details(workflowId);
+        return report(runs.details(workflowId));
+    }
+
+    EvidenceReportResponse report(RunDetailsResponse run) {
         var plan = run.experimentPlan();
         List<EvidenceCheckResponse> checks = new ArrayList<>();
         boolean terminal = terminal(run.state());
