@@ -17,8 +17,9 @@ on:
         required: false
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
+  actions: write
 
 concurrency:
   group: eventlab-azure-state
@@ -132,6 +133,24 @@ jobs:
 
           echo "Public Grafana could not resolve trace ${TRACE_ID}" >&2
           exit 1
+      - name: Publish live-lab status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          URL="$(terraform output -raw frontend_url)"
+          jq -n \
+            --arg url "${URL}" \
+            --arg expiresAt "${{ steps.plan.outputs.destroy_after }}" \
+            --arg environment "${{ inputs.environment_name }}" \
+            --arg updatedAt "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+            '{state:"online", url:$url, expiresAt:$expiresAt, environment:$environment, updatedAt:$updatedAt}' \
+            > ../../../frontend/public/live-lab.json
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add ../../../frontend/public/live-lab.json
+          git diff --cached --quiet || git commit -m "Publish live lab status [skip ci]"
+          git push
+          gh workflow run portfolio.yml --ref main
       - name: Publish environment summary
         if: always()
         run: |

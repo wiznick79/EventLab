@@ -2,7 +2,7 @@ import '@testing-library/jest-dom/vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { App, grafanaDashboardUrl, grafanaTraceUrl, traceEvidence, traceUrl } from './App'
-import { PortfolioTour } from './PortfolioTour'
+import { isLiveLabOnline, PortfolioTour } from './PortfolioTour'
 
 describe('EventLab experiment console', () => {
   it('presents the executable baseline and the three planned failure scenarios', () => {
@@ -75,5 +75,19 @@ describe('EventLab experiment console', () => {
 
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(page.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('only advertises an active, unexpired live lab', () => {
+    expect(isLiveLabOnline({
+      state: 'online',
+      url: 'https://eventlab.example.test',
+      expiresAt: '2026-08-12T12:00:00Z',
+    }, Date.parse('2026-08-12T11:00:00Z'))).toBe(true)
+    expect(isLiveLabOnline({
+      state: 'online',
+      url: 'https://eventlab.example.test',
+      expiresAt: '2026-08-12T12:00:00Z',
+    }, Date.parse('2026-08-12T13:00:00Z'))).toBe(false)
+    expect(isLiveLabOnline({ state: 'offline' })).toBe(false)
   })
 })

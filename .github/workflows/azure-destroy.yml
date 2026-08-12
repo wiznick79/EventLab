@@ -9,8 +9,9 @@ on:
         default: demo
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
+  actions: write
 
 concurrency:
   group: eventlab-azure-state
@@ -59,3 +60,23 @@ jobs:
             echo "Resource group rg-eventlab-${{ inputs.environment_name }} remains after destroy" >&2
             exit 1
           fi
+      - name: Publish offline live-lab status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          CURRENT_ENVIRONMENT="$(jq -r '.environment // empty' ../../../frontend/public/live-lab.json)"
+          if [[ -n "${CURRENT_ENVIRONMENT}" && "${CURRENT_ENVIRONMENT}" != "${{ inputs.environment_name }}" ]]; then
+            echo "The advertised ${CURRENT_ENVIRONMENT} environment remains unchanged"
+            exit 0
+          fi
+          jq -n \
+            --arg environment "${{ inputs.environment_name }}" \
+            --arg updatedAt "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+            '{state:"offline", environment:$environment, updatedAt:$updatedAt}' \
+            > ../../../frontend/public/live-lab.json
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add ../../../frontend/public/live-lab.json
+          git diff --cached --quiet || git commit -m "Mark live lab offline [skip ci]"
+          git push
+          gh workflow run portfolio.yml --ref main

@@ -38,11 +38,15 @@ The bootstrap resource group may retain an older metadata location after an allo
 
 The workflow summary publishes separate EventLab and Grafana URLs. Both are public for the lifetime of the disposable environment; visitors do not need an Azure or Grafana account.
 
+After both smoke tests pass, the deployment workflow publishes the EventLab URL and expiry to `frontend/public/live-lab.json` and rebuilds the permanent portfolio. The tour then links visitors directly to the running lab. When no valid environment is advertised, it links to these launch instructions instead; the Actions workflow remains available as secondary implementation evidence.
+
 Flyway runs during each Java service startup against its owned database. Service Bus access uses each Container App's system-assigned managed identity; namespace SAS authentication is disabled.
 
 ## Destroy and verify
 
 Run **Destroy Azure environment** as soon as the demonstration ends. It destroys resources through the normal remote state and fails if an ephemeral EventLab resource group remains.
+
+After deletion is verified, manual destroy and scheduled expiry cleanup mark the permanent tour's live-lab status offline and republish it. The frontend also treats an expired timestamp as offline, so a delayed status update cannot send visitors to an environment whose lifetime has elapsed.
 
 The scheduled cleanup checks `destroy_after` twice per hour. Missing expiry tags fail loudly; expired environments are destroyed through the same Terraform state rather than by deleting resource groups out of band.
 

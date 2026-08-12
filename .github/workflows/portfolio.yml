@@ -27,6 +27,14 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - name: Preserve current live-lab status
+        run: |
+          STATUS_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/live-lab.json"
+          if STATUS="$(curl --fail --silent --show-error --max-time 10 "${STATUS_URL}")" \
+            && jq -e '.state == "online" and (.url | type == "string") and (.expiresAt | fromdateiso8601 > now)' \
+              <<< "${STATUS}" >/dev/null; then
+            printf '%s\n' "${STATUS}" > frontend/public/live-lab.json
+          fi
       - name: Build static tour
         working-directory: frontend
         run: |

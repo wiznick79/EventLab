@@ -155,6 +155,10 @@ footer { display: flex; justify-content: space-between; padding-top: 2rem; paddi
 .tour-cta { padding-top: 8rem; padding-bottom: 8rem; background: linear-gradient(135deg, rgba(189,255,83,.07), rgba(102,230,212,.04)); border-bottom: 1px solid var(--line); }
 .tour-cta > p { max-width: 48rem; }
 .tour-cta .tour-actions { margin-top: 2rem; }
+.lab-status { width: fit-content; margin: 2rem 0 0; padding: .65rem .85rem; border: 1px solid var(--line); color: var(--muted); font: .65rem 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .06em; }
+.lab-status i { display: inline-block; width: .48rem; height: .48rem; margin-right: .6rem; border-radius: 50%; background: #65716e; }
+.lab-status.online { color: var(--acid); border-color: rgba(189,255,83,.35); }
+.lab-status.online i { background: var(--acid); box-shadow: 0 0 10px rgba(189,255,83,.7); }
 
 .recording-page { width: 1280px; height: 720px; overflow: hidden; padding: 1.6rem 3.5rem; display: grid; grid-template-rows: auto auto 1fr auto; background: radial-gradient(circle at 85% 15%, rgba(102,230,212,.12), transparent 28rem), linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px), #07100f; background-size: auto, 42px 42px, 42px 42px; }
 .recording-page > header { display: flex; justify-content: space-between; align-items: center; }

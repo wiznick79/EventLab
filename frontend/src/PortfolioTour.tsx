@@ -1,5 +1,20 @@
 import { useEffect, useState } from 'react'
 
+type LiveLabStatus = {
+  state: 'online' | 'offline'
+  url?: string
+  expiresAt?: string
+  environment?: string
+}
+
+const deploymentGuideUrl = 'https://github.com/wiznick79/EventLab/blob/main/docs/runbooks/azure-environment.md#plan-and-deploy'
+
+export function isLiveLabOnline(status: LiveLabStatus | null, now = Date.now()) {
+  if (status?.state !== 'online' || !status.url || !status.expiresAt) return false
+  const expiresAt = Date.parse(status.expiresAt)
+  return Number.isFinite(expiresAt) && expiresAt > now
+}
+
 const scenarios = [
   {
     number: '01',
@@ -46,9 +61,20 @@ const recordings = [
 
 export function PortfolioTour() {
   const [expandedRecording, setExpandedRecording] = useState<string | null>(null)
-  const liveLabUrl = import.meta.env.VITE_STATIC_TOUR === 'true'
-    ? 'https://github.com/wiznick79/EventLab/actions/workflows/azure-deploy.yml'
-    : './'
+  const staticTour = import.meta.env.VITE_STATIC_TOUR === 'true'
+  const [liveLabStatus, setLiveLabStatus] = useState<LiveLabStatus | null>(
+    staticTour ? null : { state: 'online', url: './', expiresAt: '2099-01-01T00:00:00Z', environment: 'local' },
+  )
+  const liveLabOnline = isLiveLabOnline(liveLabStatus)
+  const liveLabUrl = liveLabOnline ? liveLabStatus?.url ?? './' : deploymentGuideUrl
+
+  useEffect(() => {
+    if (!staticTour) return
+    fetch('./live-lab.json', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error('Status unavailable')))
+      .then((status: LiveLabStatus) => setLiveLabStatus(status))
+      .catch(() => setLiveLabStatus({ state: 'offline' }))
+  }, [staticTour])
 
   useEffect(() => {
     if (!expandedRecording) return
@@ -116,7 +142,7 @@ export function PortfolioTour() {
 
     <section className="tour-section guarantees" aria-labelledby="guarantees-title"><p className="eyebrow">Engineering choices</p><h2 id="guarantees-title">Reliability mechanisms</h2><div>{guarantees.map(([title, copy]) => <article key={title}><strong>{title}</strong><p>{copy}</p></article>)}</div></section>
 
-    <section className="tour-cta"><p className="eyebrow">Two ways to explore</p><h2>The tour explains the design.<br />The live lab lets you break it.</h2><p>The interactive environment is deliberately temporary to control Azure cost. This page contains no backend dependency and remains available between demos.</p><div className="tour-actions"><a className="primary-link" href={liveLabUrl}>Open live-lab deployment →</a><a href="https://github.com/wiznick79/EventLab/blob/main/docs/runbooks/reading-traces.md">Read the trace guide ↗</a></div></section>
+    <section className="tour-cta" id="live-lab"><p className="eyebrow">Two ways to explore</p><h2>The tour explains the design.<br />The live lab lets you break it.</h2><p>The interactive environment is deliberately temporary to control Azure cost. This page contains no backend dependency and remains available between demos.</p><div className={`lab-status ${liveLabOnline ? 'online' : 'offline'}`} role="status"><i />{liveLabStatus === null ? 'Checking live-lab availability…' : liveLabOnline ? <>Live lab online · expires {new Date(liveLabStatus.expiresAt ?? '').toLocaleString()}</> : 'Live lab currently offline'}</div><div className="tour-actions"><a className="primary-link" href={liveLabUrl}>{liveLabOnline ? 'Open live lab →' : 'How to launch the live lab →'}</a><a href="https://github.com/wiznick79/EventLab/actions/workflows/azure-deploy.yml">View deployment workflow ↗</a><a href="https://github.com/wiznick79/EventLab/blob/main/docs/runbooks/reading-traces.md">Read the trace guide ↗</a></div></section>
     <footer><p>EventLab · distributed systems under pressure</p><p>Java · Spring Boot · Azure Service Bus · OpenTelemetry</p></footer>
   </main>
 }
