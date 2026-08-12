@@ -80,6 +80,8 @@ A React, TypeScript, and Vite application providing:
 
 The UI is an experiment console, not an administration or CRUD interface.
 
+The Load & Concurrency Lab launches bounded groups through the same control path. It presents aggregate pressure metrics beside correctness evidence and links back to an individual member's durable timeline and traces.
+
 ### 4.2 Lab Console
 
 The Lab Console owns experiment presentation and control-plane concerns:
@@ -92,6 +94,8 @@ The Lab Console owns experiment presentation and control-plane concerns:
 - trace identifiers and explanatory metadata.
 
 It must not change business state by editing another service's database. Recovery occurs through explicit messages or service APIs. Fault-control interfaces must be separated from ordinary business interfaces.
+
+The Lab Console also owns persistent load-experiment coordination. A load group contains only configuration and references to ordinary workflow runs; it does not create a second execution model. Burst members are submitted on virtual threads, steady members use bounded arrival intervals, and a scheduled assessor derives aggregate status from the existing run registry and backend evidence evaluator.
 
 ### 4.3 Workflow Service
 

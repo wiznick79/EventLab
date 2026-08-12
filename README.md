@@ -2,13 +2,15 @@
 
 EventLab is an interactive distributed-systems failure laboratory. It makes message delivery, retries, dead letters, ordering, saga compensation, replay, and recovery visible through a public web interface and distributed traces.
 
+Its Load & Concurrency Lab launches bounded burst or steady traffic through the real distributed workflow and calls the result proved only when the backlog drains and every accepted member's backend invariant assessment passes.
+
 **[Open the permanent EventLab project tour](https://wiznick79.github.io/EventLab/)**
 
 The project is a portfolio and learning system, not a parcel-management product. Its deliberately small order-fulfilment workflow exists only to provide realistic distributed-system experiments.
 
 ## Status
 
-Milestones 0–17 are complete. EventLab includes a disposable Azure environment, a permanent portfolio tour, repeatable resilience measurements, an interactive Scenario Builder, durable Run Inspector evidence, configurable recovery policies, backend-generated downloadable evidence reports, a live deployment Control Center, fail-closed evidence-pipeline readiness, authoritative-versus-projected consistency proof, a traceable poison-message quarantine experiment, and non-destructive native DLQ inspection.
+Milestones 0–18 are complete. EventLab includes a disposable Azure environment, a permanent portfolio tour, repeatable resilience measurements, an interactive Scenario Builder and Load & Concurrency Lab, durable Run Inspector evidence, configurable recovery policies, backend-generated downloadable evidence reports, a live deployment Control Center, fail-closed evidence-pipeline readiness, authoritative-versus-projected consistency proof, a traceable poison-message quarantine experiment, and non-destructive native DLQ inspection.
 
 ## Target technology
 

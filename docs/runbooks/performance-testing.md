@@ -34,6 +34,21 @@ docker compose --profile performance run --rm k6
 
 Increasing these values is exploratory. The committed defaults remain small enough to repeat during development and strict enough to catch broken asynchronous completion or idempotency.
 
+## Interactive Load & Concurrency Lab
+
+The live UI now provides a browser-driven pressure experiment in addition to k6. Choose 10, 25, 50, or 100 workflows locally, select burst or steady arrival, and choose the percentage that should receive a duplicate payment result. Public Azure environments expose only the 10- and 25-workflow presets.
+
+The Lab Console returns immediately with a durable load-experiment ID, launches the members asynchronously, and refreshes the aggregate report once per second. Read the metrics together:
+
+- **accepted / requested** identifies launch failures;
+- **terminal / accepted** and **current backlog** show whether accepted work drains;
+- **max in flight** proves actual overlap rather than a fast sequential loop;
+- **throughput, median, and p95** describe this environment's observed performance;
+- **duplicates observed** proves the selected pressure mix reached the consumer;
+- **invariant violations** is the correctness gate, derived from each member's backend evidence report.
+
+`PROVED` means every accepted member became terminal, every member evidence report passed, and every requested launch was accepted. These bounded results are portfolio evidence and regression feedback, not a production capacity claim. Continue to use k6 for repeatable scripted baselines.
+
 The first illustrative result is recorded in [the 2026-08-12 local baseline](../results/local-baseline-2026-08-12.md).
 
 ## Next resilience experiment

@@ -216,3 +216,15 @@ Implemented with explicit schema validation at the consumer boundary, abandon/de
 **Demonstration:** run **Unsupported contract → poison DLQ** and observe `UnsupportedContractVersion` plus schema version 99 directly from `fulfilment-commands/$deadletterqueue`, while the UI explains why replay is unavailable.
 
 Implemented with paged Service Bus peek operations, a workflow-scoped inspection endpoint, a responsive native-broker proof panel, mapping and controller tests, and an Azure smoke assertion for the poison DLQ metadata.
+
+## Milestone 18: interactive load and concurrency evidence — completed 2026-08-12
+
+- Launch real workflows with burst or steady arrival patterns.
+- Mix normal and duplicate payment-result deliveries under concurrent load.
+- Measure accepted and terminal work, backlog drain, maximum overlap, throughput, median latency, and p95 latency.
+- Make correctness the gate through per-workflow backend evidence and explicit invariant-violation counts.
+- Bound local and public workloads and allow only one active pressure experiment per environment.
+
+**Demonstration:** launch a 25-workflow burst with 20% duplicate delivery, observe more than one workflow in flight, watch the backlog drain to zero, and require 25 proved evidence reports with zero invariant violations before the aggregate becomes `PROVED`.
+
+Implemented with persistent load groups, Java virtual-thread launchers, scheduled evidence aggregation, durable member links, a responsive Load & Concurrency Lab, and environment-specific safety ceilings. The existing k6 suite remains the repeatable regression baseline; the interactive report makes the same correctness-under-load idea explainable in the public demo.

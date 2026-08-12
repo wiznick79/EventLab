@@ -56,6 +56,27 @@ type DeploymentStatus = {
   evidencePipeline?: { enabled: boolean; status: 'STARTING' | 'RUNNING' | 'DISABLED' | 'ERROR'; lastEventAt?: string; lastError?: string }
   dependencies: { name: string; status: 'UP' | 'DOWN' }[]
 }
+type LoadExperiment = {
+  id: string
+  status: 'LAUNCHING' | 'RUNNING' | 'PROVED' | 'FAILED'
+  trafficPattern: 'BURST' | 'STEADY'
+  requestedWorkflows: number
+  acceptedWorkflows: number
+  launchFailures: number
+  duplicatePercentage: number
+  terminalWorkflows: number
+  provedWorkflows: number
+  invariantViolations: number
+  duplicateDeliveries: number
+  backlog: number
+  maxInFlight: number
+  throughputPerSecond: number
+  medianLatencyMillis: number
+  p95LatencyMillis: number
+  createdAt: string
+  completedAt?: string
+  workflowIds: string[]
+}
 
 export function formatRemaining(expiresAt: string | undefined, now = Date.now()) {
   if (!expiresAt) return 'No automatic expiry'
@@ -180,7 +201,13 @@ export function App() {
     fulfilmentMaxAttempts: 4,
     recoveryMode: 'MANUAL',
   })
+  const [loadConfig, setLoadConfig] = useState({ workflowCount: 10, trafficPattern: 'BURST', duplicatePercentage: 20, intervalMillis: 200 })
+  const [loadExperiment, setLoadExperiment] = useState<LoadExperiment | null>(null)
+  const [loadStarting, setLoadStarting] = useState(false)
+  const [loadError, setLoadError] = useState('')
   const streamRef = useRef<EventSource | null>(null)
+  const loadTimerRef = useRef<number | null>(null)
+  const loadPanelRef = useRef<HTMLElement | null>(null)
   const runPanelRef = useRef<HTMLElement | null>(null)
   const evidenceRequestRef = useRef(0)
 
@@ -198,6 +225,7 @@ export function App() {
     window.addEventListener('popstate', restoreRoute)
     return () => {
       streamRef.current?.close()
+      if (loadTimerRef.current) window.clearInterval(loadTimerRef.current)
       window.clearInterval(statusTimer)
       window.clearInterval(clockTimer)
       window.removeEventListener('popstate', restoreRoute)
@@ -212,6 +240,43 @@ export function App() {
     })
     runPanelRef.current?.focus({ preventScroll: true })
   }, [launchSequence])
+
+  async function startLoadExperiment() {
+    setLoadStarting(true)
+    setLoadError('')
+    try {
+      const response = await fetch('/api/v1/load-experiments', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(loadConfig),
+      })
+      if (!response.ok) throw new Error(response.status === 409
+        ? 'Another load experiment is still running.' : `Load experiment returned HTTP ${response.status}`)
+      const created: LoadExperiment = await response.json()
+      setLoadExperiment(created)
+      window.setTimeout(() => loadPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+      if (loadTimerRef.current) window.clearInterval(loadTimerRef.current)
+      loadTimerRef.current = window.setInterval(() => void pollLoadExperiment(created.id), 1000)
+    } catch (reason) {
+      setLoadError(reason instanceof Error ? reason.message : 'Could not start the load experiment')
+    } finally {
+      setLoadStarting(false)
+    }
+  }
+
+  async function pollLoadExperiment(id: string) {
+    try {
+      const response = await fetch(`/api/v1/load-experiments/${id}`)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const report: LoadExperiment = await response.json()
+      setLoadExperiment(report)
+      if (report.status === 'PROVED' || report.status === 'FAILED') {
+        if (loadTimerRef.current) window.clearInterval(loadTimerRef.current)
+        loadTimerRef.current = null
+        await loadRecentRuns()
+      }
+    } catch {
+      setLoadError('Load metrics are temporarily unavailable; the accepted workflows continue running.')
+    }
+  }
 
   async function startScenario(scenarioId: string, experimentPlan?: ExperimentPlan) {
     streamRef.current?.close()
@@ -474,6 +539,37 @@ export function App() {
           <div className="builder-invariant"><span>Expected invariant</span><strong>{expectedInvariant(builderPlan)}</strong></div>
           <button className="builder-run" type="button" onClick={() => startScenario('custom-plan', builderPlan)} disabled={starting || !acceptingExperiments}>{starting && activeScenario === 'custom-plan' ? 'Starting…' : acceptingExperiments ? 'Run custom experiment →' : 'New experiments paused'}</button>
         </section>
+
+        <section className="load-lab" aria-labelledby="load-lab-title">
+          <div className="load-lab-copy"><p className="eyebrow">Load &amp; Concurrency Lab</p><h2 id="load-lab-title">Put the guarantees under measurable pressure</h2><p>This launches real workflows concurrently through the same APIs, broker, consumers, databases, and evidence pipeline. The result is correct only when every accepted workflow reaches its promised outcome.</p></div>
+          <div className="load-controls">
+            <label>Workflows<select aria-label="Load workflow count" value={loadConfig.workflowCount} onChange={(event) => setLoadConfig((current) => ({ ...current, workflowCount: Number(event.target.value) }))}>{(deployment?.environment === 'local' ? [10, 25, 50, 100] : [10, 25]).map((count) => <option key={count} value={count}>{count} workflows</option>)}</select></label>
+            <label>Traffic pattern<select aria-label="Load traffic pattern" value={loadConfig.trafficPattern} onChange={(event) => setLoadConfig((current) => ({ ...current, trafficPattern: event.target.value }))}><option value="BURST">Burst · launch concurrently</option><option value="STEADY">Steady · controlled arrival</option></select></label>
+            <label>Duplicate mix<select aria-label="Load duplicate percentage" value={loadConfig.duplicatePercentage} onChange={(event) => setLoadConfig((current) => ({ ...current, duplicatePercentage: Number(event.target.value) }))}><option value="0">0% normal deliveries</option><option value="10">10% duplicate deliveries</option><option value="20">20% duplicate deliveries</option><option value="50">50% duplicate deliveries</option></select></label>
+            {loadConfig.trafficPattern === 'STEADY' && <label>Arrival interval<select aria-label="Load arrival interval" value={loadConfig.intervalMillis} onChange={(event) => setLoadConfig((current) => ({ ...current, intervalMillis: Number(event.target.value) }))}><option value="100">100 ms</option><option value="200">200 ms</option><option value="500">500 ms</option><option value="1000">1 second</option></select></label>}
+          </div>
+          <div className="load-safety"><strong>Bounded by design</strong><span>{deployment?.environment === 'local' ? 'Local ceiling: 100 workflows.' : 'Public demo ceiling: 25 workflows.'} One active load experiment at a time.</span></div>
+          <button className="builder-run" type="button" onClick={startLoadExperiment} disabled={loadStarting || !acceptingExperiments || loadExperiment?.status === 'LAUNCHING' || loadExperiment?.status === 'RUNNING'}>{loadStarting ? 'Starting pressure test…' : 'Run load experiment →'}</button>
+          {loadError && <p className="run-error">{loadError}</p>}
+        </section>
+
+        {loadExperiment && <section className={`load-report ${loadExperiment.status.toLowerCase()}`} ref={loadPanelRef} tabIndex={-1} aria-labelledby="load-report-title">
+          <div className="load-report-heading"><div><p className="eyebrow">Live aggregate evidence</p><h2 id="load-report-title">{loadExperiment.status.replace('_', ' ')}</h2></div><code>{loadExperiment.id}</code></div>
+          <div className="load-progress"><span style={{ width: `${loadExperiment.acceptedWorkflows === 0 ? 0 : loadExperiment.terminalWorkflows / loadExperiment.acceptedWorkflows * 100}%` }} /><strong>{loadExperiment.terminalWorkflows} / {loadExperiment.acceptedWorkflows} terminal</strong></div>
+          <dl className="load-metrics">
+            <div><dt>Accepted</dt><dd>{loadExperiment.acceptedWorkflows} / {loadExperiment.requestedWorkflows}</dd></div>
+            <div><dt>Evidence proved</dt><dd>{loadExperiment.provedWorkflows}</dd></div>
+            <div><dt>Invariant violations</dt><dd>{loadExperiment.invariantViolations}</dd></div>
+            <div><dt>Current backlog</dt><dd>{loadExperiment.backlog}</dd></div>
+            <div><dt>Max in flight</dt><dd>{loadExperiment.maxInFlight}</dd></div>
+            <div><dt>Throughput</dt><dd>{loadExperiment.throughputPerSecond.toFixed(2)} / sec</dd></div>
+            <div><dt>Median latency</dt><dd>{(loadExperiment.medianLatencyMillis / 1000).toFixed(2)} s</dd></div>
+            <div><dt>p95 latency</dt><dd>{(loadExperiment.p95LatencyMillis / 1000).toFixed(2)} s</dd></div>
+            <div><dt>Duplicates observed</dt><dd>{loadExperiment.duplicateDeliveries}</dd></div>
+          </dl>
+          <p className="load-verdict">{loadExperiment.status === 'PROVED' ? 'PROVED · every accepted workflow reached a terminal state and its individual evidence report passed.' : loadExperiment.status === 'FAILED' ? 'FAILED · at least one launch or distributed invariant did not pass.' : 'IN PROGRESS · the backlog and terminal evidence are updated once per second.'}</p>
+          {loadExperiment.workflowIds.length > 0 && <button className="inspect-member" type="button" onClick={() => inspectRun(loadExperiment.workflowIds[0])}>Inspect one member’s timeline and traces →</button>}
+        </section>}
 
         <section className="run-history" aria-labelledby="history-title">
           <div className="history-heading"><div><p className="eyebrow">Run Inspector</p><h2 id="history-title">Recent experiment evidence</h2></div><p>Every run has a durable URL. Reopen its plan, outcome, timeline, and exact trace evidence after a refresh.</p></div>

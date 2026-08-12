@@ -15,3 +15,4 @@ These records capture accepted project-level decisions. A decision can be supers
 | [ADR-009](009-technology-baseline.md) | Pin the initial Java and web framework baseline | Accepted |
 | [ADR-010](010-scenario-builder.md) | Compose bounded immutable experiment plans | Accepted |
 | [ADR-011](011-unsupported-contract-quarantine.md) | Reject unsupported contracts explicitly and quarantine them after a bounded budget | Accepted |
+| [ADR-012](012-bounded-load-experiments.md) | Run bounded load experiments through ordinary workflow paths | Accepted |
