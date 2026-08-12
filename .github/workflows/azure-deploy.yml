@@ -133,6 +133,36 @@ jobs:
 
           echo "Public Grafana could not resolve trace ${TRACE_ID}" >&2
           exit 1
+      - name: Smoke test Control Center and Run Inspector
+        run: |
+          URL="$(terraform output -raw frontend_url)"
+          STATUS="$(curl --fail --connect-timeout 10 --max-time 30 "${URL}/api/v1/deployment/status")"
+          jq -e '
+            .mode == "ONLINE"
+            and .acceptingExperiments == true
+            and (.expiresAt | type == "string")
+            and ([.dependencies[] | select(.status == "UP")] | length == 3)
+          ' <<< "$STATUS" >/dev/null
+
+          RUN="$(curl --fail --connect-timeout 10 --max-time 30 \
+            -H 'Content-Type: application/json' \
+            -d '{"scenarioId":"custom-plan","experimentPlan":{"paymentResultDeliveries":2,"fulfilmentBehavior":"SUCCESS","fulfilmentMaxAttempts":4,"recoveryMode":"MANUAL"},"amount":129.90,"currency":"EUR"}' \
+            "${URL}/api/v1/runs")"
+          WORKFLOW_ID="$(jq -er '.workflowId' <<< "$RUN")"
+          curl --fail --silent --show-error "${URL}/runs/${WORKFLOW_ID}" | grep -q 'id="root"'
+
+          for _ in $(seq 1 30); do
+            EVIDENCE="$(curl --fail --connect-timeout 10 --max-time 30 \
+              "${URL}/api/v1/runs/${WORKFLOW_ID}/evidence")"
+            if jq -e '.assessment == "PROVED" and ([.checks[] | select(.status == "PROVED")] | length == 3)' \
+              <<< "$EVIDENCE" >/dev/null; then
+              echo "Control Center, custom builder, direct route, and evidence report passed for ${WORKFLOW_ID}" \
+                >> "$GITHUB_STEP_SUMMARY"
+              break
+            fi
+            sleep 5
+          done
+          jq -e '.assessment == "PROVED"' <<< "$EVIDENCE" >/dev/null
       - name: Publish live-lab status
         env:
           GH_TOKEN: ${{ github.token }}

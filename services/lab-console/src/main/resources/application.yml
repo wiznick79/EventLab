@@ -31,6 +31,7 @@ management:
 
 eventlab:
   workflow-base-url: ${WORKFLOW_SERVICE_BASE_URL:http://localhost:8081}
+  payment-base-url: ${PAYMENT_SERVICE_BASE_URL:http://localhost:8082}
   fulfilment-base-url: ${FULFILMENT_SERVICE_BASE_URL:http://localhost:8083}
   grafana-base-url: ${GRAFANA_BASE_URL:http://localhost:3000}
   messaging:
@@ -40,3 +41,8 @@ eventlab:
     fulfilment-commands-queue: fulfilment-commands
     business-events-topic: business-events
     lab-console-events-subscription: lab-console-events
+  deployment:
+    environment: ${DEPLOYMENT_ENVIRONMENT:local}
+    version: ${DEPLOYMENT_VERSION:development}
+    expires-at: ${DEPLOYMENT_EXPIRES_AT:}
+    read-only-lead-seconds: ${DEPLOYMENT_READ_ONLY_LEAD_SECONDS:600}

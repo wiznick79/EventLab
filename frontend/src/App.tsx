@@ -30,6 +30,23 @@ type RunSummary = RunResponse & {
 type RunDetails = RunSummary & { timeline: TimelineEvent[] }
 type EvidenceCheck = { id: string; label: string; status: 'PROVED' | 'IN_PROGRESS' | 'FAILED'; observation: string; traceIds: string[] }
 type EvidenceReport = { assessment: EvidenceCheck['status']; generatedAt: string; checks: EvidenceCheck[] }
+type DeploymentStatus = {
+  environment: string
+  version: string
+  expiresAt?: string
+  mode: 'ONLINE' | 'READ_ONLY' | 'EXPIRED'
+  acceptingExperiments: boolean
+  dependencies: { name: string; status: 'UP' | 'DOWN' }[]
+}
+
+export function formatRemaining(expiresAt: string | undefined, now = Date.now()) {
+  if (!expiresAt) return 'No automatic expiry'
+  const remaining = Math.max(0, Date.parse(expiresAt) - now)
+  const hours = Math.floor(remaining / 3_600_000)
+  const minutes = Math.floor((remaining % 3_600_000) / 60_000)
+  const seconds = Math.floor((remaining % 60_000) / 1000)
+  return remaining === 0 ? 'Expired' : `${hours}h ${minutes}m ${seconds}s remaining`
+}
 
 export function presetPlan(scenarioId: string): ExperimentPlan {
   return {
@@ -130,6 +147,8 @@ export function App() {
   const [comparison, setComparison] = useState<[string, string]>(['', ''])
   const [copied, setCopied] = useState(false)
   const [evidenceReport, setEvidenceReport] = useState<EvidenceReport | null>(null)
+  const [deployment, setDeployment] = useState<DeploymentStatus | null>(null)
+  const [clockTick, setClockTick] = useState(Date.now())
   const [builderPlan, setBuilderPlan] = useState<ExperimentPlan>({
     paymentResultDeliveries: 1,
     fulfilmentBehavior: 'SUCCESS',
@@ -142,6 +161,9 @@ export function App() {
 
   useEffect(() => {
     void loadRecentRuns()
+    void loadDeploymentStatus()
+    const statusTimer = window.setInterval(() => void loadDeploymentStatus(), 15_000)
+    const clockTimer = window.setInterval(() => setClockTick(Date.now()), 1000)
     const route = window.location.pathname.match(/^\/runs\/([0-9a-f-]+)$/i)
     if (route) void inspectRun(route[1], false)
     const restoreRoute = () => {
@@ -151,6 +173,8 @@ export function App() {
     window.addEventListener('popstate', restoreRoute)
     return () => {
       streamRef.current?.close()
+      window.clearInterval(statusTimer)
+      window.clearInterval(clockTimer)
       window.removeEventListener('popstate', restoreRoute)
     }
   }, [])
@@ -217,6 +241,19 @@ export function App() {
       if (response.ok) setRecentRuns(await response.json())
     } catch {
       // History is supplementary; launching a new experiment remains available.
+    }
+  }
+
+  async function loadDeploymentStatus() {
+    try {
+      const response = await fetch('/api/v1/deployment/status')
+      if (!response.ok) throw new Error(`Deployment status returned HTTP ${response.status}`)
+      setDeployment(await response.json())
+    } catch {
+      setDeployment((current) => current ? ({ ...current, acceptingExperiments: false,
+        dependencies: current.dependencies.map((dependency) => ({ ...dependency, status: 'DOWN' })) }) : ({
+        environment: 'unavailable', version: 'unknown', mode: 'READ_ONLY', acceptingExperiments: false, dependencies: [],
+      }))
     }
   }
 
@@ -291,6 +328,7 @@ export function App() {
         : completed
   ) && (activePlan.paymentResultDeliveries === 1 || duplicateCount === 1)
   const comparedRuns = comparison.map((workflowId) => recentRuns.find((item) => item.workflowId === workflowId))
+  const acceptingExperiments = deployment?.acceptingExperiments ?? true
 
   return (
     <main>
@@ -307,6 +345,13 @@ export function App() {
         <div className="signal" aria-hidden="true"><span /><span /><span /><span /><span /><span /></div>
       </header>
 
+      <section className={`control-center ${deployment?.mode.toLowerCase() ?? 'checking'}`} aria-labelledby="control-center-title">
+        <div><p className="eyebrow">Live Lab Control Center</p><h2 id="control-center-title">{deployment ? deployment.mode.replace('_', ' ') : 'Checking deployment'}</h2><p>{deployment?.mode === 'READ_ONLY' ? 'New experiments are paused before scheduled teardown. Existing evidence remains available.' : deployment?.mode === 'EXPIRED' ? 'This environment has reached its scheduled expiry.' : 'The lab is accepting new experiments.'}</p></div>
+        <dl><dt>Environment</dt><dd>{deployment?.environment ?? 'detecting'}</dd><dt>Build</dt><dd><code>{deployment?.version === 'development' ? 'development' : deployment?.version.slice(0, 12) ?? 'detecting'}</code></dd><dt>Lifetime</dt><dd>{formatRemaining(deployment?.expiresAt, clockTick)}</dd></dl>
+        <div className="dependency-health" aria-label="Service health">{deployment?.dependencies.map((dependency) => <span key={dependency.name} className={dependency.status.toLowerCase()}><i />{dependency.name} {dependency.status}</span>) ?? <span>Loading health…</span>}</div>
+        {deployment?.environment !== 'local' && <div className="owner-controls"><strong>Owner operations</strong><span>GitHub permissions restrict deployment changes to repository collaborators.</span><a href="https://github.com/wiznick79/EventLab/actions/workflows/azure-deploy.yml" target="_blank" rel="noreferrer">Extend / redeploy ↗</a><a href="https://github.com/wiznick79/EventLab/actions/workflows/azure-destroy.yml" target="_blank" rel="noreferrer">Destroy environment ↗</a></div>}
+      </section>
+
       <section className="workspace" aria-labelledby="scenario-title">
         <div className="section-heading">
           <div><p className="eyebrow">Scenario library</p><h2 id="scenario-title">Run the system, then break it</h2></div>
@@ -317,7 +362,7 @@ export function App() {
             <span className="scenario-number">01</span><span className="scenario-tag">Baseline</span>
             <h3>Successful payment workflow</h3>
             <p>Start a workflow, authorize payment over Azure Service Bus, and watch the projected event timeline update live.</p>
-            <button className="run-button" type="button" onClick={() => startScenario('happy-path')} disabled={starting}>
+            <button className="run-button" type="button" onClick={() => startScenario('happy-path')} disabled={starting || !acceptingExperiments}>
               {starting && activeScenario === 'happy-path' ? 'Starting…' : 'Run experiment'} <span>→</span>
             </button>
           </article>
@@ -325,7 +370,7 @@ export function App() {
             <span className="scenario-number">05</span><span className="scenario-tag">Versioning</span>
             <h3>Out-of-order update</h3>
             <p>Complete fulfilment at version 2, then deliver a delayed version-1 rejection without regressing state.</p>
-            <button className="run-button" type="button" onClick={() => startScenario('out-of-order-event')} disabled={starting}>
+            <button className="run-button" type="button" onClick={() => startScenario('out-of-order-event')} disabled={starting || !acceptingExperiments}>
               {starting && activeScenario === 'out-of-order-event' ? 'Starting…' : 'Run experiment'} <span>→</span>
             </button>
           </article>
@@ -333,7 +378,7 @@ export function App() {
             <span className="scenario-number">02</span><span className="scenario-tag">Idempotency</span>
             <h3>Duplicate payment result</h3>
             <p>Deliver one logical payment result twice while the Workflow inbox permits exactly one state transition.</p>
-            <button className="run-button" type="button" onClick={() => startScenario('duplicate-payment-result')} disabled={starting}>
+            <button className="run-button" type="button" onClick={() => startScenario('duplicate-payment-result')} disabled={starting || !acceptingExperiments}>
               {starting && activeScenario === 'duplicate-payment-result' ? 'Starting…' : 'Run experiment'} <span>→</span>
             </button>
           </article>
@@ -341,7 +386,7 @@ export function App() {
             <span className="scenario-number">03</span><span className="scenario-tag">Retry + DLQ</span>
             <h3>Fulfilment unavailable</h3>
             <p>Exhaust four delivery attempts, restore the dependency, and replay the quarantined command safely.</p>
-            <button className="run-button" type="button" onClick={() => startScenario('fulfilment-unavailable')} disabled={starting}>
+            <button className="run-button" type="button" onClick={() => startScenario('fulfilment-unavailable')} disabled={starting || !acceptingExperiments}>
               {starting && activeScenario === 'fulfilment-unavailable' ? 'Starting…' : 'Run experiment'} <span>→</span>
             </button>
           </article>
@@ -349,7 +394,7 @@ export function App() {
             <span className="scenario-number">04</span><span className="scenario-tag">Compensation</span>
             <h3>Fulfilment rejected</h3>
             <p>Authorize payment, reject fulfilment, and watch the persisted saga void the payment.</p>
-            <button className="run-button" type="button" onClick={() => startScenario('fulfilment-rejected')} disabled={starting}>
+            <button className="run-button" type="button" onClick={() => startScenario('fulfilment-rejected')} disabled={starting || !acceptingExperiments}>
               {starting && activeScenario === 'fulfilment-rejected' ? 'Starting…' : 'Run experiment'} <span>→</span>
             </button>
           </article>
@@ -366,7 +411,7 @@ export function App() {
             </>}
           </div>
           <div className="builder-invariant"><span>Expected invariant</span><strong>{expectedInvariant(builderPlan)}</strong></div>
-          <button className="builder-run" type="button" onClick={() => startScenario('custom-plan', builderPlan)} disabled={starting}>{starting && activeScenario === 'custom-plan' ? 'Starting…' : 'Run custom experiment →'}</button>
+          <button className="builder-run" type="button" onClick={() => startScenario('custom-plan', builderPlan)} disabled={starting || !acceptingExperiments}>{starting && activeScenario === 'custom-plan' ? 'Starting…' : acceptingExperiments ? 'Run custom experiment →' : 'New experiments paused'}</button>
         </section>
 
         <section className="run-history" aria-labelledby="history-title">

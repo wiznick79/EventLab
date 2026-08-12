@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { App, expectedInvariant, grafanaDashboardUrl, grafanaTraceUrl, presetPlan, traceEvidence, traceUrl } from './App'
+import { App, expectedInvariant, formatRemaining, grafanaDashboardUrl, grafanaTraceUrl, presetPlan, traceEvidence, traceUrl } from './App'
 import { isLiveLabOnline, offlineLiveLabMessage, PortfolioTour } from './PortfolioTour'
 
 describe('EventLab experiment console', () => {
@@ -25,6 +25,13 @@ describe('EventLab experiment console', () => {
     expect(expectedInvariant({ paymentResultDeliveries: 2, fulfilmentBehavior: 'BUSINESS_REJECTION', fulfilmentMaxAttempts: 4, recoveryMode: 'MANUAL' })).toBe(
       'Two payment-result deliveries produce one payment state change; the payment is compensated and the workflow ends COMPENSATED.',
     )
+  })
+
+  it('formats the live environment countdown', () => {
+    expect(formatRemaining('2026-08-12T12:01:01Z', Date.parse('2026-08-12T11:00:00Z'))).toBe(
+      '1h 1m 1s remaining',
+    )
+    expect(formatRemaining('2026-08-12T10:00:00Z', Date.parse('2026-08-12T11:00:00Z'))).toBe('Expired')
   })
 
   it('maps curated scenarios to the same plans used by the builder', () => {
@@ -54,12 +61,20 @@ describe('EventLab experiment console', () => {
     const scrollIntoView = vi.fn()
     const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
     HTMLElement.prototype.scrollIntoView = scrollIntoView
-    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise(() => {}))
+    vi.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => {
+      if (init?.method === 'POST') return new Promise(() => {})
+      const responseBody = Object.assign([], {
+        environment: 'local', version: 'development', mode: 'ONLINE', acceptingExperiments: true, dependencies: [],
+      })
+      return Promise.resolve({ ok: true, status: 200, json: async () => responseBody } as Response)
+    })
 
-    render(<App />)
-    fireEvent.click(screen.getAllByRole('button', { name: /run experiment/i })[0])
+    const view = render(<App />)
+    const page = within(view.container)
+    await waitFor(() => expect(page.getAllByRole('button', { name: /run experiment/i })[0]).toBeEnabled())
+    fireEvent.click(page.getAllByRole('button', { name: /run experiment/i })[0])
 
-    expect(screen.getByRole('heading', { name: 'Workflow in progress' })).toBeInTheDocument()
+    expect(page.getByRole('heading', { name: 'Workflow in progress' })).toBeInTheDocument()
     await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' }))
 
     vi.restoreAllMocks()

@@ -36,6 +36,8 @@ The bootstrap resource group may retain an older metadata location after an allo
 3. Run **Deploy Azure environment** with a 2-hour lifetime for the first test.
 4. The deployment applies the saved plan and runs the happy-path scenario through the public frontend URL. It then runs the duplicate-delivery scenario and requires the ignored duplicate's exact trace ID to be retrievable anonymously through the deployed Grafana/Tempo datasource.
 
+The final smoke test also requires the Control Center to report `ONLINE`, the scheduled expiry, and all three participant services as `UP`. It submits a custom Scenario Builder plan, loads its direct Run Inspector route, and waits for the backend evidence report to prove the expected invariants.
+
 The workflow summary publishes separate EventLab and Grafana URLs. Both are public for the lifetime of the disposable environment; visitors do not need an Azure or Grafana account.
 
 After both smoke tests pass, the deployment workflow publishes the EventLab URL and expiry to `frontend/public/live-lab.json` and rebuilds the permanent portfolio. The tour then links visitors directly to the running lab. When no valid environment is advertised, it links to these launch instructions instead; the Actions workflow remains available as secondary implementation evidence.
@@ -49,6 +51,8 @@ Run **Destroy Azure environment** as soon as the demonstration ends. It destroys
 After deletion is verified, manual destroy and scheduled expiry cleanup mark the permanent tour's live-lab status offline and republish it. The frontend also treats an expired timestamp as offline, so a delayed status update cannot send visitors to an environment whose lifetime has elapsed.
 
 The scheduled cleanup checks `destroy_after` twice per hour. Missing expiry tags fail loudly; expired environments are destroyed through the same Terraform state rather than by deleting resource groups out of band.
+
+Ten minutes before `destroy_after`, the Lab Console changes to `READ_ONLY`. New experiment requests return HTTP 503, including requests made outside the frontend; existing run timelines, comparisons, trace links, and evidence downloads remain readable. To extend the demonstration, an authorized collaborator reruns **Deploy Azure environment** with the same environment name and a new supported lifetime. To end it early, run **Destroy Azure environment**. Visitors can see these handoff links, but only collaborators with repository workflow permission can execute them.
 
 The application provider permits deletion of the disposable resource group when Azure has added platform-managed children that are not in Terraform state, such as the Application Insights Smart Detection action group. This exception is scoped to the disposable application root; cleanup still fails unless the subsequent Azure CLI check confirms that the complete resource group is gone.
 

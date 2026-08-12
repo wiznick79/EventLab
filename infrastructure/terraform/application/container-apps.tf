@@ -226,6 +226,22 @@ resource "azurerm_container_app" "console" {
         name  = "FULFILMENT_SERVICE_BASE_URL"
         value = "https://${azurerm_container_app.fulfilment.ingress[0].fqdn}"
       }
+      env {
+        name  = "PAYMENT_SERVICE_BASE_URL"
+        value = "https://${azurerm_container_app.payment.ingress[0].fqdn}"
+      }
+      env {
+        name  = "DEPLOYMENT_ENVIRONMENT"
+        value = var.environment_name
+      }
+      env {
+        name  = "DEPLOYMENT_VERSION"
+        value = var.image_tag
+      }
+      env {
+        name  = "DEPLOYMENT_EXPIRES_AT"
+        value = var.destroy_after
+      }
       dynamic "env" {
         for_each = local.common_environment
         content {

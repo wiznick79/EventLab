@@ -370,6 +370,14 @@ Resources receive ownership, environment, commit, creation, and `destroy_after` 
 
 A scheduled cleanup workflow finds expired EventLab environments and invokes the same destroy path. It reports failures and separately detects project resources missing expiry metadata. The supported initial lifetimes are 2, 8, and 24 hours.
 
+### 12.4 Live Lab lifecycle contract
+
+The Lab Console exposes deployment identity, immutable image tag, expiry, current lifecycle mode, and bounded health probes for Workflow, Payment, and Fulfilment. The public frontend renders this as the Live Lab Control Center; receiving the status response also proves the Console and its ingress are reachable.
+
+Disposable environments are `ONLINE` until ten minutes before `destroy_after`, `READ_ONLY` during that safety window, and `EXPIRED` after the deadline. `POST /api/v1/runs` enforces the mode on the server, so bypassing a disabled browser button cannot create work that teardown may interrupt. Read-only run, timeline, trace, comparison, and evidence endpoints remain available for explanation and export until infrastructure destruction.
+
+Extension and early destruction are control-plane actions, not anonymous application features. The Control Center links to the repository workflows, where GitHub authentication and repository permissions restrict execution to authorized collaborators.
+
 GitHub Actions authenticates to Azure using OIDC federation with Entra ID; long-lived Azure client secrets are prohibited.
 
 ## 13. Cost posture

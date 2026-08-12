@@ -23,20 +23,24 @@ class RunController {
     private final DeadLetterRecoveryService recovery;
     private final ExperimentRunRegistry runs;
     private final EvidenceReportService evidence;
+    private final DeploymentControlService deployment;
 
     RunController(TimelineProjectionService timeline, TimelineStream stream,
             WorkflowClient workflowClient, DeadLetterRecoveryService recovery,
-            ExperimentRunRegistry runs, EvidenceReportService evidence) {
+            ExperimentRunRegistry runs, EvidenceReportService evidence,
+            DeploymentControlService deployment) {
         this.timeline = timeline;
         this.stream = stream;
         this.workflowClient = workflowClient;
         this.recovery = recovery;
         this.runs = runs;
         this.evidence = evidence;
+        this.deployment = deployment;
     }
 
     @PostMapping
     RunResponse start(@RequestBody StartRunRequest request) {
+        deployment.requireAcceptingExperiments();
         RunResponse response = workflowClient.start(request);
         runs.register(request, response);
         return response;

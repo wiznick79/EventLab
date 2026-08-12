@@ -156,3 +156,15 @@ Implemented with version-tolerant shared contracts, per-run exhaustion in Fulfil
 **Demonstration:** run an automatic-recovery experiment and download a report proving the selected delivery count, retry budget, single DLQ transition, single audited recovery, and expected terminal outcome.
 
 Implemented with a plan-aware evidence evaluator, a stable `/api/v1/runs/{workflowId}/evidence` endpoint, race-safe live refreshes, a responsive evidence checklist, and downloadable JSON bundles.
+
+## Milestone 13: Live Lab Control Center — completed 2026-08-12
+
+- Identify the deployed environment and immutable application version.
+- Show the scheduled expiry as a live countdown and expose Workflow, Payment, and Fulfilment health.
+- Stop accepting new experiments during the ten-minute teardown safety window while preserving existing Run Inspector evidence.
+- Keep extension and destruction explicitly owner-operated through permission-protected GitHub workflows.
+- Smoke-test the public Scenario Builder, direct run routes, backend evidence, dependency health, and anonymous Grafana access after every Azure deployment.
+
+**Demonstration:** watch the Control Center identify the deployed commit, verify all three participants, and count down the environment lifetime; shortly before teardown, observe that new runs are rejected by both the interface and backend while existing evidence remains readable.
+
+Implemented with a deployment-status API, server-enforced lifecycle modes, health probes with bounded timeouts, a responsive Control Center, owner handoff links, Terraform-injected deployment metadata, and expanded post-deployment smoke tests.
