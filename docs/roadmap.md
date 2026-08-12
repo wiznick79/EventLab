@@ -89,7 +89,7 @@ Implemented with separate persistent-bootstrap and disposable-application Terraf
 
 **Demonstration:** self-contained public project tour and recorded failure/recovery session.
 
-In progress: timeline invariant claims now identify the exact business-decision span and outcome to inspect. Shared tracing records duplicate rejection, aggregate-version rejection, retry scheduling, dead-letter exhaustion, recovery/replay identity, and payment compensation with consistent workflow, message, decision, and state-change attributes. A backend-independent project tour now explains the service topology, reliability mechanisms, scenario outcomes, and three-layer proof model, with a GitHub Pages publication workflow. The remaining work is operational dashboards and recorded scenarios.
+In progress: timeline invariant claims now identify the exact business-decision span and outcome to inspect. Shared tracing records duplicate rejection, aggregate-version rejection, retry scheduling, dead-letter exhaustion, recovery/replay identity, and payment compensation with consistent workflow, message, decision, and state-change attributes. The [permanent backend-independent project tour](https://wiznick79.github.io/EventLab/) explains the service topology, reliability mechanisms, scenario outcomes, and three-layer proof model. The remaining work is operational dashboards and recorded scenarios.
 
 ## Optional later experiments
 

@@ -2,6 +2,8 @@
 
 EventLab is an interactive distributed-systems failure laboratory. It makes message delivery, retries, dead letters, ordering, saga compensation, replay, and recovery visible through a public web interface and distributed traces.
 
+**[Open the permanent EventLab project tour](https://wiznick79.github.io/EventLab/)**
+
 The project is a portfolio and learning system, not a parcel-management product. Its deliberately small order-fulfilment workflow exists only to provide realistic distributed-system experiments.
 
 ## Status

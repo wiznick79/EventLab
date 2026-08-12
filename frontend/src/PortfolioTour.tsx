@@ -37,11 +37,15 @@ const guarantees = [
 ]
 
 export function PortfolioTour() {
+  const liveLabUrl = import.meta.env.VITE_STATIC_TOUR === 'true'
+    ? 'https://github.com/wiznick79/EventLab/actions/workflows/azure-deploy.yml'
+    : './'
+
   return <main className="tour-page">
     <header className="tour-hero" id="top">
       <nav aria-label="Portfolio navigation">
         <a className="wordmark" href="#top"><span className="mark">EL</span>EventLab</a>
-        <div className="nav-links"><a href="#architecture">Architecture</a><a href="#scenarios">Scenarios</a><a href="./">Live lab</a></div>
+        <div className="nav-links"><a href="#architecture">Architecture</a><a href="#scenarios">Scenarios</a><a href={liveLabUrl}>Live lab</a></div>
       </nav>
       <div className="tour-hero-grid">
         <div>
@@ -86,7 +90,7 @@ export function PortfolioTour() {
 
     <section className="tour-section guarantees" aria-labelledby="guarantees-title"><p className="eyebrow">Engineering choices</p><h2 id="guarantees-title">Reliability mechanisms</h2><div>{guarantees.map(([title, copy]) => <article key={title}><strong>{title}</strong><p>{copy}</p></article>)}</div></section>
 
-    <section className="tour-cta"><p className="eyebrow">Two ways to explore</p><h2>The tour explains the design.<br />The live lab lets you break it.</h2><p>The interactive environment is deliberately temporary to control Azure cost. This page contains no backend dependency and remains available between demos.</p><div className="tour-actions"><a className="primary-link" href="./">Check live lab availability →</a><a href="https://github.com/wiznick79/EventLab/blob/main/docs/runbooks/reading-traces.md">Read the trace guide ↗</a></div></section>
+    <section className="tour-cta"><p className="eyebrow">Two ways to explore</p><h2>The tour explains the design.<br />The live lab lets you break it.</h2><p>The interactive environment is deliberately temporary to control Azure cost. This page contains no backend dependency and remains available between demos.</p><div className="tour-actions"><a className="primary-link" href={liveLabUrl}>Open live-lab deployment →</a><a href="https://github.com/wiznick79/EventLab/blob/main/docs/runbooks/reading-traces.md">Read the trace guide ↗</a></div></section>
     <footer><p>EventLab · distributed systems under pressure</p><p>Java · Spring Boot · Azure Service Bus · OpenTelemetry</p></footer>
   </main>
 }
