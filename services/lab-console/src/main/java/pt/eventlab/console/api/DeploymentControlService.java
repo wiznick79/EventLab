@@ -9,19 +9,23 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
+import pt.eventlab.console.messaging.EvidencePipelineStatus;
 
 @Service
 class DeploymentControlService {
 
     private final Clock clock = Clock.systemUTC();
     private final DeploymentProperties properties;
+    private final EvidencePipelineStatus pipelineStatus;
     private final List<DependencyProbe> probes;
 
     DeploymentControlService(RestClient.Builder builder, DeploymentProperties properties,
+            EvidencePipelineStatus pipelineStatus,
             @Value("${eventlab.workflow-base-url}") String workflowUrl,
             @Value("${eventlab.payment-base-url}") String paymentUrl,
             @Value("${eventlab.fulfilment-base-url}") String fulfilmentUrl) {
         this.properties = properties;
+        this.pipelineStatus = pipelineStatus;
         this.probes = List.of(
                 new DependencyProbe("Workflow", client(builder, workflowUrl)),
                 new DependencyProbe("Payment", client(builder, paymentUrl)),
@@ -31,9 +35,13 @@ class DeploymentControlService {
     DeploymentStatusResponse status() {
         Instant now = clock.instant();
         String mode = mode(now);
+        EvidencePipelineStatus.Snapshot pipeline = pipelineStatus.snapshot();
         List<DependencyStatusResponse> dependencies = probes.stream().map(this::probe).toList();
         return new DeploymentStatusResponse(properties.environment(), properties.version(),
-                properties.expiresAt(), mode, "ONLINE".equals(mode), now, dependencies);
+                properties.expiresAt(), mode,
+                "ONLINE".equals(mode) && pipelineStatus.acceptingExperiments(), now,
+                new EvidencePipelineResponse(pipeline.enabled(), pipeline.state(),
+                        pipeline.lastEventAt(), pipeline.lastError()), dependencies);
     }
 
     void requireAcceptingExperiments() {
@@ -42,6 +50,10 @@ class DeploymentControlService {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                     "The live lab is " + mode.toLowerCase().replace('_', ' ')
                             + " and is not accepting new experiments");
+        }
+        if (!pipelineStatus.acceptingExperiments()) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "The evidence pipeline is not running; new experiments are paused");
         }
     }
 

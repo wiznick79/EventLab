@@ -378,6 +378,8 @@ Disposable environments are `ONLINE` until ten minutes before `destroy_after`, `
 
 Extension and early destruction are control-plane actions, not anonymous application features. The Control Center links to the repository workflows, where GitHub authentication and repository permissions restrict execution to authorized collaborators.
 
+HTTP health and evidence readiness are deliberately separate. The Lab Console may serve previously persisted evidence while its Service Bus projection subscriber is disabled or recovering. Its evidence-pipeline state records configuration, processor lifecycle, the last successfully projected event, and the latest processor error. New runs are admitted only when both the deployment lifecycle is `ONLINE` and the evidence pipeline is `RUNNING`; existing read endpoints remain available. An offline subscriber does not dead-letter unattempted messages—Service Bus retains them for catch-up after recovery.
+
 GitHub Actions authenticates to Azure using OIDC federation with Entra ID; long-lived Azure client secrets are prohibited.
 
 ## 13. Cost posture

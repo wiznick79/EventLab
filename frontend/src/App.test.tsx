@@ -64,7 +64,8 @@ describe('EventLab experiment console', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => {
       if (init?.method === 'POST') return new Promise(() => {})
       const responseBody = Object.assign([], {
-        environment: 'local', version: 'development', mode: 'ONLINE', acceptingExperiments: true, dependencies: [],
+        environment: 'local', version: 'development', mode: 'ONLINE', acceptingExperiments: true,
+        evidencePipeline: { enabled: true, status: 'RUNNING' }, dependencies: [],
       })
       return Promise.resolve({ ok: true, status: 200, json: async () => responseBody } as Response)
     })

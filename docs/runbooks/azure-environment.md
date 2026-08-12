@@ -38,6 +38,8 @@ The bootstrap resource group may retain an older metadata location after an allo
 
 The final smoke test also requires the Control Center to report `ONLINE`, the scheduled expiry, and all three participant services as `UP`. It submits a custom Scenario Builder plan, loads its direct Run Inspector route, and waits for the backend evidence report to prove the expected invariants.
 
+The same status response must report the evidence pipeline as enabled and `RUNNING`. HTTP `UP` alone is insufficient: if the Lab Console subscriber is disabled or reports a processor error, new runs are rejected with HTTP 503 while already-persisted evidence remains readable. Messages that received no processing attempt remain on the Service Bus subscription and are projected after the subscriber recovers; they belong in the DLQ only after repeated processing failure.
+
 The workflow summary publishes separate EventLab and Grafana URLs. Both are public for the lifetime of the disposable environment; visitors do not need an Azure or Grafana account.
 
 After both smoke tests pass, the deployment workflow publishes the EventLab URL and expiry to `frontend/public/live-lab.json` and rebuilds the permanent portfolio. The tour then links visitors directly to the running lab. When no valid environment is advertised, it links to these launch instructions instead; the Actions workflow remains available as secondary implementation evidence.

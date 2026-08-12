@@ -140,6 +140,8 @@ jobs:
           jq -e '
             .mode == "ONLINE"
             and .acceptingExperiments == true
+            and .evidencePipeline.enabled == true
+            and .evidencePipeline.status == "RUNNING"
             and (.expiresAt | type == "string")
             and ([.dependencies[] | select(.status == "UP")] | length == 3)
           ' <<< "$STATUS" >/dev/null

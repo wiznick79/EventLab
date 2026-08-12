@@ -28,17 +28,20 @@ class BusinessEventProjectionProcessor {
     private final ServiceBusProcessorClient processor;
     private final BusinessEventProjectionHandler handler;
     private final ServiceBusTraceContext traceContext;
+    private final EvidencePipelineStatus pipelineStatus;
 
     BusinessEventProjectionProcessor(
             LabConsoleMessagingProperties properties,
             ServiceBusEnvelopeCodec codec,
             ServiceBusTraceContext traceContext,
             ObservationRegistry observations,
-            BusinessEventProjectionHandler handler) {
+            BusinessEventProjectionHandler handler,
+            EvidencePipelineStatus pipelineStatus) {
         this.codec = codec;
         this.traceContext = traceContext;
         this.observations = observations;
         this.handler = handler;
+        this.pipelineStatus = pipelineStatus;
         this.processor = ServiceBusClients
                 .create(properties.connectionString(), properties.fullyQualifiedNamespace())
                 .processor()
@@ -47,14 +50,18 @@ class BusinessEventProjectionProcessor {
                 .disableAutoComplete()
                 .maxConcurrentCalls(1)
                 .processMessage(this::process)
-                .processError(context -> LOGGER.error(
-                        "Service Bus projection error in {}", context.getEntityPath(), context.getException()))
+                .processError(context -> {
+                    pipelineStatus.failed(context.getException());
+                    LOGGER.error("Service Bus projection error in {}",
+                            context.getEntityPath(), context.getException());
+                })
                 .buildProcessorClient();
     }
 
     @PostConstruct
     void start() {
         processor.start();
+        pipelineStatus.running();
     }
 
     private void process(ServiceBusReceivedMessageContext context) {
@@ -69,6 +76,7 @@ class BusinessEventProjectionProcessor {
         EventEnvelope<JsonNode> event = codec.decode(context.getMessage().getBody(), JsonNode.class);
         handler.handle(event, traceContext.traceId(context.getMessage()));
         context.complete();
+        pipelineStatus.received();
     }
 
     @PreDestroy

@@ -10,5 +10,6 @@ public record DeploymentStatusResponse(
         String mode,
         boolean acceptingExperiments,
         Instant checkedAt,
+        EvidencePipelineResponse evidencePipeline,
         List<DependencyStatusResponse> dependencies) {
 }

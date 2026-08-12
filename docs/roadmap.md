@@ -168,3 +168,15 @@ Implemented with a plan-aware evidence evaluator, a stable `/api/v1/runs/{workfl
 **Demonstration:** watch the Control Center identify the deployed commit, verify all three participants, and count down the environment lifetime; shortly before teardown, observe that new runs are rejected by both the interface and backend while existing evidence remains readable.
 
 Implemented with a deployment-status API, server-enforced lifecycle modes, health probes with bounded timeouts, a responsive Control Center, owner handoff links, Terraform-injected deployment metadata, and expanded post-deployment smoke tests.
+
+## Milestone 14: evidence-pipeline readiness — completed 2026-08-12
+
+- Distinguish HTTP availability from the ability to consume and project business events.
+- Expose whether the Lab Console subscriber is starting, running, disabled, or in error.
+- Record the last successfully projected event time and surface it in the Control Center.
+- Reject new experiments when their live evidence cannot be collected while preserving existing evidence.
+- Require a running evidence pipeline in the Azure post-deployment smoke test.
+
+**Demonstration:** start the Lab Console without messaging and observe that HTTP remains reachable but the Control Center identifies the disabled evidence pipeline and the backend rejects a new experiment with HTTP 503; restart with messaging enabled and observe retained events catch up before new runs are accepted.
+
+Implemented with an always-present pipeline status component, processor lifecycle/error callbacks, a fail-closed run-admission gate, a Control Center indicator, and regression coverage for the disabled-subscriber condition.

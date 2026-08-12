@@ -36,6 +36,7 @@ type DeploymentStatus = {
   expiresAt?: string
   mode: 'ONLINE' | 'READ_ONLY' | 'EXPIRED'
   acceptingExperiments: boolean
+  evidencePipeline?: { enabled: boolean; status: 'STARTING' | 'RUNNING' | 'DISABLED' | 'ERROR'; lastEventAt?: string; lastError?: string }
   dependencies: { name: string; status: 'UP' | 'DOWN' }[]
 }
 
@@ -252,7 +253,8 @@ export function App() {
     } catch {
       setDeployment((current) => current ? ({ ...current, acceptingExperiments: false,
         dependencies: current.dependencies.map((dependency) => ({ ...dependency, status: 'DOWN' })) }) : ({
-        environment: 'unavailable', version: 'unknown', mode: 'READ_ONLY', acceptingExperiments: false, dependencies: [],
+        environment: 'unavailable', version: 'unknown', mode: 'READ_ONLY', acceptingExperiments: false,
+        evidencePipeline: { enabled: false, status: 'ERROR' }, dependencies: [],
       }))
     }
   }
@@ -346,10 +348,11 @@ export function App() {
       </header>
 
       <section className={`control-center ${deployment?.mode.toLowerCase() ?? 'checking'}`} aria-labelledby="control-center-title">
-        <div><p className="eyebrow">Live Lab Control Center</p><h2 id="control-center-title">{deployment ? deployment.mode.replace('_', ' ') : 'Checking deployment'}</h2><p>{deployment?.mode === 'READ_ONLY' ? 'New experiments are paused before scheduled teardown. Existing evidence remains available.' : deployment?.mode === 'EXPIRED' ? 'This environment has reached its scheduled expiry.' : 'The lab is accepting new experiments.'}</p></div>
+        <div><p className="eyebrow">Live Lab Control Center</p><h2 id="control-center-title">{deployment ? deployment.mode.replace('_', ' ') : 'Checking deployment'}</h2><p>{deployment?.mode === 'READ_ONLY' ? 'New experiments are paused before scheduled teardown. Existing evidence remains available.' : deployment?.mode === 'EXPIRED' ? 'This environment has reached its scheduled expiry.' : deployment && !deployment.acceptingExperiments ? 'New experiments are paused because the evidence pipeline is unavailable.' : 'The lab is accepting new experiments.'}</p></div>
         <dl><dt>Environment</dt><dd>{deployment?.environment ?? 'detecting'}</dd><dt>Build</dt><dd><code>{deployment?.version === 'development' ? 'development' : deployment?.version.slice(0, 12) ?? 'detecting'}</code></dd><dt>Lifetime</dt><dd>{formatRemaining(deployment?.expiresAt, clockTick)}</dd></dl>
         <div className="dependency-health" aria-label="Service health">{deployment?.dependencies.map((dependency) => <span key={dependency.name} className={dependency.status.toLowerCase()}><i />{dependency.name} {dependency.status}</span>) ?? <span>Loading health…</span>}</div>
-        {deployment?.environment !== 'local' && <div className="owner-controls"><strong>Owner operations</strong><span>GitHub permissions restrict deployment changes to repository collaborators.</span><a href="https://github.com/wiznick79/EventLab/actions/workflows/azure-deploy.yml" target="_blank" rel="noreferrer">Extend / redeploy ↗</a><a href="https://github.com/wiznick79/EventLab/actions/workflows/azure-destroy.yml" target="_blank" rel="noreferrer">Destroy environment ↗</a></div>}
+        <div className={`evidence-pipeline ${deployment?.evidencePipeline?.status.toLowerCase() ?? 'starting'}`}><strong>Evidence pipeline</strong><span><i />{deployment?.evidencePipeline?.status ?? 'STARTING'}</span><small>{deployment?.evidencePipeline?.lastEventAt ? `Last event ${new Date(deployment.evidencePipeline.lastEventAt).toLocaleTimeString()}` : 'Waiting for an observed event'}</small></div>
+        {deployment && deployment.environment !== 'local' && <div className="owner-controls"><strong>Owner operations</strong><span>GitHub permissions restrict deployment changes to repository collaborators.</span><a href="https://github.com/wiznick79/EventLab/actions/workflows/azure-deploy.yml" target="_blank" rel="noreferrer">Extend / redeploy ↗</a><a href="https://github.com/wiznick79/EventLab/actions/workflows/azure-destroy.yml" target="_blank" rel="noreferrer">Destroy environment ↗</a></div>}
       </section>
 
       <section className="workspace" aria-labelledby="scenario-title">
