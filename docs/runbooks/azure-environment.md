@@ -50,6 +50,8 @@ After deletion is verified, manual destroy and scheduled expiry cleanup mark the
 
 The scheduled cleanup checks `destroy_after` twice per hour. Missing expiry tags fail loudly; expired environments are destroyed through the same Terraform state rather than by deleting resource groups out of band.
 
+The application provider permits deletion of the disposable resource group when Azure has added platform-managed children that are not in Terraform state, such as the Application Insights Smart Detection action group. This exception is scoped to the disposable application root; cleanup still fails unless the subsequent Azure CLI check confirms that the complete resource group is gone.
+
 ## Failure response
 
 - If deploy fails after resources were created, run the destroy workflow immediately.

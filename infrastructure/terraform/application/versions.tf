@@ -17,5 +17,12 @@ terraform {
 
 provider "azurerm" {
   subscription_id = var.subscription_id
-  features {}
+  features {
+    resource_group {
+      # This root owns an explicitly disposable resource group. Azure may add
+      # platform-managed children such as the Application Insights Smart
+      # Detection action group, which must not prevent expiry cleanup.
+      prevent_deletion_if_contains_resources = false
+    }
+  }
 }

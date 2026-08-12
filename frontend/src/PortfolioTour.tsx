@@ -8,6 +8,7 @@ type LiveLabStatus = {
 }
 
 const deploymentGuideUrl = 'https://github.com/wiznick79/EventLab/blob/main/docs/runbooks/azure-environment.md#plan-and-deploy'
+export const offlineLiveLabMessage = 'Live lab offline · deployments are owner-operated'
 
 export function isLiveLabOnline(status: LiveLabStatus | null, now = Date.now()) {
   if (status?.state !== 'online' || !status.url || !status.expiresAt) return false
@@ -142,7 +143,7 @@ export function PortfolioTour() {
 
     <section className="tour-section guarantees" aria-labelledby="guarantees-title"><p className="eyebrow">Engineering choices</p><h2 id="guarantees-title">Reliability mechanisms</h2><div>{guarantees.map(([title, copy]) => <article key={title}><strong>{title}</strong><p>{copy}</p></article>)}</div></section>
 
-    <section className="tour-cta" id="live-lab"><p className="eyebrow">Two ways to explore</p><h2>The tour explains the design.<br />The live lab lets you break it.</h2><p>The interactive environment is deliberately temporary to control Azure cost. This page contains no backend dependency and remains available between demos.</p><div className={`lab-status ${liveLabOnline ? 'online' : 'offline'}`} role="status"><i />{liveLabStatus === null ? 'Checking live-lab availability…' : liveLabOnline ? <>Live lab online · expires {new Date(liveLabStatus.expiresAt ?? '').toLocaleString()}</> : 'Live lab currently offline'}</div><div className="tour-actions"><a className="primary-link" href={liveLabUrl}>{liveLabOnline ? 'Open live lab →' : 'How to launch the live lab →'}</a><a href="https://github.com/wiznick79/EventLab/actions/workflows/azure-deploy.yml">View deployment workflow ↗</a><a href="https://github.com/wiznick79/EventLab/blob/main/docs/runbooks/reading-traces.md">Read the trace guide ↗</a></div></section>
+    <section className="tour-cta" id="live-lab"><p className="eyebrow">Two ways to explore</p><h2>The tour explains the design.<br />The live lab lets you break it.</h2><p>The interactive environment is deliberately temporary to control Azure cost. This page contains no backend dependency and remains available between demos.</p><div className={`lab-status ${liveLabOnline ? 'online' : 'offline'}`} role="status"><i />{liveLabStatus === null ? 'Checking live-lab availability…' : liveLabOnline ? <>Live lab online · expires {new Date(liveLabStatus.expiresAt ?? '').toLocaleString()}</> : offlineLiveLabMessage}</div><div className="tour-actions"><a className="primary-link" href={liveLabUrl}>{liveLabOnline ? 'Open live lab →' : 'View deployment runbook →'}</a><a href="https://github.com/wiznick79/EventLab/actions/workflows/azure-deploy.yml">View deployment workflow ↗</a><a href="https://github.com/wiznick79/EventLab/blob/main/docs/runbooks/reading-traces.md">Read the trace guide ↗</a></div></section>
     <footer><p>EventLab · distributed systems under pressure</p><p>Java · Spring Boot · Azure Service Bus · OpenTelemetry</p></footer>
   </main>
 }

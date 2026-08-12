@@ -2,7 +2,7 @@ import '@testing-library/jest-dom/vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { App, grafanaDashboardUrl, grafanaTraceUrl, traceEvidence, traceUrl } from './App'
-import { isLiveLabOnline, PortfolioTour } from './PortfolioTour'
+import { isLiveLabOnline, offlineLiveLabMessage, PortfolioTour } from './PortfolioTour'
 
 describe('EventLab experiment console', () => {
   it('presents the executable baseline and the three planned failure scenarios', () => {
@@ -89,5 +89,9 @@ describe('EventLab experiment console', () => {
       expiresAt: '2026-08-12T12:00:00Z',
     }, Date.parse('2026-08-12T13:00:00Z'))).toBe(false)
     expect(isLiveLabOnline({ state: 'offline' })).toBe(false)
+  })
+
+  it('makes clear that offline deployments are owner-operated', () => {
+    expect(offlineLiveLabMessage).toBe('Live lab offline · deployments are owner-operated')
   })
 })
