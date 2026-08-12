@@ -61,6 +61,7 @@ type LoadExperiment = {
   status: 'LAUNCHING' | 'RUNNING' | 'PROVED' | 'FAILED'
   statusReason?: 'LAUNCH_INTERRUPTED' | 'EVIDENCE_FAILED'
   trafficPattern: 'BURST' | 'STEADY'
+  consumerConcurrency: 1 | 4 | 8
   requestedWorkflows: number
   processedLaunches: number
   pendingLaunches: number
@@ -206,8 +207,9 @@ export function App() {
     fulfilmentMaxAttempts: 4,
     recoveryMode: 'MANUAL',
   })
-  const [loadConfig, setLoadConfig] = useState({ workflowCount: 10, trafficPattern: 'BURST', duplicatePercentage: 20, intervalMillis: 200 })
+  const [loadConfig, setLoadConfig] = useState({ workflowCount: 10, trafficPattern: 'BURST', duplicatePercentage: 20, intervalMillis: 200, consumerConcurrency: 1 })
   const [loadExperiment, setLoadExperiment] = useState<LoadExperiment | null>(null)
+  const [recentLoadExperiments, setRecentLoadExperiments] = useState<LoadExperiment[]>([])
   const [loadStarting, setLoadStarting] = useState(false)
   const [loadError, setLoadError] = useState('')
   const streamRef = useRef<EventSource | null>(null)
@@ -218,6 +220,7 @@ export function App() {
 
   useEffect(() => {
     void loadRecentRuns()
+    void loadRecentLoadExperiments()
     void loadDeploymentStatus()
     const statusTimer = window.setInterval(() => void loadDeploymentStatus(), 15_000)
     const clockTimer = window.setInterval(() => setClockTick(Date.now()), 1000)
@@ -267,6 +270,16 @@ export function App() {
     }
   }
 
+  async function loadRecentLoadExperiments() {
+    try {
+      const response = await fetch('/api/v1/load-experiments')
+      if (!response.ok) return
+      setRecentLoadExperiments(await response.json())
+    } catch {
+      // The live experiment remains usable when historical comparison is unavailable.
+    }
+  }
+
   async function pollLoadExperiment(id: string) {
     try {
       const response = await fetch(`/api/v1/load-experiments/${id}`)
@@ -277,6 +290,7 @@ export function App() {
         if (loadTimerRef.current) window.clearInterval(loadTimerRef.current)
         loadTimerRef.current = null
         await loadRecentRuns()
+        await loadRecentLoadExperiments()
       } else {
         loadTimerRef.current = window.setTimeout(() => void pollLoadExperiment(id), 1000)
       }
@@ -554,6 +568,7 @@ export function App() {
             <label>Workflows<select aria-label="Load workflow count" value={loadConfig.workflowCount} onChange={(event) => setLoadConfig((current) => ({ ...current, workflowCount: Number(event.target.value) }))}>{(deployment?.environment === 'local' ? [10, 25, 50, 100] : [10, 25]).map((count) => <option key={count} value={count}>{count} workflows</option>)}</select></label>
             <label>Traffic pattern<select aria-label="Load traffic pattern" value={loadConfig.trafficPattern} onChange={(event) => setLoadConfig((current) => ({ ...current, trafficPattern: event.target.value }))}><option value="BURST">Burst · launch concurrently</option><option value="STEADY">Steady · controlled arrival</option></select></label>
             <label>Duplicate mix<select aria-label="Load duplicate percentage" value={loadConfig.duplicatePercentage} onChange={(event) => setLoadConfig((current) => ({ ...current, duplicatePercentage: Number(event.target.value) }))}><option value="0">0% normal deliveries</option><option value="10">10% duplicate deliveries</option><option value="20">20% duplicate deliveries</option><option value="50">50% duplicate deliveries</option></select></label>
+            <label>Consumer concurrency<select aria-label="Consumer concurrency" value={loadConfig.consumerConcurrency} onChange={(event) => setLoadConfig((current) => ({ ...current, consumerConcurrency: Number(event.target.value) }))}><option value="1">1 · sequential baseline</option><option value="4">4 · moderate parallelism</option><option value="8">8 · high parallelism</option></select></label>
             {loadConfig.trafficPattern === 'STEADY' && <label>Arrival interval<select aria-label="Load arrival interval" value={loadConfig.intervalMillis} onChange={(event) => setLoadConfig((current) => ({ ...current, intervalMillis: Number(event.target.value) }))}><option value="100">100 ms</option><option value="200">200 ms</option><option value="500">500 ms</option><option value="1000">1 second</option></select></label>}
           </div>
           <div className="load-safety"><strong>Bounded by design</strong><span>{deployment?.environment === 'local' ? 'Local ceiling: 100 workflows.' : 'Public demo ceiling: 25 workflows.'} One active load experiment at a time.</span></div>
@@ -576,6 +591,7 @@ export function App() {
           <dl className="load-metrics">
             <div><dt>Pending launches</dt><dd>{loadExperiment.pendingLaunches}</dd></div>
             <div><dt>Accepted</dt><dd>{loadExperiment.acceptedWorkflows} / {loadExperiment.requestedWorkflows}</dd></div>
+            <div><dt>Consumer concurrency</dt><dd>{loadExperiment.consumerConcurrency}</dd></div>
             <div><dt>Evidence proved</dt><dd>{loadExperiment.provedWorkflows}</dd></div>
             <div><dt>Invariant violations</dt><dd>{loadExperiment.invariantViolations}</dd></div>
             <div><dt>Current backlog</dt><dd>{loadExperiment.backlog}</dd></div>
@@ -587,6 +603,16 @@ export function App() {
           </dl>
           <p className="load-verdict">{loadExperiment.status === 'PROVED' ? 'PROVED · every accepted workflow reached a terminal state and its individual evidence report passed.' : loadExperiment.statusReason === 'LAUNCH_INTERRUPTED' ? 'INTERRUPTED · the Lab Console restarted before every requested workflow could be launched. This is an incomplete experiment, not a capacity or invariant result.' : loadExperiment.status === 'FAILED' ? 'FAILED · at least one launch or distributed invariant did not pass.' : loadExperiment.status === 'LAUNCHING' ? 'LAUNCHING · accepted members appear immediately while the remaining requests are still in flight.' : 'IN PROGRESS · launch is complete; the accepted-work backlog and terminal evidence update once per second.'}</p>
           {loadExperiment.workflowIds.length > 0 && <button className="inspect-member" type="button" onClick={() => inspectRun(loadExperiment.workflowIds[0])}>Inspect one member’s timeline and traces →</button>}
+        </section>}
+
+        {recentLoadExperiments.length > 0 && <section className="load-comparison" aria-labelledby="load-comparison-title">
+          <div><p className="eyebrow">Concurrency comparison</p><h2 id="load-comparison-title">Same guarantees, different consumer parallelism</h2><p>Run the same workload with concurrency 1, 4, and 8. Recent completed experiments stay side by side so throughput and latency can be compared without losing the correctness result.</p></div>
+          <div className="load-comparison-table" role="region" aria-label="Recent load experiment comparison" tabIndex={0}>
+            <table><thead><tr><th>Concurrency</th><th>Workload</th><th>Result</th><th>Proved</th><th>Violations</th><th>Throughput</th><th>Median</th><th>p95</th></tr></thead>
+              <tbody>{recentLoadExperiments.slice(0, 5).map((item) => <tr key={item.id}><td><strong>{item.consumerConcurrency}</strong></td><td>{item.requestedWorkflows} · {item.trafficPattern.toLowerCase()} · {item.duplicatePercentage}% dupes</td><td><span className={`comparison-status ${item.status.toLowerCase()}`}>{item.status}</span></td><td>{item.provedWorkflows}/{item.acceptedWorkflows}</td><td>{item.invariantViolations}</td><td>{item.throughputPerSecond.toFixed(2)}/s</td><td>{(item.medianLatencyMillis / 1000).toFixed(2)}s</td><td>{(item.p95LatencyMillis / 1000).toFixed(2)}s</td></tr>)}</tbody>
+            </table>
+          </div>
+          <p className="comparison-note">Concurrency is applied to the real Service Bus processors for the duration of one experiment, then restored to the sequential baseline. Higher is not automatically faster: broker prefetch, local CPU, database contention, and processor restart warm-up all affect the measured result.</p>
         </section>}
 
         <section className="run-history" aria-labelledby="history-title">

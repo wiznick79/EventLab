@@ -10,7 +10,7 @@ class LoadExperimentTest {
 
     @Test
     void recordsAcceptedMembersBeforeLaunchingIsComplete() {
-        LoadExperiment experiment = new LoadExperiment(UUID.randomUUID(), "BURST", 25, 20, 0,
+        LoadExperiment experiment = new LoadExperiment(UUID.randomUUID(), "BURST", 25, 20, 0, 4,
                 Instant.parse("2026-08-12T20:00:00Z"));
         UUID first = UUID.randomUUID();
         UUID second = UUID.randomUUID();

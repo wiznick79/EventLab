@@ -22,19 +22,38 @@ class RequestFulfilmentProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(RequestFulfilmentProcessor.class);
     private final ServiceBusEnvelopeCodec codec;
     private final FulfilmentApplicationService fulfilments;
-    private final ServiceBusProcessorClient processor;
+    private final FulfilmentMessagingProperties properties;
+    private volatile ServiceBusProcessorClient processor;
+    private volatile int concurrency = 1;
 
     RequestFulfilmentProcessor(FulfilmentMessagingProperties properties,
             ServiceBusEnvelopeCodec codec, FulfilmentApplicationService fulfilments) {
         this.codec = codec;
+        this.properties = properties;
         this.fulfilments = fulfilments;
-        this.processor = ServiceBusClients.create(
+        this.processor = buildProcessor(1);
+    }
+
+    private ServiceBusProcessorClient buildProcessor(int calls) {
+        return ServiceBusClients.create(
                         properties.connectionString(), properties.fullyQualifiedNamespace())
                 .processor().queueName(properties.fulfilmentCommandsQueue()).disableAutoComplete()
-                .maxConcurrentCalls(1).processMessage(this::process)
+                .maxConcurrentCalls(calls).processMessage(this::process)
                 .processError(error -> LOGGER.error("Fulfilment processor error", error.getException()))
                 .buildProcessorClient();
     }
+
+    synchronized void reconfigure(int calls) {
+        ConsumerConcurrencyController.validate(calls);
+        if (calls == concurrency) return;
+        ServiceBusProcessorClient replacement = buildProcessor(calls);
+        processor.close();
+        processor = replacement;
+        processor.start();
+        concurrency = calls;
+    }
+
+    int concurrency() { return concurrency; }
 
     @PostConstruct void start() { processor.start(); }
 

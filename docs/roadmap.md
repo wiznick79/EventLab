@@ -228,3 +228,15 @@ Implemented with paged Service Bus peek operations, a workflow-scoped inspection
 **Demonstration:** launch a 25-workflow burst with 20% duplicate delivery, observe more than one workflow in flight, watch the backlog drain to zero, and require 25 proved evidence reports with zero invariant violations before the aggregate becomes `PROVED`.
 
 Implemented with persistent load groups, Java virtual-thread launchers, immediate per-member acceptance persistence, separate launch and terminal progress, scheduled evidence aggregation, durable member links, a responsive Load & Concurrency Lab, and environment-specific safety ceilings. The existing k6 suite remains the repeatable regression baseline; the interactive report makes the same correctness-under-load idea explainable in the public demo.
+
+## Milestone 19: consumer concurrency comparison — completed 2026-08-13
+
+- Select bounded Service Bus consumer concurrency profiles of 1, 4, or 8.
+- Apply the profile to Workflow, Payment, Fulfilment, and evidence projection processors before load begins.
+- Persist the selected profile with each result and restore the sequential baseline afterward.
+- Compare recent throughput, median latency, p95 latency, and correctness outcomes side by side.
+- Record a reproducible local comparison without presenting it as production sizing evidence.
+
+**Demonstration:** run the same 50-workflow burst at concurrency 1, 4, and 8, then use the comparison table to explain both the invariant result and why more parallelism did not improve this local run.
+
+Implemented with runtime processor reconfiguration, an internal bounded control plane with rollback, persistent profile metadata, a recent-results comparison table, backward-compatible API defaults, and a documented three-profile measurement.

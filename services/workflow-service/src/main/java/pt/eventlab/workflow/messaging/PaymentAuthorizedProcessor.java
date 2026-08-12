@@ -31,7 +31,9 @@ class PaymentAuthorizedProcessor {
 
     private final ServiceBusEnvelopeCodec codec;
     private final ObservationRegistry observations;
-    private final ServiceBusProcessorClient processor;
+    private final WorkflowMessagingProperties properties;
+    private volatile ServiceBusProcessorClient processor;
+    private volatile int concurrency = 1;
     private final ServiceBusTraceContext traceContext;
     private final PaymentAuthorizedHandler handler;
     private final FulfilmentCompletedHandler fulfilmentHandler;
@@ -52,6 +54,7 @@ class PaymentAuthorizedProcessor {
             FulfilmentStatusChangedHandler statusChangedHandler,
             FulfilmentDeadLetteredHandler deadLetteredHandler) {
         this.codec = codec;
+        this.properties = properties;
         this.traceContext = traceContext;
         this.observations = observations;
         this.handler = handler;
@@ -60,18 +63,34 @@ class PaymentAuthorizedProcessor {
         this.compensationHandler = compensationHandler;
         this.statusChangedHandler = statusChangedHandler;
         this.deadLetteredHandler = deadLetteredHandler;
-        this.processor = ServiceBusClients
+        this.processor = buildProcessor(1);
+    }
+
+    private ServiceBusProcessorClient buildProcessor(int calls) {
+        return ServiceBusClients
                 .create(properties.connectionString(), properties.fullyQualifiedNamespace())
                 .processor()
                 .topicName(properties.businessEventsTopic())
                 .subscriptionName(properties.workflowEventsSubscription())
                 .disableAutoComplete()
-                .maxConcurrentCalls(1)
+                .maxConcurrentCalls(calls)
                 .processMessage(this::process)
                 .processError(context -> LOGGER.error(
                         "Service Bus workflow processor error in {}", context.getEntityPath(), context.getException()))
                 .buildProcessorClient();
     }
+
+    synchronized void reconfigure(int calls) {
+        ConsumerConcurrencyController.validate(calls);
+        if (calls == concurrency) return;
+        ServiceBusProcessorClient replacement = buildProcessor(calls);
+        processor.close();
+        processor = replacement;
+        processor.start();
+        concurrency = calls;
+    }
+
+    int concurrency() { return concurrency; }
 
     @PostConstruct
     void start() {

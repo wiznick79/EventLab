@@ -122,6 +122,18 @@ h1 em { color: transparent; -webkit-text-stroke: 1px rgba(233, 237, 247, .62); f
 .load-stage-flow strong { margin-top: .35rem; font-size: 1.25rem; }
 .load-stage-flow i { position: absolute; inset: auto auto 0 0; height: .3rem; background: var(--cyan); transition: width .4s ease; }
 .load-stage-flow b { color: var(--acid); font-weight: 400; }
+.load-comparison { margin-top: 1.5rem; padding: clamp(1.5rem, 4vw, 3rem); border: 1px solid var(--line); background: rgba(13,25,23,.72); }
+.load-comparison h2 { margin: .25rem 0 .6rem; font-size: clamp(1.7rem, 4vw, 2.8rem); font-weight: 500; }
+.load-comparison > div > p { max-width: 72rem; color: var(--muted); }
+.load-comparison-table { margin-top: 1.5rem; overflow-x: auto; }
+.load-comparison table { width: 100%; min-width: 760px; border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: .76rem; }
+.load-comparison th, .load-comparison td { padding: .8rem; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.load-comparison th { color: var(--muted); font-size: .6rem; text-transform: uppercase; letter-spacing: .08em; }
+.load-comparison td strong { color: var(--cyan); font-size: 1.15rem; }
+.comparison-status { color: var(--muted); }
+.comparison-status.proved { color: var(--acid); }
+.comparison-status.failed { color: var(--red); }
+.comparison-note { margin: 1rem 0 0; color: var(--muted); font-size: .8rem; }
 .load-progress strong { position: relative; display: grid; height: 100%; place-items: center; font: .7rem 'DM Mono', monospace; text-transform: uppercase; }
 .load-metrics { display: grid; grid-template-columns: repeat(3, 1fr); margin: 0; border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
 .load-metrics div { padding: 1.1rem; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }

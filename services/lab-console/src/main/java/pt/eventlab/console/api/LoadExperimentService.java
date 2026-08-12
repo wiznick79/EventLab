@@ -44,16 +44,19 @@ class LoadExperimentService {
     private final EvidenceReportService evidence;
     private final DeploymentControlService deployment;
     private final DeploymentProperties deploymentProperties;
+    private final ConsumerConcurrencyClient concurrency;
 
     LoadExperimentService(LoadExperimentRepository experiments, ExperimentRunRegistry runs,
             WorkflowClient workflows, EvidenceReportService evidence,
-            DeploymentControlService deployment, DeploymentProperties deploymentProperties) {
+            DeploymentControlService deployment, DeploymentProperties deploymentProperties,
+            ConsumerConcurrencyClient concurrency) {
         this.experiments = experiments;
         this.runs = runs;
         this.workflows = workflows;
         this.evidence = evidence;
         this.deployment = deployment;
         this.deploymentProperties = deploymentProperties;
+        this.concurrency = concurrency;
     }
 
     public synchronized LoadExperimentResponse start(StartLoadExperimentRequest request) {
@@ -65,8 +68,10 @@ class LoadExperimentService {
         }
         String pattern = request.trafficPattern().toUpperCase();
         int interval = "BURST".equals(pattern) ? 0 : request.intervalMillis();
+        concurrency.configure(request.consumerConcurrency());
         LoadExperiment experiment = experiments.save(new LoadExperiment(UUID.randomUUID(), pattern,
-                request.workflowCount(), request.duplicatePercentage(), interval, clock.instant()));
+                request.workflowCount(), request.duplicatePercentage(), interval,
+                request.consumerConcurrency(), clock.instant()));
         coordinator.submit(() -> launch(experiment));
         return response(experiment);
     }
@@ -88,16 +93,20 @@ class LoadExperimentService {
                     && report.terminalWorkflows() == report.acceptedWorkflows()) {
                 experiment.completed(report.invariantViolations() == 0, clock.instant());
                 experiments.save(experiment);
+                concurrency.configure(1);
             }
         }
     }
 
     @EventListener(ApplicationReadyEvent.class)
     public void markLaunchesAbandonedByRestart() {
+        boolean abandoned = false;
         for (LoadExperiment experiment : experiments.findByStatus("LAUNCHING")) {
             experiment.completed(false, clock.instant());
             experiments.save(experiment);
+            abandoned = true;
         }
+        if (abandoned) concurrency.configure(1);
     }
 
     private void launch(LoadExperiment experiment) {
@@ -178,7 +187,7 @@ class LoadExperimentService {
                 ? "LAUNCH_INTERRUPTED"
                 : "FAILED".equals(experiment.status()) ? "EVIDENCE_FAILED" : null;
         return new LoadExperimentResponse(experiment.id(), experiment.status(), statusReason,
-                experiment.trafficPattern(),
+                experiment.trafficPattern(), experiment.consumerConcurrency(),
                 experiment.requestedWorkflows(), processedLaunches,
                 experiment.requestedWorkflows() - processedLaunches,
                 members.size(), experiment.launchFailures(),
@@ -249,6 +258,10 @@ class LoadExperimentService {
         if (request.duplicatePercentage() < 0 || request.duplicatePercentage() > 100) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "duplicatePercentage must be between 0 and 100");
+        }
+        if (!List.of(1, 4, 8).contains(request.consumerConcurrency())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "consumerConcurrency must be 1, 4, or 8");
         }
         if ("STEADY".equalsIgnoreCase(request.trafficPattern())
                 && (request.intervalMillis() < 50 || request.intervalMillis() > 2000)) {
