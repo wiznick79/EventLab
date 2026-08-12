@@ -30,6 +30,7 @@ type RunSummary = RunResponse & {
 type RunDetails = RunSummary & { timeline: TimelineEvent[] }
 type EvidenceCheck = { id: string; label: string; status: 'PROVED' | 'IN_PROGRESS' | 'FAILED'; observation: string; traceIds: string[] }
 type EvidenceReport = { assessment: EvidenceCheck['status']; generatedAt: string; checks: EvidenceCheck[] }
+type RunConsistency = { status: 'IN_FLIGHT' | 'CONSISTENT' | 'CATCHING_UP' | 'PROJECTION_BEHIND' | 'SOURCE_UNAVAILABLE'; authoritativeState?: string; projectedState: string; lagSeconds: number; explanation: string }
 type DeploymentStatus = {
   environment: string
   version: string
@@ -148,6 +149,7 @@ export function App() {
   const [comparison, setComparison] = useState<[string, string]>(['', ''])
   const [copied, setCopied] = useState(false)
   const [evidenceReport, setEvidenceReport] = useState<EvidenceReport | null>(null)
+  const [runConsistency, setRunConsistency] = useState<RunConsistency | null>(null)
   const [deployment, setDeployment] = useState<DeploymentStatus | null>(null)
   const [clockTick, setClockTick] = useState(Date.now())
   const [builderPlan, setBuilderPlan] = useState<ExperimentPlan>({
@@ -195,6 +197,7 @@ export function App() {
     setError('')
     setEvents([])
     setEvidenceReport(null)
+    setRunConsistency(null)
     setActiveScenario(scenarioId)
     const resolvedPlan = experimentPlan ?? presetPlan(scenarioId)
     setActivePlan(resolvedPlan)
@@ -211,6 +214,7 @@ export function App() {
       window.history.pushState({}, '', `/runs/${created.workflowId}`)
       subscribe(created.workflowId)
       void loadEvidence(created.workflowId)
+      void loadConsistency(created.workflowId)
       await loadRecentRuns()
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not start the workflow')
@@ -228,6 +232,7 @@ export function App() {
         ? current
         : [...current, next].sort((a, b) => a.sequence - b.sequence))
       void loadEvidence(workflowId)
+      void loadConsistency(workflowId)
       if (['COMPLETED', 'COMPENSATED', 'FAILED_REQUIRES_INTERVENTION'].includes(next.state)) {
         void loadRecentRuns()
       }
@@ -272,6 +277,16 @@ export function App() {
     }
   }
 
+  async function loadConsistency(workflowId: string) {
+    try {
+      const response = await fetch(`/api/v1/runs/${workflowId}/consistency`)
+      if (response.ok) setRunConsistency(await response.json())
+    } catch {
+      setRunConsistency((current) => current && ({ ...current, status: 'SOURCE_UNAVAILABLE',
+        explanation: "Workflow's authoritative state is temporarily unavailable" }))
+    }
+  }
+
   async function inspectRun(workflowId: string, navigate = true) {
     streamRef.current?.close()
     setStarting(true)
@@ -287,6 +302,7 @@ export function App() {
       setActiveScenario(details.scenarioId)
       setActivePlan(details.experimentPlan)
       await loadEvidence(workflowId)
+      await loadConsistency(workflowId)
       setLaunchSequence((current) => current + 1)
       if (navigate) window.history.pushState({}, '', `/runs/${workflowId}`)
       subscribe(workflowId)
@@ -467,6 +483,9 @@ export function App() {
             <span>Workflow remained COMPLETED · delayed version 1 ignored behind current version 2</span>
           </div>}
           {activePlan && <div className={`plan-verdict ${planObserved ? 'proved' : ''}`}><span>Expected</span><p>{expectedInvariant(activePlan)}</p><span>Observed</span><p>{planObserved ? 'PROVED · the live timeline satisfies every selected rule.' : 'IN PROGRESS · collecting delivery and terminal-state evidence.'}</p></div>}
+          {run && runConsistency && <section className={`consistency-proof ${runConsistency.status.toLowerCase()}`} aria-label="Evidence consistency">
+            <div><span>Authoritative Workflow</span><strong>{runConsistency.authoritativeState ?? 'Unavailable'}</strong></div><b>↔</b><div><span>Evidence projection</span><strong>{runConsistency.projectedState}</strong></div><p><em>{runConsistency.status.replace('_', ' ')}</em>{runConsistency.explanation}{runConsistency.lagSeconds > 0 ? ` · ${runConsistency.lagSeconds}s` : ''}</p>
+          </section>}
           {run && evidenceReport && <section className={`evidence-report ${evidenceReport.assessment.toLowerCase()}`} aria-labelledby="evidence-title">
             <div className="evidence-heading"><div><span>Backend assessment</span><h3 id="evidence-title">{evidenceReport.assessment.replace('_', ' ')}</h3></div><a href={`/api/v1/runs/${run.workflowId}/evidence`} download={`eventlab-${run.workflowId}-evidence.json`}>Download evidence JSON ↓</a></div>
             <ol>{evidenceReport.checks.map((check) => <li key={check.id}><strong>{check.status === 'PROVED' ? '✓' : check.status === 'FAILED' ? '!' : '…'} {check.label}</strong><span>{check.observation}</span>{check.traceIds.length > 0 && <small>{check.traceIds.length} supporting trace{check.traceIds.length === 1 ? '' : 's'}</small>}</li>)}</ol>

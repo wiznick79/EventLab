@@ -380,6 +380,8 @@ Extension and early destruction are control-plane actions, not anonymous applica
 
 HTTP health and evidence readiness are deliberately separate. The Lab Console may serve previously persisted evidence while its Service Bus projection subscriber is disabled or recovering. Its evidence-pipeline state records configuration, processor lifecycle, the last successfully projected event, and the latest processor error. New runs are admitted only when both the deployment lifecycle is `ONLINE` and the evidence pipeline is `RUNNING`; existing read endpoints remain available. An offline subscriber does not dead-letter unattempted messages—Service Bus retains them for catch-up after recovery.
 
+Evidence readiness proves that the subscriber is operating; per-run consistency proves that its result agrees with the source of truth. The Lab Console reads Workflow state only through Workflow's HTTP API and never its database. Non-terminal differences are classified as `IN_FLIGHT` because the projection intentionally presents participant decisions that do not map one-to-one to aggregate states. Once Workflow reaches `COMPLETED`, `COMPENSATED`, or `FAILED_REQUIRES_INTERVENTION`, the projection receives five seconds to catch up before the Run Inspector reports `PROJECTION_BEHIND`. Agreement is `CONSISTENT`; an unreachable Workflow source is reported separately and does not overwrite persisted evidence.
+
 GitHub Actions authenticates to Azure using OIDC federation with Entra ID; long-lived Azure client secrets are prohibited.
 
 ## 13. Cost posture

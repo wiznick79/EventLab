@@ -180,3 +180,15 @@ Implemented with a deployment-status API, server-enforced lifecycle modes, healt
 **Demonstration:** start the Lab Console without messaging and observe that HTTP remains reachable but the Control Center identifies the disabled evidence pipeline and the backend rejects a new experiment with HTTP 503; restart with messaging enabled and observe retained events catch up before new runs are accepted.
 
 Implemented with an always-present pipeline status component, processor lifecycle/error callbacks, a fail-closed run-admission gate, a Control Center indicator, and regression coverage for the disabled-subscriber condition.
+
+## Milestone 15: evidence consistency watchdog — completed 2026-08-12
+
+- Compare Run Inspector projection state with Workflow's authoritative aggregate state through its public service API.
+- Treat intermediate differences as normal in-flight propagation rather than false failures.
+- Give terminal events a bounded grace period, then identify a projection that remains behind.
+- Keep invariant assessment distinct from operational consistency proof.
+- Require authoritative and projected terminal agreement in the Azure deployment smoke test.
+
+**Demonstration:** inspect a completed run and show `COMPLETED ↔ COMPLETED · CONSISTENT`; if the evidence subscriber misses the terminal event, show the authoritative terminal state beside the stale projection and classify it as `PROJECTION_BEHIND` after five seconds.
+
+Implemented with a cross-service consistency endpoint, terminal-aware comparison rules, source-unavailable handling, a responsive two-state Run Inspector proof, focused classifier tests, and an Azure consistency assertion.

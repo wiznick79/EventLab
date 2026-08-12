@@ -24,11 +24,12 @@ class RunController {
     private final ExperimentRunRegistry runs;
     private final EvidenceReportService evidence;
     private final DeploymentControlService deployment;
+    private final RunConsistencyService consistency;
 
     RunController(TimelineProjectionService timeline, TimelineStream stream,
             WorkflowClient workflowClient, DeadLetterRecoveryService recovery,
             ExperimentRunRegistry runs, EvidenceReportService evidence,
-            DeploymentControlService deployment) {
+            DeploymentControlService deployment, RunConsistencyService consistency) {
         this.timeline = timeline;
         this.stream = stream;
         this.workflowClient = workflowClient;
@@ -36,6 +37,7 @@ class RunController {
         this.runs = runs;
         this.evidence = evidence;
         this.deployment = deployment;
+        this.consistency = consistency;
     }
 
     @PostMapping
@@ -59,6 +61,11 @@ class RunController {
     @GetMapping("/{workflowId}/evidence")
     EvidenceReportResponse evidence(@PathVariable UUID workflowId) {
         return evidence.report(workflowId);
+    }
+
+    @GetMapping("/{workflowId}/consistency")
+    RunConsistencyResponse consistency(@PathVariable UUID workflowId) {
+        return consistency.inspect(workflowId);
     }
 
     @GetMapping("/{workflowId}/timeline")

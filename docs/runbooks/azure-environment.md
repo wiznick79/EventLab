@@ -40,6 +40,8 @@ The final smoke test also requires the Control Center to report `ONLINE`, the sc
 
 The same status response must report the evidence pipeline as enabled and `RUNNING`. HTTP `UP` alone is insufficient: if the Lab Console subscriber is disabled or reports a processor error, new runs are rejected with HTTP 503 while already-persisted evidence remains readable. Messages that received no processing attempt remain on the Service Bus subscription and are projected after the subscriber recovers; they belong in the DLQ only after repeated processing failure.
 
+For the custom smoke-test run, the workflow also queries `/api/v1/runs/{workflowId}/consistency` and requires authoritative Workflow state and projected Lab Console state to both be `COMPLETED`. This catches a live but lagging evidence subscriber that endpoint health and processor lifecycle alone cannot detect.
+
 The workflow summary publishes separate EventLab and Grafana URLs. Both are public for the lifetime of the disposable environment; visitors do not need an Azure or Grafana account.
 
 After both smoke tests pass, the deployment workflow publishes the EventLab URL and expiry to `frontend/public/live-lab.json` and rebuilds the permanent portfolio. The tour then links visitors directly to the running lab. When no valid environment is advertised, it links to these launch instructions instead; the Actions workflow remains available as secondary implementation evidence.

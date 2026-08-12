@@ -165,6 +165,13 @@ jobs:
             sleep 5
           done
           jq -e '.assessment == "PROVED"' <<< "$EVIDENCE" >/dev/null
+          CONSISTENCY="$(curl --fail --connect-timeout 10 --max-time 30 \
+            "${URL}/api/v1/runs/${WORKFLOW_ID}/consistency")"
+          jq -e '
+            .status == "CONSISTENT"
+            and .authoritativeState == "COMPLETED"
+            and .projectedState == "COMPLETED"
+          ' <<< "$CONSISTENCY" >/dev/null
       - name: Publish live-lab status
         env:
           GH_TOKEN: ${{ github.token }}
