@@ -13,12 +13,13 @@ type TimelineEvent = {
   occurredAt: string
   traceId?: string
   duplicateDelivery: boolean
+  payload?: Record<string, unknown>
 }
 
 type RunResponse = { workflowId: string; experimentPlanId: string; state: string }
 
 type TraceEvidence = { span: string; decision: string }
-type FulfilmentBehavior = 'SUCCESS' | 'TEMPORARY_UNAVAILABLE' | 'BUSINESS_REJECTION' | 'STALE_AFTER_SUCCESS'
+type FulfilmentBehavior = 'SUCCESS' | 'TEMPORARY_UNAVAILABLE' | 'BUSINESS_REJECTION' | 'STALE_AFTER_SUCCESS' | 'UNSUPPORTED_CONTRACT'
 type RecoveryMode = 'MANUAL' | 'AUTOMATIC'
 type ExperimentPlan = { paymentResultDeliveries: number; fulfilmentBehavior: FulfilmentBehavior; fulfilmentMaxAttempts: number; recoveryMode: RecoveryMode }
 type RunSummary = RunResponse & {
@@ -68,6 +69,7 @@ export function expectedInvariant(plan: ExperimentPlan) {
     TEMPORARY_UNAVAILABLE: `the command reaches the DLQ after ${plan.fulfilmentMaxAttempts} attempts and completes once after ${plan.recoveryMode === 'AUTOMATIC' ? 'automatic' : 'guarded manual'} recovery.`,
     BUSINESS_REJECTION: 'the payment is compensated and the workflow ends COMPENSATED.',
     STALE_AFTER_SUCCESS: 'the workflow remains COMPLETED after the stale update.',
+    UNSUPPORTED_CONTRACT: 'the unsupported contract is rejected 3 times, dead-lettered, and never completes fulfilment.',
   }[plan.fulfilmentBehavior]
   return duplicate + outcome
 }
@@ -119,6 +121,10 @@ export function traceEvidence(state: string): TraceEvidence | undefined {
       return { span: 'eventlab.fulfilment.attempt.decision', decision: 'RETRY_SCHEDULED' }
     case 'DEAD_LETTERED':
       return { span: 'eventlab.fulfilment.attempt.decision', decision: 'DEAD_LETTERED' }
+    case 'MESSAGE_REJECTED':
+      return { span: 'eventlab.fulfilment.contract.decision', decision: 'UNSUPPORTED_CONTRACT_REJECTED' }
+    case 'POISON_DEAD_LETTERED':
+      return { span: 'eventlab.fulfilment.contract.decision', decision: 'UNSUPPORTED_CONTRACT_DEAD_LETTERED' }
     case 'RECOVERY_REQUESTED':
       return { span: 'eventlab.fulfilment.recovery.decision', decision: 'RECOVERY_ACCEPTED' }
     case 'PAYMENT_COMPENSATED':
@@ -337,12 +343,15 @@ export function App() {
 
   const completed = events.some((event) => event.state === 'COMPLETED')
   const duplicateCount = events.filter((event) => event.duplicateDelivery).length
-  const deadLettered = events.some((event) => event.state === 'DEAD_LETTERED')
+  const deadLettered = events.some((event) => event.state === 'DEAD_LETTERED' || event.state === 'POISON_DEAD_LETTERED')
+  const poisonDeadLettered = events.some((event) => event.state === 'POISON_DEAD_LETTERED')
   const compensated = events.some((event) => event.state === 'COMPENSATED')
   const staleIgnored = events.some((event) => event.state === 'STALE_IGNORED')
+  const interventionRequired = events.some((event) => event.state === 'FAILED_REQUIRES_INTERVENTION')
   const planObserved = activePlan && (
     activePlan.fulfilmentBehavior === 'BUSINESS_REJECTION' ? compensated
       : activePlan.fulfilmentBehavior === 'STALE_AFTER_SUCCESS' ? completed && staleIgnored
+        : activePlan.fulfilmentBehavior === 'UNSUPPORTED_CONTRACT' ? interventionRequired
         : completed
   ) && (activePlan.paymentResultDeliveries === 1 || duplicateCount === 1)
   const comparedRuns = comparison.map((workflowId) => recentRuns.find((item) => item.workflowId === workflowId))
@@ -423,7 +432,7 @@ export function App() {
           <div className="builder-copy"><p className="eyebrow">Scenario Builder</p><h2 id="builder-title">Compose a real experiment</h2><p>Choose a bounded message-delivery plan. The same Workflow, Payment, Fulfilment, Service Bus, databases, and traces execute it.</p></div>
           <div className="builder-controls">
             <label>Payment-result deliveries<select aria-label="Payment-result deliveries" value={builderPlan.paymentResultDeliveries} onChange={(event) => setBuilderPlan((current) => ({ ...current, paymentResultDeliveries: Number(event.target.value) }))}><option value="1">1 · normal delivery</option><option value="2">2 · duplicate delivery</option></select></label>
-            <label>Fulfilment behavior<select aria-label="Fulfilment behavior" value={builderPlan.fulfilmentBehavior} onChange={(event) => setBuilderPlan((current) => ({ ...current, fulfilmentBehavior: event.target.value as FulfilmentBehavior, recoveryMode: event.target.value === 'TEMPORARY_UNAVAILABLE' ? current.recoveryMode : 'MANUAL' }))}><option value="SUCCESS">Succeed</option><option value="TEMPORARY_UNAVAILABLE">Unavailable → DLQ → recovery</option><option value="BUSINESS_REJECTION">Reject → compensate payment</option><option value="STALE_AFTER_SUCCESS">Succeed → deliver stale update</option></select></label>
+            <label>Fulfilment behavior<select aria-label="Fulfilment behavior" value={builderPlan.fulfilmentBehavior} onChange={(event) => setBuilderPlan((current) => ({ ...current, fulfilmentBehavior: event.target.value as FulfilmentBehavior, recoveryMode: event.target.value === 'TEMPORARY_UNAVAILABLE' ? current.recoveryMode : 'MANUAL' }))}><option value="SUCCESS">Succeed</option><option value="TEMPORARY_UNAVAILABLE">Unavailable → DLQ → recovery</option><option value="BUSINESS_REJECTION">Reject → compensate payment</option><option value="STALE_AFTER_SUCCESS">Succeed → deliver stale update</option><option value="UNSUPPORTED_CONTRACT">Unsupported contract → poison DLQ</option></select></label>
             {builderPlan.fulfilmentBehavior === 'TEMPORARY_UNAVAILABLE' && <>
               <label>Retry budget<select aria-label="Retry budget" value={builderPlan.fulfilmentMaxAttempts} onChange={(event) => setBuilderPlan((current) => ({ ...current, fulfilmentMaxAttempts: Number(event.target.value) }))}>{[2, 3, 4, 5, 6].map((attempts) => <option key={attempts} value={attempts}>{attempts} attempts</option>)}</select></label>
               <label>Recovery policy<select aria-label="Recovery policy" value={builderPlan.recoveryMode} onChange={(event) => setBuilderPlan((current) => ({ ...current, recoveryMode: event.target.value as RecoveryMode }))}><option value="MANUAL">Manual · operator replay</option><option value="AUTOMATIC">Automatic · policy replay</option></select></label>
@@ -460,7 +469,8 @@ export function App() {
           <div className="run-heading">
             <div><p className="eyebrow">Live experiment</p><h2>{completed
               ? 'Workflow completed'
-              : compensated ? 'Workflow compensated' : 'Workflow in progress'}</h2></div>
+              : compensated ? 'Workflow compensated'
+                : interventionRequired ? 'Workflow requires intervention' : 'Workflow in progress'}</h2></div>
             {run && <div className="run-identifiers"><code>run {run.workflowId}</code><code>plan {run.experimentPlanId}</code><button type="button" onClick={copyEvidenceLink}>{copied ? 'Copied' : 'Copy evidence link'}</button></div>}
           </div>
           {activeScenario === 'duplicate-payment-result' && completed && duplicateCount > 0 && <div className="invariant">
@@ -473,6 +483,10 @@ export function App() {
             {activePlan?.recoveryMode !== 'AUTOMATIC' && <button className="run-button" type="button" onClick={recover} disabled={recovering}>
               {recovering ? 'Recovering…' : 'Recover and replay'} <span>→</span>
             </button>}
+          </div>}
+          {activePlan?.fulfilmentBehavior === 'UNSUPPORTED_CONTRACT' && poisonDeadLettered && <div className="invariant">
+            <strong>Poison message quarantined</strong>
+            <span>The consumer did receive the command, rejected schema version 99 on three deliveries, and explicitly moved it to the native Service Bus DLQ. Fulfilment never completed; the saga later requires intervention.</span>
           </div>}
           {activeScenario === 'fulfilment-rejected' && compensated && <div className="invariant">
             <strong>Invariant restored</strong>

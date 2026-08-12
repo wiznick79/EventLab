@@ -16,12 +16,16 @@ Every decision span includes:
 | Stale update ignored | `eventlab.workflow.version.decision` | `eventlab.decision=STALE_IGNORED`, no state change, and `eventlab.version.received` lower than `eventlab.version.current` |
 | Delivery will retry | `eventlab.fulfilment.attempt.decision` | `eventlab.decision=RETRY_SCHEDULED`, with the attempt number and non-zero `eventlab.delivery.retry_delay_ms` |
 | Retries exhausted | `eventlab.fulfilment.attempt.decision` | `eventlab.decision=DEAD_LETTERED` and `eventlab.delivery.dead_lettered=true` |
+| Unsupported contract rejected | `eventlab.fulfilment.contract.decision` | `eventlab.decision=UNSUPPORTED_CONTRACT_REJECTED`, `eventlab.state_change_applied=false`, and the delivery attempt attribute increments |
+| Poison message quarantined | `eventlab.fulfilment.contract.decision` | `eventlab.decision=UNSUPPORTED_CONTRACT_DEAD_LETTERED`, `eventlab.delivery.dead_lettered=true`, and no `FULFILMENT_COMPLETED` event exists |
 | Dead letter recovered | `eventlab.fulfilment.recovery.decision` | `eventlab.decision=RECOVERY_ACCEPTED`, plus different original and replay message IDs |
 | Payment reversed | `eventlab.payment.compensation.decision` | `eventlab.decision=PAYMENT_COMPENSATED` and `eventlab.state_change_applied=true` |
 
 Successful fulfilment and deterministic rejection use the same fulfilment decision span with `FULFILMENT_COMPLETED` and `FULFILMENT_REJECTED` outcomes. Duplicate compensation and fulfilment commands are also recorded as `DUPLICATE_IGNORED` with no applied state change.
 
 Trace evidence complements the database invariants and scenario checks; it does not replace them. The trace explains which branch executed, while the persisted workflow, inbox, outbox, and participant records prove the final durable result.
+
+An offline consumer produces no attempt span and leaves the broker message available for later delivery. The poison experiment is intentionally different: three contract-decision spans prove the consumer received and evaluated the payload, while the final span and projected `POISON_DEAD_LETTERED` event prove explicit quarantine.
 
 ## Operations dashboard
 

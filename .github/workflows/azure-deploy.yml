@@ -172,6 +172,30 @@ jobs:
             and .authoritativeState == "COMPLETED"
             and .projectedState == "COMPLETED"
           ' <<< "$CONSISTENCY" >/dev/null
+      - name: Smoke test poison-message quarantine
+        run: |
+          URL="$(terraform output -raw frontend_url)"
+          RUN="$(curl --fail --connect-timeout 10 --max-time 30 \
+            -H 'Content-Type: application/json' \
+            -d '{"scenarioId":"custom-plan","experimentPlan":{"paymentResultDeliveries":1,"fulfilmentBehavior":"UNSUPPORTED_CONTRACT","fulfilmentMaxAttempts":4,"recoveryMode":"MANUAL"},"amount":42.00,"currency":"EUR"}' \
+            "${URL}/api/v1/runs")"
+          WORKFLOW_ID="$(jq -er '.workflowId' <<< "$RUN")"
+
+          for _ in $(seq 1 30); do
+            EVIDENCE="$(curl --fail --connect-timeout 10 --max-time 30 \
+              "${URL}/api/v1/runs/${WORKFLOW_ID}/evidence")"
+            if jq -e '
+              .assessment == "PROVED"
+              and ([.checks[] | select(.id == "contract-rejections" and .status == "PROVED")] | length == 1)
+              and ([.checks[] | select(.id == "poison-dead-letter" and .status == "PROVED")] | length == 1)
+              and ([.timeline[] | select(.state == "FULFILLED")] | length == 0)
+            ' <<< "$EVIDENCE" >/dev/null; then
+              echo "Poison-message quarantine passed for ${WORKFLOW_ID}" >> "$GITHUB_STEP_SUMMARY"
+              break
+            fi
+            sleep 5
+          done
+          jq -e '.assessment == "PROVED"' <<< "$EVIDENCE" >/dev/null
       - name: Publish live-lab status
         env:
           GH_TOKEN: ${{ github.token }}

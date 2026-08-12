@@ -84,8 +84,18 @@ public class TimelineProjectionService {
             case MessageTypes.FULFILMENT_ATTEMPT_FAILED -> new EventPresentation(
                     "Fulfilment", "RETRY_SCHEDULED", "Attempt " + envelope.payload().path("attempt").asInt()
                             + " failed; retry delay " + envelope.payload().path("nextDelayMilliseconds").asLong() + " ms");
+            case MessageTypes.FULFILMENT_MESSAGE_REJECTED -> new EventPresentation(
+                    "Fulfilment", "MESSAGE_REJECTED", "Unsupported schema version "
+                            + envelope.payload().path("receivedSchemaVersion").asInt()
+                            + " rejected on delivery " + envelope.payload().path("attempt").asInt()
+                            + " of " + envelope.payload().path("maxAttempts").asInt());
             case MessageTypes.FULFILMENT_DEAD_LETTERED -> new EventPresentation(
-                    "Fulfilment", "DEAD_LETTERED", "Retry budget exhausted; command moved to the dead-letter queue");
+                    "Fulfilment",
+                    envelope.payload().path("reason").asText().startsWith("Unsupported")
+                            ? "POISON_DEAD_LETTERED" : "DEAD_LETTERED",
+                    envelope.payload().path("reason").asText().startsWith("Unsupported")
+                            ? "Unsupported contract was quarantined in the dead-letter queue"
+                            : "Retry budget exhausted; command moved to the dead-letter queue");
             case MessageTypes.FULFILMENT_RECOVERY_REQUESTED -> new EventPresentation(
                     "Recovery", "RECOVERY_REQUESTED", "Dependency restored; replay "
                             + envelope.payload().path("replayMessageId").asText() + " requested by "
@@ -101,7 +111,9 @@ public class TimelineProjectionService {
                     "Workflow", "COMPENSATED", "Saga reached its compensated terminal state");
             case MessageTypes.WORKFLOW_INTERVENTION_REQUIRED -> new EventPresentation(
                     "Workflow", "FAILED_REQUIRES_INTERVENTION",
-                    "A persisted saga deadline expired; operator intervention is required");
+                    "POISON_MESSAGE_QUARANTINED".equals(envelope.payload().path("reason").asText())
+                            ? "The incompatible command is quarantined; operator intervention is required"
+                            : "A persisted saga deadline expired; operator intervention is required");
             case MessageTypes.FULFILMENT_STATUS_CHANGED -> new EventPresentation(
                     "Fulfilment", "LATE_UPDATE_OBSERVED", "Delayed version "
                             + envelope.payload().path("aggregateVersion").asLong()

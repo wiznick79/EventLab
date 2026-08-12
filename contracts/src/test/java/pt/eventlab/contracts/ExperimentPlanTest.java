@@ -27,6 +27,16 @@ class ExperimentPlanTest {
     }
 
     @Test
+    void describesUnsupportedContractsAsPoisonMessages() {
+        ExperimentPlan plan = new ExperimentPlan(1, FulfilmentBehavior.UNSUPPORTED_CONTRACT);
+
+        assertEquals(
+                "unsupported contract is rejected 3 times, dead-lettered, and never completes fulfilment",
+                plan.expectedInvariant());
+        assertEquals(plan, ExperimentPlan.preset(plan.scenarioId()));
+    }
+
+    @Test
     void rejectsUnboundedDuplicateCounts() {
         assertThrows(IllegalArgumentException.class,
                 () -> new ExperimentPlan(3, FulfilmentBehavior.SUCCESS));

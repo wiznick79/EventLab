@@ -41,6 +41,12 @@ class EvidenceReportService {
             checks.add(countCheck("recovery", "Recovery audited once",
                     run.timeline(), event -> "RECOVERY_REQUESTED".equals(event.state()), 1, terminal));
         }
+        if (plan.fulfilmentBehavior() == FulfilmentBehavior.UNSUPPORTED_CONTRACT) {
+            checks.add(countCheck("contract-rejections", "Unsupported contract rejected",
+                    run.timeline(), event -> "MESSAGE_REJECTED".equals(event.state()), 3, terminal));
+            checks.add(countCheck("poison-dead-letter", "Poison command quarantined once",
+                    run.timeline(), event -> "POISON_DEAD_LETTERED".equals(event.state()), 1, terminal));
+        }
         checks.add(outcomeCheck(run));
 
         String assessment = checks.stream().anyMatch(check -> "FAILED".equals(check.status()))
@@ -54,6 +60,7 @@ class EvidenceReportService {
         String expected = switch (run.experimentPlan().fulfilmentBehavior()) {
             case SUCCESS, TEMPORARY_UNAVAILABLE, STALE_AFTER_SUCCESS -> "COMPLETED";
             case BUSINESS_REJECTION -> "COMPENSATED";
+            case UNSUPPORTED_CONTRACT -> "FAILED_REQUIRES_INTERVENTION";
         };
         boolean extraEvidence = run.experimentPlan().fulfilmentBehavior() != FulfilmentBehavior.STALE_AFTER_SUCCESS
                 || count(run.timeline(), event -> "STALE_IGNORED".equals(event.state())) == 1;

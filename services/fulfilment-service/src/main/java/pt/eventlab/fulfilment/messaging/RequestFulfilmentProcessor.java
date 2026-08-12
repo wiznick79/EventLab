@@ -41,6 +41,18 @@ class RequestFulfilmentProcessor {
     private void process(ServiceBusReceivedMessageContext context) {
         EventEnvelope<RequestFulfilment> command = codec.decode(
                 context.getMessage().getBody(), RequestFulfilment.class);
+        if (command.schemaVersion() != 1) {
+            FulfilmentAttemptResult poison = fulfilments.rejectUnsupportedVersion(command, 1, 3);
+            if (poison.deadLetter()) {
+                context.deadLetter(new DeadLetterOptions()
+                        .setDeadLetterReason("UnsupportedContractVersion")
+                        .setDeadLetterErrorDescription("Received schema version "
+                                + command.schemaVersion() + "; supported version is 1"));
+            } else {
+                context.abandon();
+            }
+            return;
+        }
         FulfilmentAttemptResult result = fulfilments.attempt(command);
         if (result.completed()) {
             context.complete();

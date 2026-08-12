@@ -13,6 +13,7 @@ import pt.eventlab.contracts.MessageTypes;
 import pt.eventlab.contracts.messages.FulfilmentAttemptFailed;
 import pt.eventlab.contracts.messages.FulfilmentCompleted;
 import pt.eventlab.contracts.messages.FulfilmentDeadLettered;
+import pt.eventlab.contracts.messages.FulfilmentMessageRejected;
 import pt.eventlab.contracts.messages.FulfilmentRecoveryRequested;
 import pt.eventlab.contracts.messages.FulfilmentRejected;
 import pt.eventlab.contracts.messages.FulfilmentStatusChanged;
@@ -45,6 +46,32 @@ public class FulfilmentApplicationService {
         return decisions.record(
                 "eventlab.fulfilment.attempt.decision",
                 command.eventId(), command.workflowId(), () -> attemptWithDecision(command));
+    }
+
+    @Transactional
+    public FulfilmentAttemptResult rejectUnsupportedVersion(
+            EventEnvelope<RequestFulfilment> command, int supportedVersion, int maxAttempts) {
+        return decisions.record(
+                "eventlab.fulfilment.contract.decision",
+                command.eventId(), command.workflowId(), () -> {
+            Instant now = clock.instant();
+            Fulfilment job = fulfilments.findByWorkflowId(command.workflowId())
+                    .orElseGet(() -> fulfilments.save(Fulfilment.start(
+                            command.workflowId(), command.payload().scenarioId(), now)));
+            int attempt = job.attempt();
+            boolean exhausted = attempt >= maxAttempts;
+            messages.publish(event(command, MessageTypes.FULFILMENT_MESSAGE_REJECTED,
+                    new FulfilmentMessageRejected(command.workflowId(), command.schemaVersion(),
+                            supportedVersion, attempt, maxAttempts)));
+            if (exhausted) {
+                messages.publish(event(command, MessageTypes.FULFILMENT_DEAD_LETTERED,
+                        new FulfilmentDeadLettered(command.workflowId(), attempt,
+                                "Unsupported contract version " + command.schemaVersion())));
+            }
+            FulfilmentAttemptResult result = new FulfilmentAttemptResult(false, exhausted, attempt, 0);
+            return outcome(exhausted ? "UNSUPPORTED_CONTRACT_DEAD_LETTERED"
+                    : "UNSUPPORTED_CONTRACT_REJECTED", false, result);
+        });
     }
 
     private BusinessDecisionTrace.Outcome<FulfilmentAttemptResult> attemptWithDecision(

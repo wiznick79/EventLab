@@ -58,6 +58,7 @@ public record ExperimentPlan(
                     + (recoveryMode == RecoveryMode.AUTOMATIC ? "automatic" : "guarded manual") + " recovery";
             case BUSINESS_REJECTION -> "payment is compensated and workflow ends COMPENSATED";
             case STALE_AFTER_SUCCESS -> "workflow remains COMPLETED after the delayed stale update";
+            case UNSUPPORTED_CONTRACT -> "unsupported contract is rejected 3 times, dead-lettered, and never completes fulfilment";
         };
     }
 

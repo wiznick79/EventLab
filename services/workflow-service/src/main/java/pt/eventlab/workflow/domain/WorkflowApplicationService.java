@@ -10,11 +10,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.eventlab.contracts.EventEnvelope;
+import pt.eventlab.contracts.ExperimentPlan;
+import pt.eventlab.contracts.FulfilmentBehavior;
 import pt.eventlab.contracts.MessageTypes;
 import pt.eventlab.contracts.WorkflowState;
 import pt.eventlab.contracts.messages.AuthorizePayment;
 import pt.eventlab.contracts.messages.PaymentAuthorized;
 import pt.eventlab.contracts.messages.FulfilmentCompleted;
+import pt.eventlab.contracts.messages.FulfilmentDeadLettered;
 import pt.eventlab.contracts.messages.FulfilmentRejected;
 import pt.eventlab.contracts.messages.CompensatePayment;
 import pt.eventlab.contracts.messages.PaymentCompensated;
@@ -80,8 +83,10 @@ public class WorkflowApplicationService {
         workflow.recordPaymentAuthorized(now, now.plus(STEP_TIMEOUT));
         workflows.flush();
 
+        ExperimentPlan plan = ExperimentPlan.preset(workflow.scenarioId());
+        int schemaVersion = plan.fulfilmentBehavior() == FulfilmentBehavior.UNSUPPORTED_CONTRACT ? 99 : 1;
         messages.sendFulfilmentCommand(new EventEnvelope<>(
-                UUID.randomUUID(), MessageTypes.REQUEST_FULFILMENT, 1,
+                UUID.randomUUID(), MessageTypes.REQUEST_FULFILMENT, schemaVersion,
                 workflow.id(), event.eventId(), event.correlationId(), clock.instant(),
                 new RequestFulfilment(workflow.id(), workflow.scenarioId())));
     }
@@ -122,6 +127,18 @@ public class WorkflowApplicationService {
                     workflow.id(), null, workflow.id(), now,
                     new WorkflowInterventionRequired(workflow.id(), timedOut.name())));
         }
+    }
+
+    @Transactional
+    public void recordFulfilmentDeadLettered(EventEnvelope<FulfilmentDeadLettered> event) {
+        if (!event.payload().reason().startsWith("Unsupported contract")) return;
+        WorkflowRun workflow = workflow(event.workflowId());
+        WorkflowState failedStep = workflow.requireIntervention(clock.instant());
+        messages.publishBusinessEvent(new EventEnvelope<>(
+                UUID.randomUUID(), MessageTypes.WORKFLOW_INTERVENTION_REQUIRED, 1,
+                workflow.id(), event.eventId(), event.correlationId(), clock.instant(),
+                new WorkflowInterventionRequired(
+                        workflow.id(), failedStep.name(), "POISON_MESSAGE_QUARANTINED")));
     }
 
     @Transactional

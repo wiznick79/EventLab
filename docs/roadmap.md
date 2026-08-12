@@ -192,3 +192,15 @@ Implemented with an always-present pipeline status component, processor lifecycl
 **Demonstration:** inspect a completed run and show `COMPLETED ↔ COMPLETED · CONSISTENT`; if the evidence subscriber misses the terminal event, show the authoritative terminal state beside the stale projection and classify it as `PROJECTION_BEHIND` after five seconds.
 
 Implemented with a cross-service consistency endpoint, terminal-aware comparison rules, source-unavailable handling, a responsive two-state Run Inspector proof, focused classifier tests, and an Azure consistency assertion.
+
+## Milestone 16: poison-message quarantine — completed 2026-08-12
+
+- Send a syntactically valid Fulfilment command with an unsupported schema version.
+- Distinguish a consumer that rejects a message from an offline consumer that never attempts it.
+- Bound poison delivery to three attempts and explicitly settle the final delivery into the native Service Bus DLQ.
+- Keep the unsupported payload from completing Fulfilment and move the saga to `FAILED_REQUIRES_INTERVENTION`.
+- Prove each rejection, the single quarantine decision, and the terminal outcome through backend-generated evidence and trace links.
+
+**Demonstration:** choose **Unsupported contract → poison DLQ** in the Scenario Builder, then observe schema version 99 rejected on three deliveries, one `POISON_DEAD_LETTERED` transition, zero Fulfilment completion, and terminal `FAILED_REQUIRES_INTERVENTION`.
+
+Implemented with explicit schema validation at the consumer boundary, abandon/dead-letter settlement, a contract-rejection business event, poison-specific timeline and trace decisions, immediate saga escalation, and plan-aware evidence checks.

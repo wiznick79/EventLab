@@ -263,6 +263,8 @@ The implemented Milestone 3 path uses the `fulfilment-commands` queue and native
 
 Recovery is workflow-scoped. The Lab Console searches the dead-letter subqueue for a message whose `workflowId` matches the requested run, restores that run's simulated dependency through the Fulfilment control API, sends the original envelope back to the command queue under a new broker message ID, and completes the dead-lettered delivery only after the send succeeds. The recovery audit event records the original and replay message IDs, initiator, reason, and workflow ID. Normal inbox idempotency remains active on replay.
 
+Unsupported contract versions follow a separate poison-message path. Fulfilment validates the envelope schema before applying the command, records three no-state-change rejection decisions, and explicitly dead-letters the final delivery with reason `UnsupportedContractVersion`. It publishes a poison-specific quarantine event so Workflow can end the saga as `FAILED_REQUIRES_INTERVENTION` immediately; dependency recovery is deliberately unavailable because replaying the same incompatible bytes cannot succeed. The Lab Console presents `POISON_DEAD_LETTERED` separately from a recoverable provider outage and requires three rejections, one quarantine, and no fulfilment completion in its evidence assessment.
+
 ### Fulfilment rejection and compensation
 
 Payment succeeds and fulfilment rejects the order. The saga commands payment compensation and displays the forward and compensating paths.
