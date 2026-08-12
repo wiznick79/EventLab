@@ -8,7 +8,7 @@ The project is a portfolio and learning system, not a parcel-management product.
 
 ## Status
 
-Milestone 6 is complete. EventLab can be deployed as a time-limited Azure environment through GitHub OIDC, with managed Service Bus access, isolated PostgreSQL databases, automated expiry cleanup, and a public self-contained Grafana/Tempo trace viewer. The next phase is portfolio polish and permanent static documentation.
+Milestones 0–7 are complete, including the disposable Azure environment and permanent portfolio tour. Milestone 8 is adding repeatable resilience and performance validation that measures asynchronous completion while checking messaging invariants.
 
 ## Target technology
 
@@ -30,6 +30,7 @@ Milestone 6 is complete. EventLab can be deployed as a time-limited Azure enviro
 - [Ephemeral Azure runbook](docs/runbooks/azure-environment.md)
 - [How to verify frontend claims in traces](docs/runbooks/reading-traces.md)
 - [How to regenerate recorded demonstrations](docs/runbooks/recording-demos.md)
+- [Performance and resilience testing](docs/runbooks/performance-testing.md)
 - [Architecture decisions](docs/decisions/README.md)
 
 The permanent static tour is published through GitHub Pages from the same frontend with `VITE_STATIC_TOUR=true`. It contains no API calls and remains useful while the disposable Azure lab is offline. Locally, open `http://localhost:5173/?tour` after starting Vite.
@@ -126,6 +127,12 @@ mvn package
 .\scripts\verify-dlq-recovery.ps1
 .\scripts\verify-compensation-scenario.ps1
 .\scripts\verify-ordering-scenario.ps1
+```
+
+Run the invariant-aware concurrent baseline with the official k6 container:
+
+```powershell
+docker compose --profile performance run --rm k6
 ```
 
 ### Reliability model

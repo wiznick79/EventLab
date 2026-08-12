@@ -84,6 +84,23 @@ services:
     depends_on:
       - tempo
 
+  k6:
+    image: grafana/k6:2.2.0
+    profiles: [performance]
+    working_dir: /tests
+    entrypoint: ["k6"]
+    command: ["run", "baseline.js"]
+    environment:
+      BASE_URL: ${EVENTLAB_K6_BASE_URL:-http://host.docker.internal:8080}
+      HAPPY_ITERATIONS: ${EVENTLAB_K6_HAPPY_ITERATIONS:-10}
+      DUPLICATE_ITERATIONS: ${EVENTLAB_K6_DUPLICATE_ITERATIONS:-3}
+      COMPLETION_TIMEOUT_SECONDS: ${EVENTLAB_K6_COMPLETION_TIMEOUT_SECONDS:-20}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./performance:/tests:ro
+      - ./performance/results:/results
+
 volumes:
   eventlab-postgres-data:
   servicebus-sql-data:

@@ -94,7 +94,15 @@ Completed with trace-verifiable timeline claims, shared decision instrumentation
 ## Optional later experiments
 
 - Container termination or network-delay injection.
-- Selected k6 resilience tests.
 - Split Inventory and Shipment if a scenario requires it.
 - Kafka comparison adapter if it produces a meaningful broker-semantics comparison.
 - Local `kind` or `k3d` only for a concrete orchestration experiment.
+
+## Milestone 8: resilience and performance validation — in progress
+
+- Establish a repeatable k6 baseline for concurrent happy-path and duplicate-delivery workflows.
+- Measure API latency and asynchronous completion time while asserting durable business invariants.
+- Terminate and restart a service with workflows in flight, then prove outbox/inbox recovery.
+- Publish a concise, reproducible result rather than claiming production capacity from a development machine.
+
+**Demonstration:** run concurrent workflows, interrupt a participant, restore it, and show that every accepted workflow reaches one correct terminal outcome.
