@@ -22,15 +22,17 @@ class RunController {
     private final WorkflowClient workflowClient;
     private final DeadLetterRecoveryService recovery;
     private final ExperimentRunRegistry runs;
+    private final EvidenceReportService evidence;
 
     RunController(TimelineProjectionService timeline, TimelineStream stream,
             WorkflowClient workflowClient, DeadLetterRecoveryService recovery,
-            ExperimentRunRegistry runs) {
+            ExperimentRunRegistry runs, EvidenceReportService evidence) {
         this.timeline = timeline;
         this.stream = stream;
         this.workflowClient = workflowClient;
         this.recovery = recovery;
         this.runs = runs;
+        this.evidence = evidence;
     }
 
     @PostMapping
@@ -48,6 +50,11 @@ class RunController {
     @GetMapping("/{workflowId}")
     RunDetailsResponse details(@PathVariable UUID workflowId) {
         return runs.details(workflowId);
+    }
+
+    @GetMapping("/{workflowId}/evidence")
+    EvidenceReportResponse evidence(@PathVariable UUID workflowId) {
+        return evidence.report(workflowId);
     }
 
     @GetMapping("/{workflowId}/timeline")

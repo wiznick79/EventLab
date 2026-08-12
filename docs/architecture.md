@@ -243,6 +243,8 @@ The Lab Console also owns an experiment-run registry for inspection. It stores t
 
 Retry and recovery policies are bounded experiment inputs, not arbitrary runtime scripting. A temporary-unavailability plan permits two through six Fulfilment delivery attempts and either manual or automatic recovery. Fulfilment derives exhaustion from the immutable plan and still uses native abandon/dead-letter settlement. For automatic mode, the Lab Console scheduler waits until its persisted projection observes `DEAD_LETTERED`, atomically claims recovery once, and invokes the same audited replay path as the operator endpoint with initiator `automatic-policy`. If the broker message is not yet visible or replay fails, the claim is released for a later retry.
 
+Evidence assessment is owned by the backend projection. For each run, the Lab Console evaluates the immutable plan against persisted event counts and terminal outcomes, returns `IN_PROGRESS`, `PROVED`, or `FAILED` for every check, and attaches the distinct trace IDs that support each observation. The aggregate report includes the plan and complete timeline and can be downloaded as JSON. This avoids treating frontend wording as proof while keeping the report reproducible from durable observations.
+
 ## 8. Initial scenarios
 
 ### Duplicate payment result

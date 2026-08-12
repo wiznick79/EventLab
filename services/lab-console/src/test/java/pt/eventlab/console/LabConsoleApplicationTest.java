@@ -2,17 +2,22 @@ package pt.eventlab.console;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import pt.eventlab.console.domain.TimelineProjectionService;
-import pt.eventlab.console.domain.ExperimentRunRegistry;
+import org.springframework.test.web.servlet.MockMvc;
 import pt.eventlab.console.api.RunResponse;
 import pt.eventlab.console.api.StartRunRequest;
+import pt.eventlab.console.domain.ExperimentRunRegistry;
+import pt.eventlab.console.domain.TimelineProjectionService;
 import pt.eventlab.contracts.EventEnvelope;
 import pt.eventlab.contracts.ExperimentPlan;
 import pt.eventlab.contracts.FulfilmentBehavior;
@@ -25,6 +30,7 @@ import pt.eventlab.contracts.MessageTypes;
         "eventlab.messaging.enabled=false",
         "management.tracing.enabled=false"
 })
+@AutoConfigureMockMvc
 class LabConsoleApplicationTest {
 
     @Autowired
@@ -35,6 +41,9 @@ class LabConsoleApplicationTest {
 
     @Autowired
     private ExperimentRunRegistry runs;
+
+    @Autowired
+    private MockMvc mvc;
 
     @Test
     void contextLoads() {
@@ -71,5 +80,18 @@ class LabConsoleApplicationTest {
         assertEquals(plan.expectedInvariant(), details.expectedInvariant());
         assertEquals("PAYMENT_PENDING", details.state());
         assertTrue(runs.recent(12).stream().anyMatch(run -> run.workflowId().equals(workflowId)));
+    }
+
+    @Test
+    void producesABackendEvidenceAssessment() throws Exception {
+        UUID workflowId = UUID.randomUUID();
+        runs.register(new StartRunRequest("happy-path", null, java.math.BigDecimal.TEN, "EUR"),
+                new RunResponse(workflowId, UUID.randomUUID(), "PAYMENT_PENDING"));
+
+        mvc.perform(get("/api/v1/runs/{workflowId}/evidence", workflowId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.workflowId").value(workflowId.toString()))
+                .andExpect(jsonPath("$.assessment").value("IN_PROGRESS"))
+                .andExpect(jsonPath("$.checks[0].id").value("payment-deliveries"));
     }
 }

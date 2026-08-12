@@ -144,3 +144,15 @@ Implemented with a Flyway-managed experiment registry, recent/detail APIs, SPA h
 **Demonstration:** configure three attempts and automatic recovery, then observe three failed-attempt events, one dead-letter decision, one recovery initiated by `automatic-policy`, and terminal `COMPLETED`.
 
 Implemented with version-tolerant shared contracts, per-run exhaustion in Fulfilment, an atomic recovery claim in the Lab Console, conditional builder controls, trace-visible initiator evidence, and a reusable integration script.
+
+## Milestone 12: backend-generated evidence reports — completed 2026-08-12
+
+- Evaluate plan-specific invariants from persisted timeline observations in the Lab Console.
+- Expose individual `IN_PROGRESS`, `PROVED`, or `FAILED` checks rather than trusting a frontend-only verdict.
+- Attach the exact supporting trace IDs to every applicable check.
+- Render the assessment alongside the live timeline.
+- Export the plan, checks, trace IDs, and complete event timeline as JSON.
+
+**Demonstration:** run an automatic-recovery experiment and download a report proving the selected delivery count, retry budget, single DLQ transition, single audited recovery, and expected terminal outcome.
+
+Implemented with a plan-aware evidence evaluator, a stable `/api/v1/runs/{workflowId}/evidence` endpoint, race-safe live refreshes, a responsive evidence checklist, and downloadable JSON bundles.

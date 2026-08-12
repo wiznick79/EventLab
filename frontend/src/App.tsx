@@ -28,6 +28,8 @@ type RunSummary = RunResponse & {
   createdAt: string
 }
 type RunDetails = RunSummary & { timeline: TimelineEvent[] }
+type EvidenceCheck = { id: string; label: string; status: 'PROVED' | 'IN_PROGRESS' | 'FAILED'; observation: string; traceIds: string[] }
+type EvidenceReport = { assessment: EvidenceCheck['status']; generatedAt: string; checks: EvidenceCheck[] }
 
 export function presetPlan(scenarioId: string): ExperimentPlan {
   return {
@@ -127,6 +129,7 @@ export function App() {
   const [recentRuns, setRecentRuns] = useState<RunSummary[]>([])
   const [comparison, setComparison] = useState<[string, string]>(['', ''])
   const [copied, setCopied] = useState(false)
+  const [evidenceReport, setEvidenceReport] = useState<EvidenceReport | null>(null)
   const [builderPlan, setBuilderPlan] = useState<ExperimentPlan>({
     paymentResultDeliveries: 1,
     fulfilmentBehavior: 'SUCCESS',
@@ -135,6 +138,7 @@ export function App() {
   })
   const streamRef = useRef<EventSource | null>(null)
   const runPanelRef = useRef<HTMLElement | null>(null)
+  const evidenceRequestRef = useRef(0)
 
   useEffect(() => {
     void loadRecentRuns()
@@ -165,6 +169,7 @@ export function App() {
     setStarting(true)
     setError('')
     setEvents([])
+    setEvidenceReport(null)
     setActiveScenario(scenarioId)
     const resolvedPlan = experimentPlan ?? presetPlan(scenarioId)
     setActivePlan(resolvedPlan)
@@ -180,6 +185,7 @@ export function App() {
       setRun(created)
       window.history.pushState({}, '', `/runs/${created.workflowId}`)
       subscribe(created.workflowId)
+      void loadEvidence(created.workflowId)
       await loadRecentRuns()
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not start the workflow')
@@ -196,6 +202,7 @@ export function App() {
       setEvents((current) => current.some((event) => event.sequence === next.sequence)
         ? current
         : [...current, next].sort((a, b) => a.sequence - b.sequence))
+      void loadEvidence(workflowId)
       if (['COMPLETED', 'COMPENSATED', 'FAILED_REQUIRES_INTERVENTION'].includes(next.state)) {
         void loadRecentRuns()
       }
@@ -213,6 +220,19 @@ export function App() {
     }
   }
 
+  async function loadEvidence(workflowId: string) {
+    const requestSequence = ++evidenceRequestRef.current
+    try {
+      const response = await fetch(`/api/v1/runs/${workflowId}/evidence`)
+      if (response.ok) {
+        const report: EvidenceReport = await response.json()
+        if (requestSequence === evidenceRequestRef.current) setEvidenceReport(report)
+      }
+    } catch {
+      // The timeline remains usable while evidence assessment is temporarily unavailable.
+    }
+  }
+
   async function inspectRun(workflowId: string, navigate = true) {
     streamRef.current?.close()
     setStarting(true)
@@ -227,6 +247,7 @@ export function App() {
       setEvents(details.timeline)
       setActiveScenario(details.scenarioId)
       setActivePlan(details.experimentPlan)
+      await loadEvidence(workflowId)
       setLaunchSequence((current) => current + 1)
       if (navigate) window.history.pushState({}, '', `/runs/${workflowId}`)
       subscribe(workflowId)
@@ -398,6 +419,10 @@ export function App() {
             <span>Workflow remained COMPLETED · delayed version 1 ignored behind current version 2</span>
           </div>}
           {activePlan && <div className={`plan-verdict ${planObserved ? 'proved' : ''}`}><span>Expected</span><p>{expectedInvariant(activePlan)}</p><span>Observed</span><p>{planObserved ? 'PROVED · the live timeline satisfies every selected rule.' : 'IN PROGRESS · collecting delivery and terminal-state evidence.'}</p></div>}
+          {run && evidenceReport && <section className={`evidence-report ${evidenceReport.assessment.toLowerCase()}`} aria-labelledby="evidence-title">
+            <div className="evidence-heading"><div><span>Backend assessment</span><h3 id="evidence-title">{evidenceReport.assessment.replace('_', ' ')}</h3></div><a href={`/api/v1/runs/${run.workflowId}/evidence`} download={`eventlab-${run.workflowId}-evidence.json`}>Download evidence JSON ↓</a></div>
+            <ol>{evidenceReport.checks.map((check) => <li key={check.id}><strong>{check.status === 'PROVED' ? '✓' : check.status === 'FAILED' ? '!' : '…'} {check.label}</strong><span>{check.observation}</span>{check.traceIds.length > 0 && <small>{check.traceIds.length} supporting trace{check.traceIds.length === 1 ? '' : 's'}</small>}</li>)}</ol>
+          </section>}
           {error && <p className="run-error">{error}</p>}
           <ol className="timeline">
             {events.map((event) => {
