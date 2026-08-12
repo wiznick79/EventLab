@@ -8,6 +8,7 @@ import pt.eventlab.workflow.domain.WorkflowRun;
 
 public record WorkflowResponse(
         UUID workflowId,
+        UUID experimentPlanId,
         String scenarioId,
         BigDecimal amount,
         String currency,
@@ -19,6 +20,7 @@ public record WorkflowResponse(
     static WorkflowResponse from(WorkflowRun workflow) {
         return new WorkflowResponse(
                 workflow.id(),
+                workflow.experimentPlanId(),
                 workflow.scenarioId(),
                 workflow.amount(),
                 workflow.currency(),

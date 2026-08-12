@@ -225,7 +225,7 @@ Version checks and idempotency remain active during replay.
 
 ## 7. Deterministic failure injection
 
-The MVP provides curated scenarios rather than a general chaos scripting language. A scenario definition identifies:
+The original MVP provides curated scenarios rather than a general chaos scripting language. Milestone 9 adds bounded composition over the same deterministic controls. An experiment plan identifies:
 
 - the target handler or transition;
 - the failure type;
@@ -236,6 +236,8 @@ The MVP provides curated scenarios rather than a general chaos scripting languag
 - the expected invariant and recovery path.
 
 Faults are scoped to a workflow run so concurrent visitors do not affect each other. Application-level injection is the primary MVP mechanism because it is repeatable and explainable. Container termination and network faults are later experiments.
+
+The Scenario Builder combines a payment-result delivery count of one or two with Fulfilment success, temporary unavailability, business rejection, or a stale post-success update. The validated plan is assigned its own UUID and stored immutably with the Workflow run; its canonical representation crosses service boundaries in existing messages. Each participant owns the interpretation of its behavior, so the Lab Console remains a control plane and evidence projection rather than a simulator. Expected invariants are derived from the shared plan, then independently checked against the observed timeline and trace decisions.
 
 ## 8. Initial scenarios
 

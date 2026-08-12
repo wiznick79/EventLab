@@ -17,6 +17,7 @@ public class WorkflowRun {
 
     @Id
     private UUID id;
+    private UUID experimentPlanId;
     private String scenarioId;
     private BigDecimal amount;
     private String currency;
@@ -32,8 +33,10 @@ public class WorkflowRun {
     protected WorkflowRun() {
     }
 
-    private WorkflowRun(UUID id, String scenarioId, BigDecimal amount, String currency, Instant now) {
+    private WorkflowRun(UUID id, UUID experimentPlanId, String scenarioId,
+            BigDecimal amount, String currency, Instant now) {
         this.id = id;
+        this.experimentPlanId = experimentPlanId;
         this.scenarioId = scenarioId;
         this.amount = amount;
         this.currency = currency;
@@ -52,7 +55,8 @@ public class WorkflowRun {
         if (currency == null || currency.length() != 3) {
             throw new IllegalArgumentException("currency must be a three-letter code");
         }
-        return new WorkflowRun(UUID.randomUUID(), scenarioId, amount, currency.toUpperCase(), now);
+        return new WorkflowRun(UUID.randomUUID(), UUID.randomUUID(), scenarioId,
+                amount, currency.toUpperCase(), now);
     }
 
     public void recordPaymentAuthorized(Instant now, Instant deadline) {
@@ -109,6 +113,7 @@ public class WorkflowRun {
     }
 
     public UUID id() { return id; }
+    public UUID experimentPlanId() { return experimentPlanId; }
     public String scenarioId() { return scenarioId; }
     public BigDecimal amount() { return amount; }
     public String currency() { return currency; }

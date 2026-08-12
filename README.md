@@ -8,7 +8,7 @@ The project is a portfolio and learning system, not a parcel-management product.
 
 ## Status
 
-Milestones 0–7 are complete, including the disposable Azure environment and permanent portfolio tour. Milestone 8 is adding repeatable resilience and performance validation that measures asynchronous completion while checking messaging invariants.
+Milestones 0–9 are complete. EventLab includes a disposable Azure environment, a permanent portfolio tour, repeatable resilience measurements, and an interactive Scenario Builder that composes real backend behaviors.
 
 ## Target technology
 
@@ -127,6 +127,7 @@ mvn package
 .\scripts\verify-dlq-recovery.ps1
 .\scripts\verify-compensation-scenario.ps1
 .\scripts\verify-ordering-scenario.ps1
+.\scripts\verify-custom-experiment.ps1
 ```
 
 Run the invariant-aware concurrent baseline with the official k6 container:

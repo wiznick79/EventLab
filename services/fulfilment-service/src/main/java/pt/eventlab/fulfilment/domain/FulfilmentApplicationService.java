@@ -7,6 +7,8 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.eventlab.contracts.EventEnvelope;
+import pt.eventlab.contracts.ExperimentPlan;
+import pt.eventlab.contracts.FulfilmentBehavior;
 import pt.eventlab.contracts.MessageTypes;
 import pt.eventlab.contracts.messages.FulfilmentAttemptFailed;
 import pt.eventlab.contracts.messages.FulfilmentCompleted;
@@ -73,7 +75,8 @@ public class FulfilmentApplicationService {
             return outcome("DUPLICATE_IGNORED", false,
                     new FulfilmentAttemptResult(true, false, attempt, 0));
         }
-        if ("fulfilment-rejected".equals(command.payload().scenarioId())) {
+        FulfilmentBehavior behavior = ExperimentPlan.preset(command.payload().scenarioId()).fulfilmentBehavior();
+        if (behavior == FulfilmentBehavior.BUSINESS_REJECTION) {
             job.reject(now);
             messages.publish(event(command, MessageTypes.FULFILMENT_REJECTED,
                     new FulfilmentRejected(command.workflowId(), "Simulated capacity rejection", 2)));
@@ -81,7 +84,7 @@ public class FulfilmentApplicationService {
                     new FulfilmentAttemptResult(true, false, attempt, 0));
         }
         job.complete(now);
-        if ("out-of-order-event".equals(command.payload().scenarioId())) {
+        if (behavior == FulfilmentBehavior.STALE_AFTER_SUCCESS) {
             job.scheduleStaleEvent(now.plusSeconds(1));
         }
         messages.publish(event(command, MessageTypes.FULFILMENT_COMPLETED,

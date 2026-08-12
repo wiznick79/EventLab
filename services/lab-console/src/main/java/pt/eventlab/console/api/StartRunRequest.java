@@ -1,6 +1,7 @@
 package pt.eventlab.console.api;
 
 import java.math.BigDecimal;
+import pt.eventlab.contracts.ExperimentPlan;
 
-public record StartRunRequest(String scenarioId, BigDecimal amount, String currency) {
+public record StartRunRequest(String scenarioId, ExperimentPlan experimentPlan, BigDecimal amount, String currency) {
 }

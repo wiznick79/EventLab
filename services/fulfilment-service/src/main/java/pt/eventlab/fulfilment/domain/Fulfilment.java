@@ -5,6 +5,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import pt.eventlab.contracts.ExperimentPlan;
+import pt.eventlab.contracts.FulfilmentBehavior;
 
 @Entity
 @Table(name = "fulfilments")
@@ -26,7 +28,8 @@ public class Fulfilment {
         this.id = UUID.randomUUID();
         this.workflowId = workflowId;
         this.scenarioId = scenarioId;
-        this.available = !"fulfilment-unavailable".equals(scenarioId);
+        this.available = ExperimentPlan.preset(scenarioId).fulfilmentBehavior()
+                != FulfilmentBehavior.TEMPORARY_UNAVAILABLE;
         this.status = "PENDING";
         this.createdAt = now;
     }

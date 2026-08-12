@@ -23,9 +23,9 @@ class WorkflowClient {
         if (response == null) {
             throw new IllegalStateException("Workflow service returned no response");
         }
-        return new RunResponse(response.workflowId(), response.state());
+        return new RunResponse(response.workflowId(), response.experimentPlanId(), response.state());
     }
 
-    private record WorkflowApiResponse(UUID workflowId, String state) {
+    private record WorkflowApiResponse(UUID workflowId, UUID experimentPlanId, String state) {
     }
 }

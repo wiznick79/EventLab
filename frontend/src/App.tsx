@@ -15,9 +15,24 @@ type TimelineEvent = {
   duplicateDelivery: boolean
 }
 
-type RunResponse = { workflowId: string; state: string }
+type RunResponse = { workflowId: string; experimentPlanId: string; state: string }
 
 type TraceEvidence = { span: string; decision: string }
+type FulfilmentBehavior = 'SUCCESS' | 'TEMPORARY_UNAVAILABLE' | 'BUSINESS_REJECTION' | 'STALE_AFTER_SUCCESS'
+type ExperimentPlan = { paymentResultDeliveries: number; fulfilmentBehavior: FulfilmentBehavior }
+
+export function expectedInvariant(plan: ExperimentPlan) {
+  const duplicate = plan.paymentResultDeliveries === 2
+    ? 'Two payment-result deliveries produce one payment state change; '
+    : ''
+  const outcome = {
+    SUCCESS: 'the workflow completes exactly once.',
+    TEMPORARY_UNAVAILABLE: 'the command reaches the DLQ and completes once after guarded recovery.',
+    BUSINESS_REJECTION: 'the payment is compensated and the workflow ends COMPENSATED.',
+    STALE_AFTER_SUCCESS: 'the workflow remains COMPLETED after the stale update.',
+  }[plan.fulfilmentBehavior]
+  return duplicate + outcome
+}
 
 const services = [
   ['Workflow', 'Orchestrator'],
@@ -90,21 +105,27 @@ export function App() {
   const [recovering, setRecovering] = useState(false)
   const [error, setError] = useState('')
   const [activeScenario, setActiveScenario] = useState('')
+  const [activePlan, setActivePlan] = useState<ExperimentPlan | null>(null)
+  const [builderPlan, setBuilderPlan] = useState<ExperimentPlan>({
+    paymentResultDeliveries: 1,
+    fulfilmentBehavior: 'SUCCESS',
+  })
   const streamRef = useRef<EventSource | null>(null)
 
   useEffect(() => () => streamRef.current?.close(), [])
 
-  async function startScenario(scenarioId: string) {
+  async function startScenario(scenarioId: string, experimentPlan?: ExperimentPlan) {
     streamRef.current?.close()
     setStarting(true)
     setError('')
     setEvents([])
     setActiveScenario(scenarioId)
+    setActivePlan(experimentPlan ?? null)
     try {
       const response = await fetch('/api/v1/runs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenarioId, amount: 129.90, currency: 'EUR' }),
+        body: JSON.stringify({ scenarioId, experimentPlan, amount: 129.90, currency: 'EUR' }),
       })
       if (!response.ok) throw new Error(`The Lab Console returned HTTP ${response.status}`)
       const created: RunResponse = await response.json()
@@ -145,13 +166,18 @@ export function App() {
   const deadLettered = events.some((event) => event.state === 'DEAD_LETTERED')
   const compensated = events.some((event) => event.state === 'COMPENSATED')
   const staleIgnored = events.some((event) => event.state === 'STALE_IGNORED')
+  const planObserved = activePlan && (
+    activePlan.fulfilmentBehavior === 'BUSINESS_REJECTION' ? compensated
+      : activePlan.fulfilmentBehavior === 'STALE_AFTER_SUCCESS' ? completed && staleIgnored
+        : completed
+  ) && (activePlan.paymentResultDeliveries === 1 || duplicateCount === 1)
 
   return (
     <main>
       <header className="hero">
         <nav aria-label="Primary navigation">
           <a className="wordmark" href="#top" aria-label="EventLab home"><span className="mark">EL</span>EventLab</a>
-          <div className="nav-links"><a href="./?tour">Project tour</a><a href={grafanaDashboardUrl()} target="_blank" rel="noreferrer">Operations</a><span className="build-status"><i /> Milestone 7 · portfolio polish</span></div>
+          <div className="nav-links"><a href="./?tour">Project tour</a><a href={grafanaDashboardUrl()} target="_blank" rel="noreferrer">Operations</a><span className="build-status"><i /> EventLab · interactive</span></div>
         </nav>
         <div className="hero-copy" id="top">
           <p className="eyebrow">Distributed systems under pressure</p>
@@ -209,18 +235,28 @@ export function App() {
           </article>
         </div>
 
+        <section className="scenario-builder" aria-labelledby="builder-title">
+          <div className="builder-copy"><p className="eyebrow">Scenario Builder</p><h2 id="builder-title">Compose a real experiment</h2><p>Choose a bounded message-delivery plan. The same Workflow, Payment, Fulfilment, Service Bus, databases, and traces execute it.</p></div>
+          <div className="builder-controls">
+            <label>Payment-result deliveries<select aria-label="Payment-result deliveries" value={builderPlan.paymentResultDeliveries} onChange={(event) => setBuilderPlan((current) => ({ ...current, paymentResultDeliveries: Number(event.target.value) }))}><option value="1">1 · normal delivery</option><option value="2">2 · duplicate delivery</option></select></label>
+            <label>Fulfilment behavior<select aria-label="Fulfilment behavior" value={builderPlan.fulfilmentBehavior} onChange={(event) => setBuilderPlan((current) => ({ ...current, fulfilmentBehavior: event.target.value as FulfilmentBehavior }))}><option value="SUCCESS">Succeed</option><option value="TEMPORARY_UNAVAILABLE">Unavailable → DLQ → recovery</option><option value="BUSINESS_REJECTION">Reject → compensate payment</option><option value="STALE_AFTER_SUCCESS">Succeed → deliver stale update</option></select></label>
+          </div>
+          <div className="builder-invariant"><span>Expected invariant</span><strong>{expectedInvariant(builderPlan)}</strong></div>
+          <button className="builder-run" type="button" onClick={() => startScenario('custom-plan', builderPlan)} disabled={starting}>{starting && activeScenario === 'custom-plan' ? 'Starting…' : 'Run custom experiment →'}</button>
+        </section>
+
         {(run || error) && <section className="run-panel" aria-live="polite">
           <div className="run-heading">
             <div><p className="eyebrow">Live experiment</p><h2>{completed
               ? 'Workflow completed'
               : compensated ? 'Workflow compensated' : 'Workflow in progress'}</h2></div>
-            {run && <code>{run.workflowId}</code>}
+            {run && <div className="run-identifiers"><code>run {run.workflowId}</code><code>plan {run.experimentPlanId}</code></div>}
           </div>
           {activeScenario === 'duplicate-payment-result' && completed && duplicateCount > 0 && <div className="invariant">
             <strong>Invariant protected</strong>
             <span>{duplicateCount} duplicate delivery observed · 1 workflow completion</span>
           </div>}
-          {activeScenario === 'fulfilment-unavailable' && deadLettered && !completed && <div className="invariant">
+          {(activeScenario === 'fulfilment-unavailable' || activePlan?.fulfilmentBehavior === 'TEMPORARY_UNAVAILABLE') && deadLettered && !completed && <div className="invariant">
             <strong>Command quarantined</strong>
             <span>The retry budget is exhausted. Restore the simulated dependency and replay this command.</span>
             <button className="run-button" type="button" onClick={recover} disabled={recovering}>
@@ -235,6 +271,7 @@ export function App() {
             <strong>Version invariant protected</strong>
             <span>Workflow remained COMPLETED · delayed version 1 ignored behind current version 2</span>
           </div>}
+          {activePlan && <div className={`plan-verdict ${planObserved ? 'proved' : ''}`}><span>Expected</span><p>{expectedInvariant(activePlan)}</p><span>Observed</span><p>{planObserved ? 'PROVED · the live timeline satisfies every selected rule.' : 'IN PROGRESS · collecting delivery and terminal-state evidence.'}</p></div>}
           {error && <p className="run-error">{error}</p>}
           <ol className="timeline">
             {events.map((event) => {

@@ -24,7 +24,7 @@ class WorkflowController {
     @PostMapping
     ResponseEntity<WorkflowResponse> create(@RequestBody CreateWorkflowRequest request) {
         WorkflowResponse response = WorkflowResponse.from(workflows.start(
-                request.scenarioId(), request.amount(), request.currency()));
+                request.resolvedScenarioId(), request.amount(), request.currency()));
         return ResponseEntity.created(URI.create("/api/v1/workflows/" + response.workflowId())).body(response);
     }
 

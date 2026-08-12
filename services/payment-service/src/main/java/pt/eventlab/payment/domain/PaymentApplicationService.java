@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.eventlab.contracts.EventEnvelope;
+import pt.eventlab.contracts.ExperimentPlan;
 import pt.eventlab.contracts.MessageTypes;
 import pt.eventlab.contracts.messages.AuthorizePayment;
 import pt.eventlab.contracts.messages.PaymentAuthorized;
@@ -43,7 +44,7 @@ public class PaymentApplicationService {
                 UUID.randomUUID(), MessageTypes.PAYMENT_AUTHORIZED, 1,
                 command.workflowId(), command.eventId(), command.correlationId(), now,
                 new PaymentAuthorized(payment.id(), payment.workflowId(), payment.amount(), payment.currency()));
-        int copies = "duplicate-payment-result".equals(payload.scenarioId()) ? 2 : 1;
+        int copies = ExperimentPlan.preset(payload.scenarioId()).paymentResultDeliveries();
         messages.publish(event, copies);
     }
 

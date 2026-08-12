@@ -108,3 +108,15 @@ Completed with trace-verifiable timeline claims, shared decision instrumentation
 **Demonstration:** run concurrent workflows, interrupt a participant, restore it, and show that every accepted workflow reaches one correct terminal outcome.
 
 Completed with an invariant-aware k6 concurrency baseline, a deterministic Payment outage experiment, and the narrow outbox acknowledgement window. Five workflows accepted with no Payment consumer all resumed after restart. A separate one-shot post-send failure produced two broker deliveries for one logical payment event; the inbox exposed one duplicate decision and the workflow completed once. The permanent tour presents the measurements beside their invariants, method links, and explicit development-machine boundary.
+
+## Milestone 9: interactive Scenario Builder — completed 2026-08-12
+
+- Compose duplicate delivery with success, unavailability, business rejection, or stale update behavior.
+- Validate and identify each immutable plan at the backend boundary.
+- Execute plans through the real services and Service Bus rather than simulating outcomes in the frontend.
+- Declare the expected invariant before execution and prove it against the observed timeline.
+- Preserve guarded DLQ recovery for composed unavailable plans.
+
+**Demonstration:** select duplicate payment-result delivery plus Fulfilment rejection, then observe two deliveries, one ignored duplicate, one payment compensation, terminal `COMPENSATED`, and no `COMPLETED` state.
+
+Implemented with a transport-neutral `ExperimentPlan`, per-participant plan interpretation, a persisted plan UUID, responsive React controls, expected-versus-observed evidence, and a reusable cross-service verification script.

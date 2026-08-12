@@ -13,3 +13,4 @@ These records capture accepted project-level decisions. A decision can be supers
 | [ADR-007](007-data-ownership.md) | Share PostgreSQL infrastructure while preserving service ownership | Accepted |
 | [ADR-008](008-ephemeral-azure.md) | Separate persistent bootstrap from disposable Azure infrastructure | Accepted |
 | [ADR-009](009-technology-baseline.md) | Pin the initial Java and web framework baseline | Accepted |
+| [ADR-010](010-scenario-builder.md) | Compose bounded immutable experiment plans | Accepted |
