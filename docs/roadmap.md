@@ -107,4 +107,4 @@ Completed with trace-verifiable timeline claims, shared decision instrumentation
 
 **Demonstration:** run concurrent workflows, interrupt a participant, restore it, and show that every accepted workflow reaches one correct terminal outcome.
 
-The first increment now includes an invariant-aware k6 concurrency baseline and a deterministic Payment outage experiment. Five workflows accepted with no Payment consumer all resumed after restart, each producing one payment authorization and one completion. Remaining work is to target a narrower crash window and present the results in the permanent tour.
+The implemented increments now include an invariant-aware k6 concurrency baseline, a deterministic Payment outage experiment, and the narrow outbox acknowledgement window. Five workflows accepted with no Payment consumer all resumed after restart. A separate one-shot post-send failure produced two broker deliveries for one logical payment event; the inbox exposed one duplicate decision and the workflow completed once. Remaining work is to present these results in the permanent tour.

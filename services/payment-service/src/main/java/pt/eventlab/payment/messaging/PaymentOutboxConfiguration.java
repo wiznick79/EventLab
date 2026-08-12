@@ -1,5 +1,6 @@
 package pt.eventlab.payment.messaging;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,7 +25,10 @@ class PaymentOutboxConfiguration {
     }
 
     @Bean
-    OutboxDispatcher paymentOutboxDispatcher(OutboxStore outbox, OutboxTransport transport) {
-        return new OutboxDispatcher(outbox, transport);
+    OutboxDispatcher paymentOutboxDispatcher(
+            OutboxStore outbox,
+            OutboxTransport transport,
+            @Value("${eventlab.messaging.fail-once-after-send:false}") boolean failOnceAfterSend) {
+        return new OutboxDispatcher(outbox, transport, failOnceAfterSend);
     }
 }

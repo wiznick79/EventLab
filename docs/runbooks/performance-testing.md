@@ -47,3 +47,16 @@ The restart experiment deliberately terminates the locally running Payment JVM, 
 The script refuses to stop port 8082 unless its owner is a Java command running the EventLab payment-service JAR. Its `finally` block restores Payment if an assertion or API call fails. The interruption happens before workflow creation so the experiment deterministically proves broker buffering plus post-restart consumption. A later experiment can target the narrower crash window between broker acceptance and outbox publication.
 
 The first successful execution is recorded in [the 2026-08-12 Payment restart result](../results/payment-restart-recovery-2026-08-12.md).
+
+## Outbox acknowledgement-window experiment
+
+The narrow-window experiment enables a one-shot Payment fault after `transport.send` returns but before `markPublished` records the acknowledgement:
+
+```powershell
+.\mvnw.cmd -B -ntp package -DskipTests
+.\scripts\verify-outbox-acknowledgement-window.ps1
+```
+
+The first dispatch therefore reaches Service Bus and is recorded as failed locally. The next scheduled dispatch sends the same logical event again. The script requires two broker deliveries with one event ID, one duplicate marker and `DUPLICATE_IGNORED` decision, and one workflow completion. The fault property defaults to false and is enabled only on the temporary Payment process started by this experiment; the script restores the ordinary process afterward.
+
+The first successful execution is recorded in [the 2026-08-12 acknowledgement-window result](../results/outbox-acknowledgement-window-2026-08-12.md).

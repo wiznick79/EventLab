@@ -134,6 +134,7 @@ Run the invariant-aware concurrent baseline with the official k6 container:
 ```powershell
 docker compose --profile performance run --rm k6
 .\scripts\verify-payment-restart-recovery.ps1
+.\scripts\verify-outbox-acknowledgement-window.ps1
 ```
 
 ### Reliability model

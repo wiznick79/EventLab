@@ -48,6 +48,17 @@ function Start-PaymentService {
     }
 }
 
+function Get-Timeline {
+    param([string] $WorkflowId)
+
+    $response = Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 `
+        "$consoleUrl/api/v1/runs/$WorkflowId/timeline"
+    $parsed = $response.Content | ConvertFrom-Json
+    foreach ($event in $parsed) {
+        Write-Output $event
+    }
+}
+
 if (-not (Test-Path $paymentJar)) {
     throw "Package the backend first; payment JAR not found at $paymentJar"
 }
@@ -82,8 +93,7 @@ try {
 
     Start-Sleep -Seconds 2
     foreach ($workflowId in $workflowIds) {
-        $timeline = @(Invoke-RestMethod -TimeoutSec 5 `
-                "$consoleUrl/api/v1/runs/$workflowId/timeline")
+        $timeline = @(Get-Timeline -WorkflowId $workflowId)
         if ($timeline.state -contains 'PAYMENT_AUTHORIZED' -or $timeline.state -contains 'COMPLETED') {
             throw "Workflow $workflowId advanced through Payment while payment-service was stopped"
         }
@@ -96,11 +106,10 @@ try {
     $results = @{}
     do {
         foreach ($workflowId in $workflowIds) {
-        $results[$workflowId] = @(Invoke-RestMethod -TimeoutSec 5 `
-                    "$consoleUrl/api/v1/runs/$workflowId/timeline")
+            $results[$workflowId] = @(Get-Timeline -WorkflowId $workflowId)
         }
         $completed = @($workflowIds | Where-Object {
-                @($results[$_] | Where-Object { $_.state -eq 'COMPLETED' }).Count -eq 1
+                $results[$_].Where({ $_.state -eq 'COMPLETED' }).Count -eq 1
             }).Count
         if ($completed -eq $WorkflowCount) {
             break
@@ -110,8 +119,8 @@ try {
 
     $failures = @($workflowIds | Where-Object {
             $timeline = @($results[$_])
-            @($timeline | Where-Object { $_.eventType -eq 'payment.authorized' }).Count -ne 1 `
-                -or @($timeline | Where-Object { $_.state -eq 'COMPLETED' }).Count -ne 1
+            $timeline.Where({ $_.eventType -eq 'payment.authorized' }).Count -ne 1 `
+                -or $timeline.Where({ $_.state -eq 'COMPLETED' }).Count -ne 1
         })
     if ($failures.Count -gt 0) {
         throw "Recovery invariant failed for workflow(s): $($failures -join ', ')"
@@ -122,10 +131,10 @@ try {
         acceptedWhileOffline = $WorkflowCount
         recovered = $WorkflowCount
         paymentEvents = @($workflowIds | ForEach-Object {
-                @($results[$_] | Where-Object { $_.eventType -eq 'payment.authorized' }).Count
+                $results[$_].Where({ $_.eventType -eq 'payment.authorized' }).Count
             } | Measure-Object -Sum).Sum
         completions = @($workflowIds | ForEach-Object {
-                @($results[$_] | Where-Object { $_.state -eq 'COMPLETED' }).Count
+                $results[$_].Where({ $_.state -eq 'COMPLETED' }).Count
             } | Measure-Object -Sum).Sum
         workflowIds = $workflowIds
     } | ConvertTo-Json -Depth 4
