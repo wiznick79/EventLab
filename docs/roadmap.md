@@ -240,3 +240,15 @@ Implemented with persistent load groups, Java virtual-thread launchers, immediat
 **Demonstration:** run the same 50-workflow burst at concurrency 1, 4, and 8, then use the comparison table to explain both the invariant result and why more parallelism did not improve this local run.
 
 Implemented with runtime processor reconfiguration, an internal bounded control plane with rollback, persistent profile metadata, a recent-results comparison table, backward-compatible API defaults, and a documented three-profile measurement.
+
+## Milestone 20: order-balanced concurrency trials — completed 2026-08-13
+
+- Replace conclusions from single measurements with repeated profile trials.
+- Rotate concurrency 1, 4, and 8 through every run position to reduce warm-up and ordering bias.
+- Stop the sequence when any constituent run fails its distributed invariant proof.
+- Summarize median throughput per profile and retain every underlying experiment for inspection.
+- Use a lighter single round in the cost-bounded public environment.
+
+**Demonstration:** launch one balanced comparison locally, watch nine real experiments run in the orders `1→4→8`, `4→8→1`, and `8→1→4`, then compare three median throughput values with the combined invariant-violation count.
+
+Implemented as a visible browser-coordinated sequence over the ordinary persistent load API. The page explicitly says it must remain open; a future production-grade benchmark scheduler would persist campaign coordination on the backend.

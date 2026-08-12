@@ -77,7 +77,7 @@ class LoadExperimentService {
     }
 
     public List<LoadExperimentResponse> recent() {
-        return experiments.findAllByOrderByCreatedAtDesc(PageRequest.of(0, 5)).stream()
+        return experiments.findAllByOrderByCreatedAtDesc(PageRequest.of(0, 12)).stream()
                 .map(this::response).toList();
     }
 

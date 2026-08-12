@@ -83,6 +83,14 @@ type LoadExperiment = {
   completedAt?: string
   workflowIds: string[]
 }
+type ConcurrencyProfile = 1 | 4 | 8
+
+function median(values: number[]) {
+  if (values.length === 0) return 0
+  const sorted = [...values].sort((left, right) => left - right)
+  const middle = Math.floor(sorted.length / 2)
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2
+}
 
 export function formatRemaining(expiresAt: string | undefined, now = Date.now()) {
   if (!expiresAt) return 'No automatic expiry'
@@ -211,6 +219,9 @@ export function App() {
   const [loadExperiment, setLoadExperiment] = useState<LoadExperiment | null>(null)
   const [recentLoadExperiments, setRecentLoadExperiments] = useState<LoadExperiment[]>([])
   const [loadStarting, setLoadStarting] = useState(false)
+  const [comparisonRunning, setComparisonRunning] = useState(false)
+  const [comparisonProgress, setComparisonProgress] = useState('')
+  const [comparisonResults, setComparisonResults] = useState<LoadExperiment[]>([])
   const [loadError, setLoadError] = useState('')
   const streamRef = useRef<EventSource | null>(null)
   const loadTimerRef = useRef<number | null>(null)
@@ -277,6 +288,51 @@ export function App() {
       setRecentLoadExperiments(await response.json())
     } catch {
       // The live experiment remains usable when historical comparison is unavailable.
+    }
+  }
+
+  async function waitForLoadExperiment(id: string) {
+    while (true) {
+      await new Promise((resolve) => window.setTimeout(resolve, 1000))
+      const response = await fetch(`/api/v1/load-experiments/${id}`)
+      if (!response.ok) throw new Error(`Load metrics returned HTTP ${response.status}`)
+      const report: LoadExperiment = await response.json()
+      setLoadExperiment(report)
+      if (report.status === 'PROVED' || report.status === 'FAILED') return report
+    }
+  }
+
+  async function runConcurrencyComparison() {
+    const profiles: ConcurrencyProfile[][] = deployment?.environment === 'local'
+      ? [[1, 4, 8], [4, 8, 1], [8, 1, 4]] : [[1, 4, 8]]
+    const total = profiles.flat().length
+    const completed: LoadExperiment[] = []
+    setComparisonRunning(true)
+    setComparisonResults([])
+    setLoadError('')
+    try {
+      for (const calls of profiles.flat()) {
+        setComparisonProgress(`Run ${completed.length + 1} of ${total} · consumer concurrency ${calls}`)
+        const response = await fetch('/api/v1/load-experiments', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...loadConfig, consumerConcurrency: calls }),
+        })
+        if (!response.ok) throw new Error(response.status === 409
+          ? 'Another load experiment is still running.' : `Load experiment returned HTTP ${response.status}`)
+        const created: LoadExperiment = await response.json()
+        setLoadExperiment(created)
+        window.setTimeout(() => loadPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+        const result = await waitForLoadExperiment(created.id)
+        completed.push(result)
+        setComparisonResults([...completed])
+        if (result.status !== 'PROVED') throw new Error(`Comparison stopped: concurrency ${calls} did not prove its invariants.`)
+      }
+      setComparisonProgress(`Complete · ${total} of ${total} runs proved`)
+      await loadRecentLoadExperiments()
+    } catch (reason) {
+      setLoadError(reason instanceof Error ? reason.message : 'Could not complete the comparison')
+    } finally {
+      setComparisonRunning(false)
     }
   }
 
@@ -572,7 +628,8 @@ export function App() {
             {loadConfig.trafficPattern === 'STEADY' && <label>Arrival interval<select aria-label="Load arrival interval" value={loadConfig.intervalMillis} onChange={(event) => setLoadConfig((current) => ({ ...current, intervalMillis: Number(event.target.value) }))}><option value="100">100 ms</option><option value="200">200 ms</option><option value="500">500 ms</option><option value="1000">1 second</option></select></label>}
           </div>
           <div className="load-safety"><strong>Bounded by design</strong><span>{deployment?.environment === 'local' ? 'Local ceiling: 100 workflows.' : 'Public demo ceiling: 25 workflows.'} One active load experiment at a time.</span></div>
-          <button className="builder-run" type="button" onClick={startLoadExperiment} disabled={loadStarting || !acceptingExperiments || loadExperiment?.status === 'LAUNCHING' || loadExperiment?.status === 'RUNNING'}>{loadStarting ? 'Starting pressure test…' : 'Run load experiment →'}</button>
+          <div className="load-actions"><button className="builder-run" type="button" onClick={startLoadExperiment} disabled={loadStarting || comparisonRunning || !acceptingExperiments || loadExperiment?.status === 'LAUNCHING' || loadExperiment?.status === 'RUNNING'}>{loadStarting ? 'Starting pressure test…' : 'Run load experiment →'}</button><button className="comparison-run" type="button" onClick={runConcurrencyComparison} disabled={loadStarting || comparisonRunning || !acceptingExperiments || loadExperiment?.status === 'LAUNCHING' || loadExperiment?.status === 'RUNNING'}>{comparisonRunning ? comparisonProgress : deployment?.environment === 'local' ? 'Run balanced 9-run comparison' : 'Run 3-profile comparison'}</button></div>
+          {comparisonRunning && <p className="comparison-progress" aria-live="polite">{comparisonProgress}. Keep this page open; each result is persisted as it completes.</p>}
           {loadError && <p className="run-error">{loadError}</p>}
         </section>
 
@@ -613,6 +670,10 @@ export function App() {
             </table>
           </div>
           <p className="comparison-note">Concurrency is applied to the real Service Bus processors for the duration of one experiment, then restored to the sequential baseline. Higher is not automatically faster: broker prefetch, local CPU, database contention, and processor restart warm-up all affect the measured result.</p>
+          {comparisonResults.length > 0 && <div className="comparison-summary"><h3>Current balanced comparison</h3><div>{([1, 4, 8] as ConcurrencyProfile[]).map((calls) => {
+            const runs = comparisonResults.filter((item) => item.consumerConcurrency === calls)
+            return <article key={calls}><span>Concurrency {calls}</span><strong>{runs.length ? `${median(runs.map((item) => item.throughputPerSecond)).toFixed(2)}/s` : 'Pending'}</strong><small>{runs.length} run{runs.length === 1 ? '' : 's'} · median of throughput · {runs.reduce((sum, item) => sum + item.invariantViolations, 0)} violations</small></article>
+          })}</div></div>}
         </section>}
 
         <section className="run-history" aria-labelledby="history-title">
