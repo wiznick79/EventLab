@@ -19,7 +19,8 @@ type RunResponse = { workflowId: string; experimentPlanId: string; state: string
 
 type TraceEvidence = { span: string; decision: string }
 type FulfilmentBehavior = 'SUCCESS' | 'TEMPORARY_UNAVAILABLE' | 'BUSINESS_REJECTION' | 'STALE_AFTER_SUCCESS'
-type ExperimentPlan = { paymentResultDeliveries: number; fulfilmentBehavior: FulfilmentBehavior }
+type RecoveryMode = 'MANUAL' | 'AUTOMATIC'
+type ExperimentPlan = { paymentResultDeliveries: number; fulfilmentBehavior: FulfilmentBehavior; fulfilmentMaxAttempts: number; recoveryMode: RecoveryMode }
 type RunSummary = RunResponse & {
   scenarioId: string
   experimentPlan: ExperimentPlan
@@ -30,11 +31,11 @@ type RunDetails = RunSummary & { timeline: TimelineEvent[] }
 
 export function presetPlan(scenarioId: string): ExperimentPlan {
   return {
-    'duplicate-payment-result': { paymentResultDeliveries: 2, fulfilmentBehavior: 'SUCCESS' as FulfilmentBehavior },
-    'fulfilment-unavailable': { paymentResultDeliveries: 1, fulfilmentBehavior: 'TEMPORARY_UNAVAILABLE' as FulfilmentBehavior },
-    'fulfilment-rejected': { paymentResultDeliveries: 1, fulfilmentBehavior: 'BUSINESS_REJECTION' as FulfilmentBehavior },
-    'out-of-order-event': { paymentResultDeliveries: 1, fulfilmentBehavior: 'STALE_AFTER_SUCCESS' as FulfilmentBehavior },
-  }[scenarioId] ?? { paymentResultDeliveries: 1, fulfilmentBehavior: 'SUCCESS' }
+    'duplicate-payment-result': { paymentResultDeliveries: 2, fulfilmentBehavior: 'SUCCESS' as FulfilmentBehavior, fulfilmentMaxAttempts: 4, recoveryMode: 'MANUAL' as RecoveryMode },
+    'fulfilment-unavailable': { paymentResultDeliveries: 1, fulfilmentBehavior: 'TEMPORARY_UNAVAILABLE' as FulfilmentBehavior, fulfilmentMaxAttempts: 4, recoveryMode: 'MANUAL' as RecoveryMode },
+    'fulfilment-rejected': { paymentResultDeliveries: 1, fulfilmentBehavior: 'BUSINESS_REJECTION' as FulfilmentBehavior, fulfilmentMaxAttempts: 4, recoveryMode: 'MANUAL' as RecoveryMode },
+    'out-of-order-event': { paymentResultDeliveries: 1, fulfilmentBehavior: 'STALE_AFTER_SUCCESS' as FulfilmentBehavior, fulfilmentMaxAttempts: 4, recoveryMode: 'MANUAL' as RecoveryMode },
+  }[scenarioId] ?? { paymentResultDeliveries: 1, fulfilmentBehavior: 'SUCCESS', fulfilmentMaxAttempts: 4, recoveryMode: 'MANUAL' }
 }
 
 export function expectedInvariant(plan: ExperimentPlan) {
@@ -43,7 +44,7 @@ export function expectedInvariant(plan: ExperimentPlan) {
     : ''
   const outcome = {
     SUCCESS: 'the workflow completes exactly once.',
-    TEMPORARY_UNAVAILABLE: 'the command reaches the DLQ and completes once after guarded recovery.',
+    TEMPORARY_UNAVAILABLE: `the command reaches the DLQ after ${plan.fulfilmentMaxAttempts} attempts and completes once after ${plan.recoveryMode === 'AUTOMATIC' ? 'automatic' : 'guarded manual'} recovery.`,
     BUSINESS_REJECTION: 'the payment is compensated and the workflow ends COMPENSATED.',
     STALE_AFTER_SUCCESS: 'the workflow remains COMPLETED after the stale update.',
   }[plan.fulfilmentBehavior]
@@ -129,6 +130,8 @@ export function App() {
   const [builderPlan, setBuilderPlan] = useState<ExperimentPlan>({
     paymentResultDeliveries: 1,
     fulfilmentBehavior: 'SUCCESS',
+    fulfilmentMaxAttempts: 4,
+    recoveryMode: 'MANUAL',
   })
   const streamRef = useRef<EventSource | null>(null)
   const runPanelRef = useRef<HTMLElement | null>(null)
@@ -335,7 +338,11 @@ export function App() {
           <div className="builder-copy"><p className="eyebrow">Scenario Builder</p><h2 id="builder-title">Compose a real experiment</h2><p>Choose a bounded message-delivery plan. The same Workflow, Payment, Fulfilment, Service Bus, databases, and traces execute it.</p></div>
           <div className="builder-controls">
             <label>Payment-result deliveries<select aria-label="Payment-result deliveries" value={builderPlan.paymentResultDeliveries} onChange={(event) => setBuilderPlan((current) => ({ ...current, paymentResultDeliveries: Number(event.target.value) }))}><option value="1">1 · normal delivery</option><option value="2">2 · duplicate delivery</option></select></label>
-            <label>Fulfilment behavior<select aria-label="Fulfilment behavior" value={builderPlan.fulfilmentBehavior} onChange={(event) => setBuilderPlan((current) => ({ ...current, fulfilmentBehavior: event.target.value as FulfilmentBehavior }))}><option value="SUCCESS">Succeed</option><option value="TEMPORARY_UNAVAILABLE">Unavailable → DLQ → recovery</option><option value="BUSINESS_REJECTION">Reject → compensate payment</option><option value="STALE_AFTER_SUCCESS">Succeed → deliver stale update</option></select></label>
+            <label>Fulfilment behavior<select aria-label="Fulfilment behavior" value={builderPlan.fulfilmentBehavior} onChange={(event) => setBuilderPlan((current) => ({ ...current, fulfilmentBehavior: event.target.value as FulfilmentBehavior, recoveryMode: event.target.value === 'TEMPORARY_UNAVAILABLE' ? current.recoveryMode : 'MANUAL' }))}><option value="SUCCESS">Succeed</option><option value="TEMPORARY_UNAVAILABLE">Unavailable → DLQ → recovery</option><option value="BUSINESS_REJECTION">Reject → compensate payment</option><option value="STALE_AFTER_SUCCESS">Succeed → deliver stale update</option></select></label>
+            {builderPlan.fulfilmentBehavior === 'TEMPORARY_UNAVAILABLE' && <>
+              <label>Retry budget<select aria-label="Retry budget" value={builderPlan.fulfilmentMaxAttempts} onChange={(event) => setBuilderPlan((current) => ({ ...current, fulfilmentMaxAttempts: Number(event.target.value) }))}>{[2, 3, 4, 5, 6].map((attempts) => <option key={attempts} value={attempts}>{attempts} attempts</option>)}</select></label>
+              <label>Recovery policy<select aria-label="Recovery policy" value={builderPlan.recoveryMode} onChange={(event) => setBuilderPlan((current) => ({ ...current, recoveryMode: event.target.value as RecoveryMode }))}><option value="MANUAL">Manual · operator replay</option><option value="AUTOMATIC">Automatic · policy replay</option></select></label>
+            </>}
           </div>
           <div className="builder-invariant"><span>Expected invariant</span><strong>{expectedInvariant(builderPlan)}</strong></div>
           <button className="builder-run" type="button" onClick={() => startScenario('custom-plan', builderPlan)} disabled={starting}>{starting && activeScenario === 'custom-plan' ? 'Starting…' : 'Run custom experiment →'}</button>
@@ -346,7 +353,7 @@ export function App() {
           {recentRuns.length > 0 ? <ol className="history-list">{recentRuns.map((recent) => <li key={recent.workflowId}>
             <button type="button" onClick={() => inspectRun(recent.workflowId)}>
               <span><strong>{recent.state.replaceAll('_', ' ')}</strong><small>{new Date(recent.createdAt).toLocaleString()}</small></span>
-              <span className="history-plan">{recent.experimentPlan.paymentResultDeliveries}× payment result · {recent.experimentPlan.fulfilmentBehavior.replaceAll('_', ' ')}</span>
+              <span className="history-plan">{recent.experimentPlan.paymentResultDeliveries}× payment result · {recent.experimentPlan.fulfilmentBehavior.replaceAll('_', ' ')}{recent.experimentPlan.fulfilmentBehavior === 'TEMPORARY_UNAVAILABLE' && ` · ${recent.experimentPlan.fulfilmentMaxAttempts} attempts · ${recent.experimentPlan.recoveryMode.toLowerCase()}`}</span>
               <code>{recent.workflowId.slice(0, 8)}</code>
             </button>
           </li>)}</ol> : <p className="history-empty">Run an experiment to create the first shareable evidence record.</p>}
@@ -358,7 +365,7 @@ export function App() {
             </div>
             {comparedRuns[0] && comparedRuns[1] && <div className="comparison-grid">{comparedRuns.map((item) => item && <article key={item.workflowId}>
               <strong>{item.state.replaceAll('_', ' ')}</strong><code>{item.workflowId}</code>
-              <dl><dt>Deliveries</dt><dd>{item.experimentPlan.paymentResultDeliveries}</dd><dt>Fulfilment</dt><dd>{item.experimentPlan.fulfilmentBehavior.replaceAll('_', ' ')}</dd><dt>Invariant</dt><dd>{item.expectedInvariant}</dd></dl>
+              <dl><dt>Deliveries</dt><dd>{item.experimentPlan.paymentResultDeliveries}</dd><dt>Fulfilment</dt><dd>{item.experimentPlan.fulfilmentBehavior.replaceAll('_', ' ')}</dd>{item.experimentPlan.fulfilmentBehavior === 'TEMPORARY_UNAVAILABLE' && <><dt>Policy</dt><dd>{item.experimentPlan.fulfilmentMaxAttempts} attempts · {item.experimentPlan.recoveryMode.toLowerCase()}</dd></>}<dt>Invariant</dt><dd>{item.expectedInvariant}</dd></dl>
               <button type="button" onClick={() => inspectRun(item.workflowId)}>Inspect evidence →</button>
             </article>)}</div>}
           </div>}
@@ -376,11 +383,11 @@ export function App() {
             <span>{duplicateCount} duplicate delivery observed · 1 workflow completion</span>
           </div>}
           {(activeScenario === 'fulfilment-unavailable' || activePlan?.fulfilmentBehavior === 'TEMPORARY_UNAVAILABLE') && deadLettered && !completed && <div className="invariant">
-            <strong>Command quarantined</strong>
-            <span>The retry budget is exhausted. Restore the simulated dependency and replay this command.</span>
-            <button className="run-button" type="button" onClick={recover} disabled={recovering}>
+            <strong>{activePlan?.recoveryMode === 'AUTOMATIC' ? 'Automatic recovery pending' : 'Command quarantined'}</strong>
+            <span>{activePlan?.recoveryMode === 'AUTOMATIC' ? 'The backend policy claimed this DLQ entry and will replay it without browser intervention.' : 'The retry budget is exhausted. Restore the simulated dependency and replay this command.'}</span>
+            {activePlan?.recoveryMode !== 'AUTOMATIC' && <button className="run-button" type="button" onClick={recover} disabled={recovering}>
               {recovering ? 'Recovering…' : 'Recover and replay'} <span>→</span>
-            </button>
+            </button>}
           </div>}
           {activeScenario === 'fulfilment-rejected' && compensated && <div className="invariant">
             <strong>Invariant restored</strong>

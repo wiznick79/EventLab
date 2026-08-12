@@ -24,6 +24,10 @@ class DeadLetterRecoveryService {
     }
 
     void recover(UUID workflowId) {
+        recover(workflowId, "lab-console");
+    }
+
+    void recover(UUID workflowId, String initiatedBy) {
         if (!properties.enabled()) throw new IllegalStateException("Messaging is disabled");
         var clients = ServiceBusClients.create(
                 properties.connectionString(), properties.fullyQualifiedNamespace());
@@ -38,7 +42,7 @@ class DeadLetterRecoveryService {
                     String replayMessageId = UUID.randomUUID().toString();
                     FulfilmentRecoveryRequested audit = new FulfilmentRecoveryRequested(
                             workflowId, deadLetter.getMessageId(), replayMessageId,
-                            "lab-console", "Simulated dependency restored after retry exhaustion");
+                            initiatedBy, "Simulated dependency restored after retry exhaustion");
                     fulfilment.recover(audit);
                     ServiceBusMessage replay = new ServiceBusMessage(deadLetter.getBody())
                             .setSubject(deadLetter.getSubject()).setContentType(deadLetter.getContentType())

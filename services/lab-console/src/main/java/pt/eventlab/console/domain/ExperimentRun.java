@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.UUID;
 import pt.eventlab.contracts.ExperimentPlan;
 import pt.eventlab.contracts.FulfilmentBehavior;
+import pt.eventlab.contracts.RecoveryMode;
 
 @Entity
 @Table(name = "experiment_runs")
@@ -21,6 +22,10 @@ public class ExperimentRun {
     private int paymentResultDeliveries;
     @Enumerated(EnumType.STRING)
     private FulfilmentBehavior fulfilmentBehavior;
+    private int fulfilmentMaxAttempts;
+    @Enumerated(EnumType.STRING)
+    private RecoveryMode recoveryMode;
+    private boolean recoveryClaimed;
     private String expectedInvariant;
     private Instant createdAt;
 
@@ -34,6 +39,8 @@ public class ExperimentRun {
         this.scenarioId = scenarioId;
         this.paymentResultDeliveries = plan.paymentResultDeliveries();
         this.fulfilmentBehavior = plan.fulfilmentBehavior();
+        this.fulfilmentMaxAttempts = plan.fulfilmentMaxAttempts();
+        this.recoveryMode = plan.recoveryMode();
         this.expectedInvariant = plan.expectedInvariant();
         this.createdAt = createdAt;
     }
@@ -41,7 +48,10 @@ public class ExperimentRun {
     public UUID workflowId() { return workflowId; }
     public UUID experimentPlanId() { return experimentPlanId; }
     public String scenarioId() { return scenarioId; }
-    public ExperimentPlan plan() { return new ExperimentPlan(paymentResultDeliveries, fulfilmentBehavior); }
+    public ExperimentPlan plan() { return new ExperimentPlan(
+            paymentResultDeliveries, fulfilmentBehavior, fulfilmentMaxAttempts, recoveryMode); }
+    public RecoveryMode recoveryMode() { return recoveryMode; }
+    public boolean recoveryClaimed() { return recoveryClaimed; }
     public String expectedInvariant() { return expectedInvariant; }
     public Instant createdAt() { return createdAt; }
 }

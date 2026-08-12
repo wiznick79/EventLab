@@ -132,3 +132,15 @@ Implemented with a transport-neutral `ExperimentPlan`, per-participant plan inte
 **Demonstration:** execute two different plans, compare their delivery behavior and outcomes, refresh either run's URL, and recover the same persisted evidence without rerunning it.
 
 Implemented with a Flyway-managed experiment registry, recent/detail APIs, SPA history routing, an accessible Run Inspector, evidence-link copying, and a two-run comparison view.
+
+## Milestone 11: configurable retry and recovery policies — completed 2026-08-12
+
+- Select a bounded Fulfilment retry budget from two through six attempts.
+- Choose guarded manual replay or backend-owned automatic recovery.
+- Preserve default four-attempt manual behavior for existing presets and older plan JSON.
+- Persist policy choices with the Run Inspector evidence record.
+- Prove automatic recovery uses the same DLQ and audited replay path without browser intervention.
+
+**Demonstration:** configure three attempts and automatic recovery, then observe three failed-attempt events, one dead-letter decision, one recovery initiated by `automatic-policy`, and terminal `COMPLETED`.
+
+Implemented with version-tolerant shared contracts, per-run exhaustion in Fulfilment, an atomic recovery claim in the Lab Console, conditional builder controls, trace-visible initiator evidence, and a reusable integration script.

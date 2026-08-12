@@ -13,6 +13,7 @@ import pt.eventlab.console.api.RunResponse;
 import pt.eventlab.console.api.RunSummaryResponse;
 import pt.eventlab.console.api.StartRunRequest;
 import pt.eventlab.console.api.TimelineEventResponse;
+import pt.eventlab.contracts.RecoveryMode;
 
 @Service
 public class ExperimentRunRegistry {
@@ -49,6 +50,27 @@ public class ExperimentRunRegistry {
                 .map(TimelineEventResponse::from)
                 .toList();
         return RunDetailsResponse.from(run, observedState(timeline), timeline);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UUID> automaticRecoveryCandidates() {
+        return runs.findByRecoveryModeAndRecoveryClaimedFalse(RecoveryMode.AUTOMATIC).stream()
+                .filter(run -> {
+                    TimelineEvent latest = events.findFirstByWorkflowIdOrderBySequenceNumberDesc(run.workflowId());
+                    return latest != null && "DEAD_LETTERED".equals(latest.state());
+                })
+                .map(ExperimentRun::workflowId)
+                .toList();
+    }
+
+    @Transactional
+    public boolean claimAutomaticRecovery(UUID workflowId) {
+        return runs.claimRecovery(workflowId) == 1;
+    }
+
+    @Transactional
+    public void releaseAutomaticRecovery(UUID workflowId) {
+        runs.releaseRecovery(workflowId);
     }
 
     private RunSummaryResponse summary(ExperimentRun run) {

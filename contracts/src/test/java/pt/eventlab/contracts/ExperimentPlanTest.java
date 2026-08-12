@@ -9,11 +9,12 @@ class ExperimentPlanTest {
 
     @Test
     void roundTripsACombinedCustomPlan() {
-        ExperimentPlan plan = new ExperimentPlan(2, FulfilmentBehavior.BUSINESS_REJECTION);
+        ExperimentPlan plan = new ExperimentPlan(2, FulfilmentBehavior.TEMPORARY_UNAVAILABLE,
+                3, RecoveryMode.AUTOMATIC);
 
         assertEquals(plan, ExperimentPlan.preset(plan.scenarioId()));
         assertEquals(
-                "two payment-result deliveries produce one payment state change; payment is compensated and workflow ends COMPENSATED",
+                "two payment-result deliveries produce one payment state change; command reaches the DLQ after 3 attempts and completes exactly once after automatic recovery",
                 plan.expectedInvariant());
     }
 
@@ -29,5 +30,13 @@ class ExperimentPlanTest {
     void rejectsUnboundedDuplicateCounts() {
         assertThrows(IllegalArgumentException.class,
                 () -> new ExperimentPlan(3, FulfilmentBehavior.SUCCESS));
+    }
+
+    @Test
+    void defaultsMissingPolicyFieldsForOlderJsonContracts() {
+        ExperimentPlan plan = new ExperimentPlan(1, FulfilmentBehavior.TEMPORARY_UNAVAILABLE, 0, null);
+
+        assertEquals(4, plan.fulfilmentMaxAttempts());
+        assertEquals(RecoveryMode.MANUAL, plan.recoveryMode());
     }
 }

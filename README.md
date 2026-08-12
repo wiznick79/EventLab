@@ -8,7 +8,7 @@ The project is a portfolio and learning system, not a parcel-management product.
 
 ## Status
 
-Milestones 0–10 are complete. EventLab includes a disposable Azure environment, a permanent portfolio tour, repeatable resilience measurements, an interactive Scenario Builder, and durable shareable Run Inspector evidence.
+Milestones 0–11 are complete. EventLab includes a disposable Azure environment, a permanent portfolio tour, repeatable resilience measurements, an interactive Scenario Builder, durable Run Inspector evidence, and configurable retry/recovery policies.
 
 ## Target technology
 
@@ -128,6 +128,7 @@ mvn package
 .\scripts\verify-compensation-scenario.ps1
 .\scripts\verify-ordering-scenario.ps1
 .\scripts\verify-custom-experiment.ps1
+.\scripts\verify-automatic-recovery.ps1
 ```
 
 Run the invariant-aware concurrent baseline with the official k6 container:

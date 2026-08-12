@@ -23,7 +23,6 @@ import pt.eventlab.messaging.InboxStore;
 
 @Service
 public class FulfilmentApplicationService {
-    private static final int MAX_ATTEMPTS = 4;
     private static final String HANDLER = "fulfilment.request";
     private final BusinessDecisionTrace decisions;
     private final Clock clock = Clock.systemUTC();
@@ -59,11 +58,13 @@ public class FulfilmentApplicationService {
                 .orElseGet(() -> fulfilments.save(Fulfilment.start(
                         command.workflowId(), command.payload().scenarioId(), now)));
         int attempt = job.attempt();
+        ExperimentPlan plan = ExperimentPlan.preset(command.payload().scenarioId());
         if (!job.available()) {
-            boolean exhausted = attempt >= MAX_ATTEMPTS;
+            int maxAttempts = plan.fulfilmentMaxAttempts();
+            boolean exhausted = attempt >= maxAttempts;
             long delay = exhausted ? 0 : 250L << (attempt - 1);
             messages.publish(event(command, MessageTypes.FULFILMENT_ATTEMPT_FAILED,
-                    new FulfilmentAttemptFailed(command.workflowId(), attempt, MAX_ATTEMPTS, delay)));
+                    new FulfilmentAttemptFailed(command.workflowId(), attempt, maxAttempts, delay)));
             if (exhausted) {
                 messages.publish(event(command, MessageTypes.FULFILMENT_DEAD_LETTERED,
                         new FulfilmentDeadLettered(command.workflowId(), attempt, "Simulated provider unavailable")));
@@ -75,7 +76,7 @@ public class FulfilmentApplicationService {
             return outcome("DUPLICATE_IGNORED", false,
                     new FulfilmentAttemptResult(true, false, attempt, 0));
         }
-        FulfilmentBehavior behavior = ExperimentPlan.preset(command.payload().scenarioId()).fulfilmentBehavior();
+        FulfilmentBehavior behavior = plan.fulfilmentBehavior();
         if (behavior == FulfilmentBehavior.BUSINESS_REJECTION) {
             job.reject(now);
             messages.publish(event(command, MessageTypes.FULFILMENT_REJECTED,

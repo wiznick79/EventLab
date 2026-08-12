@@ -241,6 +241,8 @@ The Scenario Builder combines a payment-result delivery count of one or two with
 
 The Lab Console also owns an experiment-run registry for inspection. It stores the submitted plan, plan ID, expected invariant, and creation time alongside its existing event projection; it does not copy participant business state. Current and terminal outcomes are derived from the latest persisted timeline event. This projection supports recent history, stable `/runs/{workflowId}` evidence links, refresh recovery, and side-by-side comparisons without querying another service's database.
 
+Retry and recovery policies are bounded experiment inputs, not arbitrary runtime scripting. A temporary-unavailability plan permits two through six Fulfilment delivery attempts and either manual or automatic recovery. Fulfilment derives exhaustion from the immutable plan and still uses native abandon/dead-letter settlement. For automatic mode, the Lab Console scheduler waits until its persisted projection observes `DEAD_LETTERED`, atomically claims recovery once, and invokes the same audited replay path as the operator endpoint with initiator `automatic-policy`. If the broker message is not yet visible or replay fails, the claim is released for a later retry.
+
 ## 8. Initial scenarios
 
 ### Duplicate payment result
