@@ -10,8 +10,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -50,7 +50,6 @@ class LoadExperimentService {
         this.deploymentProperties = deploymentProperties;
     }
 
-    @Transactional
     public synchronized LoadExperimentResponse start(StartLoadExperimentRequest request) {
         deployment.requireAcceptingExperiments();
         validate(request);
@@ -100,34 +99,50 @@ class LoadExperimentService {
     }
 
     private void launch(LoadExperiment experiment) {
-        List<Future<UUID>> futures = new ArrayList<>();
+        var completions = new ExecutorCompletionService<Void>(launchers);
         for (int index = 0; index < experiment.requestedWorkflows(); index++) {
             int member = index;
-            futures.add(launchers.submit(() -> {
-                if (experiment.intervalMillis() > 0) {
-                    Thread.sleep((long) member * experiment.intervalMillis());
+            completions.submit(() -> {
+                try {
+                    if (experiment.intervalMillis() > 0) {
+                        Thread.sleep((long) member * experiment.intervalMillis());
+                    }
+                    boolean duplicate = member * 100 < experiment.requestedWorkflows()
+                            * experiment.duplicatePercentage();
+                    ExperimentPlan plan = new ExperimentPlan(duplicate ? 2 : 1, FulfilmentBehavior.SUCCESS);
+                    StartRunRequest request = new StartRunRequest("load-" + experiment.id(), plan,
+                            BigDecimal.valueOf(129.90), "EUR");
+                    RunResponse run = workflows.start(request);
+                    runs.register(request, run);
+                    recordAccepted(experiment.id(), run.workflowId());
+                } catch (Exception exception) {
+                    recordLaunchFailure(experiment.id());
                 }
-                boolean duplicate = member * 100 < experiment.requestedWorkflows()
-                        * experiment.duplicatePercentage();
-                ExperimentPlan plan = new ExperimentPlan(duplicate ? 2 : 1, FulfilmentBehavior.SUCCESS);
-                StartRunRequest request = new StartRunRequest("load-" + experiment.id(), plan,
-                        BigDecimal.valueOf(129.90), "EUR");
-                RunResponse run = workflows.start(request);
-                runs.register(request, run);
-                return run.workflowId();
-            }));
+                return null;
+            });
         }
-        List<UUID> ids = new ArrayList<>();
-        int failures = 0;
-        for (Future<UUID> future : futures) {
+        for (int completed = 0; completed < experiment.requestedWorkflows(); completed++) {
             try {
-                ids.add(future.get());
+                completions.take().get();
             } catch (Exception exception) {
-                failures++;
+                Thread.currentThread().interrupt();
+                return;
             }
         }
         LoadExperiment current = find(experiment.id());
-        current.launched(ids, failures, clock.instant());
+        current.launchCompleted(clock.instant());
+        experiments.save(current);
+    }
+
+    private synchronized void recordAccepted(UUID experimentId, UUID workflowId) {
+        LoadExperiment current = find(experimentId);
+        current.accepted(workflowId);
+        experiments.save(current);
+    }
+
+    private synchronized void recordLaunchFailure(UUID experimentId) {
+        LoadExperiment current = find(experimentId);
+        current.launchFailed();
         experiments.save(current);
     }
 
@@ -140,8 +155,11 @@ class LoadExperimentService {
         int duplicates = members.stream().mapToInt(Member::duplicateDeliveries).sum();
         int maxInFlight = maxInFlight(members);
         double throughput = throughput(terminal);
+        int processedLaunches = members.size() + experiment.launchFailures();
         return new LoadExperimentResponse(experiment.id(), experiment.status(), experiment.trafficPattern(),
-                experiment.requestedWorkflows(), members.size(), experiment.launchFailures(),
+                experiment.requestedWorkflows(), processedLaunches,
+                experiment.requestedWorkflows() - processedLaunches,
+                members.size(), experiment.launchFailures(),
                 experiment.duplicatePercentage(), terminal.size(), proved, violations, duplicates,
                 members.size() - terminal.size(), maxInFlight, throughput,
                 percentile(latencies, 0.5), percentile(latencies, 0.95), experiment.createdAt(),

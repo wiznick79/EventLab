@@ -61,6 +61,8 @@ type LoadExperiment = {
   status: 'LAUNCHING' | 'RUNNING' | 'PROVED' | 'FAILED'
   trafficPattern: 'BURST' | 'STEADY'
   requestedWorkflows: number
+  processedLaunches: number
+  pendingLaunches: number
   acceptedWorkflows: number
   launchFailures: number
   duplicatePercentage: number
@@ -555,8 +557,10 @@ export function App() {
 
         {loadExperiment && <section className={`load-report ${loadExperiment.status.toLowerCase()}`} ref={loadPanelRef} tabIndex={-1} aria-labelledby="load-report-title">
           <div className="load-report-heading"><div><p className="eyebrow">Live aggregate evidence</p><h2 id="load-report-title">{loadExperiment.status.replace('_', ' ')}</h2></div><code>{loadExperiment.id}</code></div>
-          <div className="load-progress"><span style={{ width: `${loadExperiment.acceptedWorkflows === 0 ? 0 : loadExperiment.terminalWorkflows / loadExperiment.acceptedWorkflows * 100}%` }} /><strong>{loadExperiment.terminalWorkflows} / {loadExperiment.acceptedWorkflows} terminal</strong></div>
+          <div className="load-progress launch-progress"><span style={{ width: `${loadExperiment.processedLaunches / loadExperiment.requestedWorkflows * 100}%` }} /><strong>{loadExperiment.processedLaunches} / {loadExperiment.requestedWorkflows} launch responses</strong></div>
+          <div className="load-progress"><span style={{ width: `${loadExperiment.acceptedWorkflows === 0 ? 0 : loadExperiment.terminalWorkflows / loadExperiment.acceptedWorkflows * 100}%` }} /><strong>{loadExperiment.terminalWorkflows} / {loadExperiment.acceptedWorkflows} accepted workflows terminal</strong></div>
           <dl className="load-metrics">
+            <div><dt>Pending launches</dt><dd>{loadExperiment.pendingLaunches}</dd></div>
             <div><dt>Accepted</dt><dd>{loadExperiment.acceptedWorkflows} / {loadExperiment.requestedWorkflows}</dd></div>
             <div><dt>Evidence proved</dt><dd>{loadExperiment.provedWorkflows}</dd></div>
             <div><dt>Invariant violations</dt><dd>{loadExperiment.invariantViolations}</dd></div>
@@ -567,7 +571,7 @@ export function App() {
             <div><dt>p95 latency</dt><dd>{(loadExperiment.p95LatencyMillis / 1000).toFixed(2)} s</dd></div>
             <div><dt>Duplicates observed</dt><dd>{loadExperiment.duplicateDeliveries}</dd></div>
           </dl>
-          <p className="load-verdict">{loadExperiment.status === 'PROVED' ? 'PROVED · every accepted workflow reached a terminal state and its individual evidence report passed.' : loadExperiment.status === 'FAILED' ? 'FAILED · at least one launch or distributed invariant did not pass.' : 'IN PROGRESS · the backlog and terminal evidence are updated once per second.'}</p>
+          <p className="load-verdict">{loadExperiment.status === 'PROVED' ? 'PROVED · every accepted workflow reached a terminal state and its individual evidence report passed.' : loadExperiment.status === 'FAILED' ? 'FAILED · at least one launch or distributed invariant did not pass.' : loadExperiment.status === 'LAUNCHING' ? 'LAUNCHING · accepted members appear immediately while the remaining requests are still in flight.' : 'IN PROGRESS · launch is complete; the accepted-work backlog and terminal evidence update once per second.'}</p>
           {loadExperiment.workflowIds.length > 0 && <button className="inspect-member" type="button" onClick={() => inspectRun(loadExperiment.workflowIds[0])}>Inspect one member’s timeline and traces →</button>}
         </section>}
 

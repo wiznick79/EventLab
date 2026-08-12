@@ -14,6 +14,8 @@ The Lab Console will coordinate bounded groups of otherwise ordinary experiment 
 
 The aggregate report derives its claims from those individual backend evidence reports. It exposes accepted and terminal work, current backlog, maximum in-flight workflows, throughput, median and p95 terminal latency, duplicate deliveries, launch failures, and invariant violations. An experiment is `PROVED` only when every accepted workflow is terminal, every individual report is proved, and no launch failed.
 
+Each accepted workflow is attached to the persistent group as soon as its creation request completes. Launch progress and asynchronous processing progress are reported separately, so a large burst does not appear idle while its requests are being accepted.
+
 Limits are part of the product contract: local development permits at most 100 workflows; a public deployment permits at most 25; and only one load experiment may run at a time. The coordinator persists the group and member workflow identifiers so results remain inspectable after browser refreshes or a Lab Console restart.
 
 ## Consequences

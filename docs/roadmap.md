@@ -227,4 +227,4 @@ Implemented with paged Service Bus peek operations, a workflow-scoped inspection
 
 **Demonstration:** launch a 25-workflow burst with 20% duplicate delivery, observe more than one workflow in flight, watch the backlog drain to zero, and require 25 proved evidence reports with zero invariant violations before the aggregate becomes `PROVED`.
 
-Implemented with persistent load groups, Java virtual-thread launchers, scheduled evidence aggregation, durable member links, a responsive Load & Concurrency Lab, and environment-specific safety ceilings. The existing k6 suite remains the repeatable regression baseline; the interactive report makes the same correctness-under-load idea explainable in the public demo.
+Implemented with persistent load groups, Java virtual-thread launchers, immediate per-member acceptance persistence, separate launch and terminal progress, scheduled evidence aggregation, durable member links, a responsive Load & Concurrency Lab, and environment-specific safety ceilings. The existing k6 suite remains the repeatable regression baseline; the interactive report makes the same correctness-under-load idea explainable in the public demo.

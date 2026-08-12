@@ -9,6 +9,8 @@ public record LoadExperimentResponse(
         String status,
         String trafficPattern,
         int requestedWorkflows,
+        int processedLaunches,
+        int pendingLaunches,
         int acceptedWorkflows,
         int launchFailures,
         int duplicatePercentage,

@@ -113,6 +113,8 @@ h1 em { color: transparent; -webkit-text-stroke: 1px rgba(233, 237, 247, .62); f
 .load-report-heading code { color: var(--cyan); font-size: .68rem; }
 .load-progress { position: relative; height: 2.5rem; margin: 1.5rem 0; overflow: hidden; border: 1px solid var(--line); }
 .load-progress span { position: absolute; inset: 0 auto 0 0; background: rgba(102,230,212,.18); transition: width .4s ease; }
+.load-progress.launch-progress { margin-bottom: -.75rem; }
+.load-progress.launch-progress span { background: rgba(189,255,83,.14); }
 .load-progress strong { position: relative; display: grid; height: 100%; place-items: center; font: .7rem 'DM Mono', monospace; text-transform: uppercase; }
 .load-metrics { display: grid; grid-template-columns: repeat(3, 1fr); margin: 0; border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
 .load-metrics div { padding: 1.1rem; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }

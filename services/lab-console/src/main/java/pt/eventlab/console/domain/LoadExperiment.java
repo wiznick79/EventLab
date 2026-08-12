@@ -40,12 +40,18 @@ public class LoadExperiment {
         this.createdAt = createdAt;
     }
 
-    public void launched(List<UUID> ids, int failures, Instant at) {
-        workflowIds = ids.stream().map(UUID::toString).reduce((left, right) -> left + "," + right).orElse("");
-        launchFailures = failures;
+    public void accepted(UUID workflowId) {
+        workflowIds = workflowIds.isBlank() ? workflowId.toString() : workflowIds + "," + workflowId;
+    }
+
+    public void launchFailed() {
+        launchFailures++;
+    }
+
+    public void launchCompleted(Instant at) {
         launchedAt = at;
-        status = ids.isEmpty() ? "FAILED" : "RUNNING";
-        if (ids.isEmpty()) completedAt = at;
+        status = workflowIds.isBlank() ? "FAILED" : "RUNNING";
+        if (workflowIds.isBlank()) completedAt = at;
     }
 
     public void completed(boolean proved, Instant at) {

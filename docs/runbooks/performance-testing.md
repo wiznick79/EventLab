@@ -47,6 +47,8 @@ The Lab Console returns immediately with a durable load-experiment ID, launches 
 - **duplicates observed** proves the selected pressure mix reached the consumer;
 - **invariant violations** is the correctness gate, derived from each member's backend evidence report.
 
+The first progress bar measures workflow-creation responses and the second measures accepted workflows reaching terminal state. During a burst, accepted work is persisted member by member: the launch count can still be increasing while the processing backlog already contains work. This distinction prevents request-acceptance time from being mistaken for broker-processing latency.
+
 `PROVED` means every accepted member became terminal, every member evidence report passed, and every requested launch was accepted. These bounded results are portfolio evidence and regression feedback, not a production capacity claim. Continue to use k6 for repeatable scripted baselines.
 
 The first illustrative result is recorded in [the 2026-08-12 local baseline](../results/local-baseline-2026-08-12.md).
