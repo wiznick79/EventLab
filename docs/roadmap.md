@@ -106,3 +106,5 @@ Completed with trace-verifiable timeline claims, shared decision instrumentation
 - Publish a concise, reproducible result rather than claiming production capacity from a development machine.
 
 **Demonstration:** run concurrent workflows, interrupt a participant, restore it, and show that every accepted workflow reaches one correct terminal outcome.
+
+The first increment now includes an invariant-aware k6 concurrency baseline and a deterministic Payment outage experiment. Five workflows accepted with no Payment consumer all resumed after restart, each producing one payment authorization and one completion. Remaining work is to target a narrower crash window and present the results in the permanent tour.

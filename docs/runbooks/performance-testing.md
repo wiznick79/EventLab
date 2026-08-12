@@ -38,4 +38,12 @@ The first illustrative result is recorded in [the 2026-08-12 local baseline](../
 
 ## Next resilience experiment
 
-The next Milestone 8 increment will terminate a service after runs have been accepted, restart it, and require all in-flight workflows to recover through persisted outbox and inbox state without duplicate terminal transitions.
+The restart experiment deliberately terminates the locally running Payment JVM, accepts workflows while no payment consumer is available, restarts Payment, and checks every timeline for one payment event and one terminal completion:
+
+```powershell
+.\scripts\verify-payment-restart-recovery.ps1
+```
+
+The script refuses to stop port 8082 unless its owner is a Java command running the EventLab payment-service JAR. Its `finally` block restores Payment if an assertion or API call fails. The interruption happens before workflow creation so the experiment deterministically proves broker buffering plus post-restart consumption. A later experiment can target the narrower crash window between broker acceptance and outbox publication.
+
+The first successful execution is recorded in [the 2026-08-12 Payment restart result](../results/payment-restart-recovery-2026-08-12.md).
