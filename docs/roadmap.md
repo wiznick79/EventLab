@@ -252,3 +252,15 @@ Implemented with runtime processor reconfiguration, an internal bounded control 
 **Demonstration:** launch one balanced comparison locally, watch nine real experiments run in the orders `1→4→8`, `4→8→1`, and `8→1→4`, then compare three median throughput values with the combined invariant-violation count.
 
 Implemented as a visible browser-coordinated sequence over the ordinary persistent load API. The page explicitly says it must remain open; a future production-grade benchmark scheduler would persist campaign coordination on the backend.
+
+## Milestone 21: comparison stability and live campaign evidence — completed 2026-08-13
+
+- Run the same nine measured trials in both local and Azure environments.
+- Warm each consumer profile once before collecting measurements.
+- Allow broker connections and processors a short settling interval between experiments.
+- Refresh the latest-results table after every constituent run.
+- Report minimum, median, maximum, spread, and an honest stability classification.
+
+**Demonstration:** watch the latest-results table change during the campaign, then explain that a profile with more than 25% throughput spread is `INCONCLUSIVE` even when every workflow invariant is proved.
+
+Implemented with three excluded warm-up experiments, two-second settling intervals, live durable-result insertion, campaign-only measured summaries, and a deliberately conservative variability verdict.

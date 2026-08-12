@@ -16,7 +16,7 @@ The chosen profile is persisted with the experiment and displayed beside through
 
 The service endpoints are an internal control plane. A partial configuration is treated as unavailable and already configured remote processors are rolled back to 1; no load members are launched under a knowingly mixed profile.
 
-For a less order-sensitive local comparison, the browser runner executes a three-by-three Latin-square sequence: `1→4→8`, `4→8→1`, and `8→1→4`. It summarizes the median of the three throughput observations per profile and stops if any constituent experiment fails its correctness proof. Every constituent result is durable, although the browser must remain open to coordinate the sequence. The public demo uses one three-profile round to preserve its stricter workload and cost boundary.
+For a less order-sensitive comparison, the browser runner first executes one unmeasured warm-up for each profile, waits two seconds after every experiment, then executes a three-by-three Latin-square sequence: `1→4→8`, `4→8→1`, and `8→1→4`. It runs identically in local and Azure environments. It summarizes minimum, median, maximum, and percentage spread for the three throughput observations per profile and stops if any constituent experiment fails its correctness proof. A spread above 25% is explicitly labelled `INCONCLUSIVE`, rather than declaring a performance winner. Every constituent result is durable, although the browser must remain open to coordinate the sequence.
 
 ## Consequences
 
