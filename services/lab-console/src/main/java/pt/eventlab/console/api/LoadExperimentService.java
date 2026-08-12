@@ -15,6 +15,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -80,15 +82,6 @@ class LoadExperimentService {
 
     @Scheduled(fixedDelay = 1000)
     public void assessRunningExperiments() {
-        for (LoadExperiment experiment : experiments.findByStatus("LAUNCHING")) {
-            long expectedLaunchSeconds = (long) experiment.requestedWorkflows()
-                    * experiment.intervalMillis() / 1000;
-            if (Duration.between(experiment.createdAt(), clock.instant()).toSeconds()
-                    > expectedLaunchSeconds + 30) {
-                experiment.completed(false, clock.instant());
-                experiments.save(experiment);
-            }
-        }
         for (LoadExperiment experiment : experiments.findByStatus("RUNNING")) {
             LoadExperimentResponse report = response(experiment);
             if (report.acceptedWorkflows() > 0
@@ -96,6 +89,14 @@ class LoadExperimentService {
                 experiment.completed(report.invariantViolations() == 0, clock.instant());
                 experiments.save(experiment);
             }
+        }
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void markLaunchesAbandonedByRestart() {
+        for (LoadExperiment experiment : experiments.findByStatus("LAUNCHING")) {
+            experiment.completed(false, clock.instant());
+            experiments.save(experiment);
         }
     }
 

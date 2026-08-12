@@ -567,11 +567,11 @@ export function App() {
           <div className="load-stage-flow" aria-label="Distributed workflow progress">
             <div><span>Accepted</span><strong>{loadExperiment.acceptedWorkflows}</strong><i style={{ width: `${loadExperiment.acceptedWorkflows / loadExperiment.requestedWorkflows * 100}%` }} /></div>
             <b>→</b>
-            <div><span>Payment observed</span><strong>{loadExperiment.paymentObservedWorkflows}</strong><i style={{ width: `${loadExperiment.acceptedWorkflows === 0 ? 0 : loadExperiment.paymentObservedWorkflows / loadExperiment.acceptedWorkflows * 100}%` }} /></div>
+            <div><span>Payment observed</span><strong>{loadExperiment.paymentObservedWorkflows}</strong><i style={{ width: `${loadExperiment.paymentObservedWorkflows / loadExperiment.requestedWorkflows * 100}%` }} /></div>
             <b>→</b>
-            <div><span>Fulfilment observed</span><strong>{loadExperiment.fulfilmentObservedWorkflows}</strong><i style={{ width: `${loadExperiment.acceptedWorkflows === 0 ? 0 : loadExperiment.fulfilmentObservedWorkflows / loadExperiment.acceptedWorkflows * 100}%` }} /></div>
+            <div><span>Fulfilment observed</span><strong>{loadExperiment.fulfilmentObservedWorkflows}</strong><i style={{ width: `${loadExperiment.fulfilmentObservedWorkflows / loadExperiment.requestedWorkflows * 100}%` }} /></div>
             <b>→</b>
-            <div><span>Terminal evidence</span><strong>{loadExperiment.terminalWorkflows}</strong><i style={{ width: `${loadExperiment.acceptedWorkflows === 0 ? 0 : loadExperiment.terminalWorkflows / loadExperiment.acceptedWorkflows * 100}%` }} /></div>
+            <div><span>Terminal evidence</span><strong>{loadExperiment.terminalWorkflows}</strong><i style={{ width: `${loadExperiment.terminalWorkflows / loadExperiment.requestedWorkflows * 100}%` }} /></div>
           </div>
           <dl className="load-metrics">
             <div><dt>Pending launches</dt><dd>{loadExperiment.pendingLaunches}</dd></div>
