@@ -196,6 +196,15 @@ jobs:
             sleep 5
           done
           jq -e '.assessment == "PROVED"' <<< "$EVIDENCE" >/dev/null
+          DEAD_LETTER="$(curl --fail --connect-timeout 10 --max-time 30 \
+            "${URL}/api/v1/runs/${WORKFLOW_ID}/dead-letter")"
+          jq -e '
+            .status == "FOUND"
+            and .queue == "fulfilment-commands/$deadletterqueue"
+            and .deadLetterReason == "UnsupportedContractVersion"
+            and .schemaVersion == 99
+            and .replayAllowed == false
+          ' <<< "$DEAD_LETTER" >/dev/null
       - name: Publish live-lab status
         env:
           GH_TOKEN: ${{ github.token }}

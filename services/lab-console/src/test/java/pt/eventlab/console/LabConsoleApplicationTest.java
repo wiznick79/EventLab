@@ -94,4 +94,17 @@ class LabConsoleApplicationTest {
                 .andExpect(jsonPath("$.assessment").value("IN_PROGRESS"))
                 .andExpect(jsonPath("$.checks[0].id").value("payment-deliveries"));
     }
+
+    @Test
+    void reportsDeadLetterInspectionUnavailableWhenMessagingIsDisabled() throws Exception {
+        UUID workflowId = UUID.randomUUID();
+        runs.register(new StartRunRequest("happy-path", null, java.math.BigDecimal.TEN, "EUR"),
+                new RunResponse(workflowId, UUID.randomUUID(), "PAYMENT_PENDING"));
+
+        mvc.perform(get("/api/v1/runs/{workflowId}/dead-letter", workflowId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.workflowId").value(workflowId.toString()))
+                .andExpect(jsonPath("$.status").value("UNAVAILABLE"))
+                .andExpect(jsonPath("$.replayAllowed").value(false));
+    }
 }

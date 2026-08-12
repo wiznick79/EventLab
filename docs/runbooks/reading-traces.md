@@ -27,6 +27,17 @@ Trace evidence complements the database invariants and scenario checks; it does 
 
 An offline consumer produces no attempt span and leaves the broker message available for later delivery. The poison experiment is intentionally different: three contract-decision spans prove the consumer received and evaluated the payload, while the final span and projected `POISON_DEAD_LETTERED` event prove explicit quarantine.
 
+## Native DLQ proof
+
+For a currently quarantined Fulfilment command, `GET /api/v1/runs/{workflowId}/dead-letter` peeks the native Service Bus dead-letter subqueue. The Run Inspector renders the same response. For the poison experiment, verify:
+
+- queue `fulfilment-commands/$deadletterqueue`;
+- reason `UnsupportedContractVersion`;
+- declared schema version `99`;
+- replay policy `Replay blocked`.
+
+This inspection is non-destructive and intentionally excludes the message body. A `NOT_FOUND` response can also mean a transient-failure entry was already recovered and completed; durable timeline and trace evidence remain available after replay.
+
 ## Operations dashboard
 
 Grafana provisions **EventLab Operations** at `/d/eventlab-operations/eventlab-operations`. The live UI's **Operations** link opens it for the current hour. Its panels provide four starting points:

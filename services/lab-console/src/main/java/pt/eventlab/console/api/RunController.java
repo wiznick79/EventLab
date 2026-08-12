@@ -68,6 +68,12 @@ class RunController {
         return consistency.inspect(workflowId);
     }
 
+    @GetMapping("/{workflowId}/dead-letter")
+    DeadLetterInspectionResponse deadLetter(@PathVariable UUID workflowId) {
+        runs.details(workflowId);
+        return recovery.inspect(workflowId);
+    }
+
     @GetMapping("/{workflowId}/timeline")
     List<TimelineEventResponse> timeline(@PathVariable UUID workflowId) {
         return timeline.timeline(workflowId);

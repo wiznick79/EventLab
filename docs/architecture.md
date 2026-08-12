@@ -265,6 +265,8 @@ Recovery is workflow-scoped. The Lab Console searches the dead-letter subqueue f
 
 Unsupported contract versions follow a separate poison-message path. Fulfilment validates the envelope schema before applying the command, records three no-state-change rejection decisions, and explicitly dead-letters the final delivery with reason `UnsupportedContractVersion`. It publishes a poison-specific quarantine event so Workflow can end the saga as `FAILED_REQUIRES_INTERVENTION` immediately; dependency recovery is deliberately unavailable because replaying the same incompatible bytes cannot succeed. The Lab Console presents `POISON_DEAD_LETTERED` separately from a recoverable provider outage and requires three rejections, one quarantine, and no fulfilment completion in its evidence assessment.
 
+The Lab Console's native DLQ Inspector peeks the Fulfilment dead-letter subqueue in bounded pages and matches only the requested workflow ID. Peek does not acquire a message lock or change delivery, settlement, or retention state. The public response deliberately omits the message body and arbitrary application properties; it exposes only the broker metadata needed to substantiate the experiment. A transient-failure reason permits the existing guarded recovery action, while `UnsupportedContractVersion` remains inspection-only until a compatible consumer or explicit transformation exists.
+
 ### Fulfilment rejection and compensation
 
 Payment succeeds and fulfilment rejects the order. The saga commands payment compensation and displays the forward and compensating paths.

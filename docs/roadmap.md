@@ -204,3 +204,15 @@ Implemented with a cross-service consistency endpoint, terminal-aware comparison
 **Demonstration:** choose **Unsupported contract → poison DLQ** in the Scenario Builder, then observe schema version 99 rejected on three deliveries, one `POISON_DEAD_LETTERED` transition, zero Fulfilment completion, and terminal `FAILED_REQUIRES_INTERVENTION`.
 
 Implemented with explicit schema validation at the consumer boundary, abandon/dead-letter settlement, a contract-rejection business event, poison-specific timeline and trace decisions, immediate saga escalation, and plan-aware evidence checks.
+
+## Milestone 17: native DLQ Inspector — completed 2026-08-12
+
+- Inspect the actual Service Bus dead-letter subqueue without receiving, locking, or settling its messages.
+- Locate a DLQ entry by the experiment workflow ID rather than displaying unrelated messages.
+- Expose bounded broker metadata: queue, message ID, reason, error description, schema version, delivery count, sequence number, and enqueue time.
+- Keep incompatible-contract replay blocked while preserving the existing guarded recovery path for transient failures.
+- Present broker proof beside trace decisions, projected events, and authoritative Workflow state.
+
+**Demonstration:** run **Unsupported contract → poison DLQ** and observe `UnsupportedContractVersion` plus schema version 99 directly from `fulfilment-commands/$deadletterqueue`, while the UI explains why replay is unavailable.
+
+Implemented with paged Service Bus peek operations, a workflow-scoped inspection endpoint, a responsive native-broker proof panel, mapping and controller tests, and an Azure smoke assertion for the poison DLQ metadata.

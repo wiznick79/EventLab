@@ -32,6 +32,21 @@ type RunDetails = RunSummary & { timeline: TimelineEvent[] }
 type EvidenceCheck = { id: string; label: string; status: 'PROVED' | 'IN_PROGRESS' | 'FAILED'; observation: string; traceIds: string[] }
 type EvidenceReport = { assessment: EvidenceCheck['status']; generatedAt: string; checks: EvidenceCheck[] }
 type RunConsistency = { status: 'IN_FLIGHT' | 'CONSISTENT' | 'CATCHING_UP' | 'PROJECTION_BEHIND' | 'SOURCE_UNAVAILABLE'; authoritativeState?: string; projectedState: string; lagSeconds: number; explanation: string }
+type DeadLetterInspection = {
+  workflowId: string
+  status: 'FOUND' | 'NOT_FOUND' | 'UNAVAILABLE'
+  queue: string
+  messageId?: string
+  subject?: string
+  deadLetterReason?: string
+  errorDescription?: string
+  deliveryCount?: number
+  sequenceNumber?: number
+  enqueuedAt?: string
+  schemaVersion?: number
+  replayAllowed: boolean
+  operatorGuidance: string
+}
 type DeploymentStatus = {
   environment: string
   version: string
@@ -156,6 +171,7 @@ export function App() {
   const [copied, setCopied] = useState(false)
   const [evidenceReport, setEvidenceReport] = useState<EvidenceReport | null>(null)
   const [runConsistency, setRunConsistency] = useState<RunConsistency | null>(null)
+  const [deadLetterInspection, setDeadLetterInspection] = useState<DeadLetterInspection | null>(null)
   const [deployment, setDeployment] = useState<DeploymentStatus | null>(null)
   const [clockTick, setClockTick] = useState(Date.now())
   const [builderPlan, setBuilderPlan] = useState<ExperimentPlan>({
@@ -204,6 +220,7 @@ export function App() {
     setEvents([])
     setEvidenceReport(null)
     setRunConsistency(null)
+    setDeadLetterInspection(null)
     setActiveScenario(scenarioId)
     const resolvedPlan = experimentPlan ?? presetPlan(scenarioId)
     setActivePlan(resolvedPlan)
@@ -239,6 +256,9 @@ export function App() {
         : [...current, next].sort((a, b) => a.sequence - b.sequence))
       void loadEvidence(workflowId)
       void loadConsistency(workflowId)
+      if (next.state === 'DEAD_LETTERED' || next.state === 'POISON_DEAD_LETTERED') {
+        void loadDeadLetter(workflowId)
+      }
       if (['COMPLETED', 'COMPENSATED', 'FAILED_REQUIRES_INTERVENTION'].includes(next.state)) {
         void loadRecentRuns()
       }
@@ -293,6 +313,15 @@ export function App() {
     }
   }
 
+  async function loadDeadLetter(workflowId: string) {
+    try {
+      const response = await fetch(`/api/v1/runs/${workflowId}/dead-letter`)
+      if (response.ok) setDeadLetterInspection(await response.json())
+    } catch {
+      // Broker inspection is supplementary to the durable evidence report.
+    }
+  }
+
   async function inspectRun(workflowId: string, navigate = true) {
     streamRef.current?.close()
     setStarting(true)
@@ -309,6 +338,9 @@ export function App() {
       setActivePlan(details.experimentPlan)
       await loadEvidence(workflowId)
       await loadConsistency(workflowId)
+      if (details.timeline.some((event) => event.state === 'DEAD_LETTERED'
+        || event.state === 'POISON_DEAD_LETTERED')) await loadDeadLetter(workflowId)
+      else setDeadLetterInspection(null)
       setLaunchSequence((current) => current + 1)
       if (navigate) window.history.pushState({}, '', `/runs/${workflowId}`)
       subscribe(workflowId)
@@ -334,6 +366,7 @@ export function App() {
     try {
       const response = await fetch(`/api/v1/runs/${run.workflowId}/recover`, { method: 'POST' })
       if (!response.ok) throw new Error(`Recovery returned HTTP ${response.status}`)
+      await loadDeadLetter(run.workflowId)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not recover the workflow')
     } finally {
@@ -499,6 +532,21 @@ export function App() {
           {activePlan && <div className={`plan-verdict ${planObserved ? 'proved' : ''}`}><span>Expected</span><p>{expectedInvariant(activePlan)}</p><span>Observed</span><p>{planObserved ? 'PROVED · the live timeline satisfies every selected rule.' : 'IN PROGRESS · collecting delivery and terminal-state evidence.'}</p></div>}
           {run && runConsistency && <section className={`consistency-proof ${runConsistency.status.toLowerCase()}`} aria-label="Evidence consistency">
             <div><span>Authoritative Workflow</span><strong>{runConsistency.authoritativeState ?? 'Unavailable'}</strong></div><b>↔</b><div><span>Evidence projection</span><strong>{runConsistency.projectedState}</strong></div><p><em>{runConsistency.status.replace('_', ' ')}</em>{runConsistency.explanation}{runConsistency.lagSeconds > 0 ? ` · ${runConsistency.lagSeconds}s` : ''}</p>
+          </section>}
+          {run && deadLettered && deadLetterInspection && <section className={`dead-letter-proof ${deadLetterInspection.status.toLowerCase()}`} aria-labelledby="dead-letter-title">
+            <div className="dead-letter-heading"><div><span>Native Service Bus proof</span><h3 id="dead-letter-title">{deadLetterInspection.status === 'FOUND' ? 'DLQ entry found' : deadLetterInspection.status === 'NOT_FOUND' ? 'DLQ entry not present' : 'Broker inspection unavailable'}</h3></div><code>{deadLetterInspection.queue}</code></div>
+            {deadLetterInspection.status === 'FOUND' && <dl>
+              <dt>Message ID</dt><dd><code>{deadLetterInspection.messageId}</code></dd>
+              <dt>Message type</dt><dd>{deadLetterInspection.subject}</dd>
+              <dt>Dead-letter reason</dt><dd><strong>{deadLetterInspection.deadLetterReason}</strong></dd>
+              <dt>Error description</dt><dd>{deadLetterInspection.errorDescription}</dd>
+              <dt>Schema version</dt><dd>{deadLetterInspection.schemaVersion ?? 'not declared'}</dd>
+              <dt>Broker delivery count</dt><dd>{deadLetterInspection.deliveryCount}</dd>
+              <dt>Sequence number</dt><dd>{deadLetterInspection.sequenceNumber}</dd>
+              <dt>Enqueued</dt><dd>{deadLetterInspection.enqueuedAt ? new Date(deadLetterInspection.enqueuedAt).toLocaleString() : 'unknown'}</dd>
+              <dt>Replay policy</dt><dd>{deadLetterInspection.replayAllowed ? 'Guarded replay available' : 'Replay blocked'}</dd>
+            </dl>}
+            <p>{deadLetterInspection.operatorGuidance} The delivery count is the broker-reported value; application attempts are proved independently by the rejection events and traces.</p>
           </section>}
           {run && evidenceReport && <section className={`evidence-report ${evidenceReport.assessment.toLowerCase()}`} aria-labelledby="evidence-title">
             <div className="evidence-heading"><div><span>Backend assessment</span><h3 id="evidence-title">{evidenceReport.assessment.replace('_', ' ')}</h3></div><a href={`/api/v1/runs/${run.workflowId}/evidence`} download={`eventlab-${run.workflowId}-evidence.json`}>Download evidence JSON ↓</a></div>

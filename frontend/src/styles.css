@@ -129,6 +129,17 @@ h1 em { color: transparent; -webkit-text-stroke: 1px rgba(233, 237, 247, .62); f
 .plan-verdict.proved { border-color: rgba(189,255,83,.45); background: rgba(189,255,83,.04); }
 .plan-verdict p { margin: 0; color: var(--muted); }
 .evidence-report { margin-top: 1rem; border: 1px solid var(--line); }
+.dead-letter-proof { margin-top: 1rem; border: 1px solid rgba(102,230,212,.4); background: rgba(102,230,212,.025); }
+.dead-letter-heading { display: flex; justify-content: space-between; gap: 1rem; align-items: center; padding: 1rem; border-bottom: 1px solid var(--line); }
+.dead-letter-heading span { color: var(--cyan); font: .6rem 'DM Mono', monospace; text-transform: uppercase; }
+.dead-letter-heading h3 { margin: .25rem 0 0; color: var(--acid); font: 500 1.15rem 'DM Mono', monospace; }
+.dead-letter-heading code { color: var(--muted); font: .62rem 'DM Mono', monospace; overflow-wrap: anywhere; }
+.dead-letter-proof dl { display: grid; grid-template-columns: 10rem 1fr; gap: .7rem 1rem; margin: 0; padding: 1rem; }
+.dead-letter-proof dt { color: var(--cyan); font: .6rem 'DM Mono', monospace; text-transform: uppercase; }
+.dead-letter-proof dd { margin: 0; color: #b2bfbc; overflow-wrap: anywhere; }
+.dead-letter-proof dd code, .dead-letter-proof dd strong { color: var(--acid); font: .7rem 'DM Mono', monospace; }
+.dead-letter-proof > p { margin: 0; padding: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .75rem; }
+.dead-letter-proof.not_found, .dead-letter-proof.unavailable { border-color: var(--line); }
 .consistency-proof { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: center; margin-top: 1rem; padding: 1rem; border: 1px solid var(--line); }
 .consistency-proof > div { display: flex; flex-direction: column; gap: .35rem; }
 .consistency-proof span { color: var(--cyan); font: .58rem 'DM Mono', monospace; text-transform: uppercase; }
@@ -319,6 +330,8 @@ footer { display: flex; justify-content: space-between; padding-top: 2rem; paddi
   .control-center > div:first-child, .owner-controls { grid-column: 1; }
   .owner-controls { align-items: start; flex-direction: column; }
   .consistency-proof { grid-template-columns: 1fr; }
+  .dead-letter-heading { align-items: flex-start; flex-direction: column; }
+  .dead-letter-proof dl { grid-template-columns: 1fr; }
   .consistency-proof b { display: none; }
   .hero { min-height: 620px; }
   .hero-copy { padding-top: 6rem; }
