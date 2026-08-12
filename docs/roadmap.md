@@ -98,7 +98,7 @@ Completed with trace-verifiable timeline claims, shared decision instrumentation
 - Kafka comparison adapter if it produces a meaningful broker-semantics comparison.
 - Local `kind` or `k3d` only for a concrete orchestration experiment.
 
-## Milestone 8: resilience and performance validation — in progress
+## Milestone 8: resilience and performance validation — completed 2026-08-12
 
 - Establish a repeatable k6 baseline for concurrent happy-path and duplicate-delivery workflows.
 - Measure API latency and asynchronous completion time while asserting durable business invariants.
@@ -107,4 +107,4 @@ Completed with trace-verifiable timeline claims, shared decision instrumentation
 
 **Demonstration:** run concurrent workflows, interrupt a participant, restore it, and show that every accepted workflow reaches one correct terminal outcome.
 
-The implemented increments now include an invariant-aware k6 concurrency baseline, a deterministic Payment outage experiment, and the narrow outbox acknowledgement window. Five workflows accepted with no Payment consumer all resumed after restart. A separate one-shot post-send failure produced two broker deliveries for one logical payment event; the inbox exposed one duplicate decision and the workflow completed once. Remaining work is to present these results in the permanent tour.
+Completed with an invariant-aware k6 concurrency baseline, a deterministic Payment outage experiment, and the narrow outbox acknowledgement window. Five workflows accepted with no Payment consumer all resumed after restart. A separate one-shot post-send failure produced two broker deliveries for one logical payment event; the inbox exposed one duplicate decision and the workflow completed once. The permanent tour presents the measurements beside their invariants, method links, and explicit development-machine boundary.

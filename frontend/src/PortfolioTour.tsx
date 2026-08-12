@@ -60,6 +60,30 @@ const recordings = [
   ['compensation.webp', 'Saga compensation', 'A rejected fulfilment reverses the authorized payment and reaches the compensated terminal state.'],
 ]
 
+const resilienceResults = [
+  {
+    label: 'Concurrent baseline',
+    value: '1.55 s',
+    metric: 'happy-path completion p95',
+    detail: '10/10 happy paths and 3/3 duplicate scenarios satisfied their exact timeline invariants with 0% HTTP failures.',
+    href: 'https://github.com/wiznick79/EventLab/blob/main/docs/results/local-baseline-2026-08-12.md',
+  },
+  {
+    label: 'Participant outage',
+    value: '5 / 5',
+    metric: 'workflows recovered',
+    detail: 'Five workflows were accepted with Payment offline. After restart, each produced one authorization and one completion without replay.',
+    href: 'https://github.com/wiznick79/EventLab/blob/main/docs/results/payment-restart-recovery-2026-08-12.md',
+  },
+  {
+    label: 'Acknowledgement ambiguity',
+    value: '2 → 1',
+    metric: 'deliveries to state changes',
+    detail: 'A post-send failure retried one logical event. The inbox exposed the duplicate and allowed exactly one terminal transition.',
+    href: 'https://github.com/wiznick79/EventLab/blob/main/docs/results/outbox-acknowledgement-window-2026-08-12.md',
+  },
+]
+
 export function PortfolioTour() {
   const [expandedRecording, setExpandedRecording] = useState<string | null>(null)
   const staticTour = import.meta.env.VITE_STATIC_TOUR === 'true'
@@ -94,7 +118,7 @@ export function PortfolioTour() {
     <header className="tour-hero" id="top">
       <nav aria-label="Portfolio navigation">
         <a className="wordmark" href="#top"><span className="mark">EL</span>EventLab</a>
-        <div className="nav-links"><a href="#architecture">Architecture</a><a href="#scenarios">Scenarios</a><a href={liveLabUrl}>Live lab</a></div>
+        <div className="nav-links"><a href="#architecture">Architecture</a><a href="#scenarios">Scenarios</a><a href="#resilience">Resilience</a><a href={liveLabUrl}>Live lab</a></div>
       </nav>
       <div className="tour-hero-grid">
         <div>
@@ -140,6 +164,8 @@ export function PortfolioTour() {
     <section className="tour-section recordings" aria-labelledby="recordings-title"><div className="section-heading"><div><p className="eyebrow">Recorded demonstrations</p><h2 id="recordings-title">Watch the invariant emerge</h2></div><p>Short deterministic captures preserve the primary teaching stories when the disposable Azure environment is offline. Select a recording to inspect it full-size.</p></div><div className="recording-grid">{recordings.map(([file, title, description]) => <figure key={file}><button className="recording-preview" type="button" onClick={() => setExpandedRecording(file)} aria-label={`Enlarge ${title} recording`}><img src={`./recordings/${file}`} alt={`${title} EventLab timeline recording`} loading="lazy" /><span>Enlarge ↗</span></button><figcaption><strong>{title}</strong><p>{description}</p></figcaption></figure>)}</div></section>
 
     {expandedRecording && <div className="recording-modal" role="dialog" aria-modal="true" aria-label={`${recordings.find(([file]) => file === expandedRecording)?.[1]} enlarged recording`} onClick={() => setExpandedRecording(null)}><div className="recording-modal-content" onClick={(event) => event.stopPropagation()}><button className="recording-close" type="button" onClick={() => setExpandedRecording(null)} aria-label="Close enlarged recording" autoFocus>Close ×</button><img src={`./recordings/${expandedRecording}`} alt={`${recordings.find(([file]) => file === expandedRecording)?.[1]} enlarged EventLab timeline recording`} /></div></div>}
+
+    <section className="tour-section resilience-results" id="resilience" aria-labelledby="resilience-title"><div className="section-heading"><div><p className="eyebrow">Measured resilience</p><h2 id="resilience-title">Correct under pressure</h2></div><p>Small, repeatable development-machine experiments measure asynchronous completion and verify the resulting business invariants. They are regression evidence—not production capacity claims.</p></div><div className="result-grid">{resilienceResults.map((result) => <article key={result.label}><span>{result.label}</span><strong>{result.value}</strong><small>{result.metric}</small><p>{result.detail}</p><a href={result.href}>Inspect result and method ↗</a></article>)}</div><p className="result-caveat"><strong>Test boundary:</strong> local Spring Boot processes, PostgreSQL, Docker Desktop, and the Azure Service Bus emulator. Workloads and raw acceptance criteria are reproducible from the repository.</p></section>
 
     <section className="tour-section guarantees" aria-labelledby="guarantees-title"><p className="eyebrow">Engineering choices</p><h2 id="guarantees-title">Reliability mechanisms</h2><div>{guarantees.map(([title, copy]) => <article key={title}><strong>{title}</strong><p>{copy}</p></article>)}</div></section>
 

@@ -140,6 +140,16 @@ footer { display: flex; justify-content: space-between; padding-top: 2rem; paddi
 .recording-modal-content img { display: block; width: 100%; max-height: 88vh; object-fit: contain; border: 1px solid var(--line); box-shadow: 0 1.5rem 5rem rgba(0,0,0,.5); }
 .recording-close { position: absolute; z-index: 1; top: .8rem; right: .8rem; padding: .55rem .75rem; color: var(--ink); background: rgba(7,16,15,.94); border: 1px solid var(--line); cursor: pointer; font: .65rem 'DM Mono', monospace; text-transform: uppercase; }
 .recording-close:hover, .recording-close:focus-visible { color: #07100f; background: var(--acid); }
+.resilience-results { background: radial-gradient(circle at 80% 20%, rgba(102,230,212,.07), transparent 28rem); }
+.result-grid { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.result-grid article { min-height: 25rem; padding: 1.6rem; display: flex; flex-direction: column; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: rgba(13,25,23,.64); }
+.result-grid article > span { color: var(--cyan); font: .62rem 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .08em; }
+.result-grid article > strong { margin-top: 3.5rem; color: var(--acid); font-size: clamp(3rem, 6vw, 5.5rem); font-weight: 500; letter-spacing: -.06em; line-height: .9; }
+.result-grid article > small { margin-top: .8rem; color: var(--ink); font: .68rem 'DM Mono', monospace; text-transform: uppercase; }
+.result-grid article p { margin: 2rem 0; color: var(--muted); font-size: .82rem; line-height: 1.7; }
+.result-grid article a { margin-top: auto; color: var(--acid); font: .68rem 'DM Mono', monospace; text-decoration: none; }
+.result-caveat { margin: 1.5rem 0 0; color: var(--muted); font-size: .75rem; line-height: 1.7; }
+.result-caveat strong { color: var(--ink); }
 .proof-section { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(3rem, 10vw, 10rem); align-items: center; }
 .proof-section h2, .guarantees h2, .tour-cta h2 { font-size: clamp(2rem, 4vw, 4rem); letter-spacing: -.045em; font-weight: 500; margin: 0 0 1.5rem; }
 .proof-section > div > p:last-child, .tour-cta > p { color: var(--muted); line-height: 1.8; }
@@ -198,6 +208,8 @@ footer { display: flex; justify-content: space-between; padding-top: 2rem; paddi
   .participant-stack { grid-template-columns: 1fr; }
   .guarantees > div { grid-template-columns: 1fr 1fr; }
   .recording-grid { grid-template-columns: 1fr; }
+  .result-grid { grid-template-columns: 1fr; }
+  .result-grid article { min-height: 20rem; }
   .guarantees article:nth-child(2) { border-right: 0; }
   .guarantees article:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
 }
