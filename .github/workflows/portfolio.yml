@@ -29,12 +29,10 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Build static tour
         working-directory: frontend
-        env:
-          VITE_STATIC_TOUR: 'true'
         run: |
           npm ci
           npm test
-          npm run build
+          VITE_STATIC_TOUR=true npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
