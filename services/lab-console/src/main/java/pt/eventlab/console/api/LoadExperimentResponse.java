@@ -15,6 +15,8 @@ public record LoadExperimentResponse(
         int acceptedWorkflows,
         int launchFailures,
         int duplicatePercentage,
+        int paymentObservedWorkflows,
+        int fulfilmentObservedWorkflows,
         int terminalWorkflows,
         int provedWorkflows,
         int invariantViolations,

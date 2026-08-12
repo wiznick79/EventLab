@@ -67,6 +67,8 @@ type LoadExperiment = {
   acceptedWorkflows: number
   launchFailures: number
   duplicatePercentage: number
+  paymentObservedWorkflows: number
+  fulfilmentObservedWorkflows: number
   terminalWorkflows: number
   provedWorkflows: number
   invariantViolations: number
@@ -562,7 +564,15 @@ export function App() {
         {loadExperiment && <section className={`load-report ${loadExperiment.status.toLowerCase()}`} ref={loadPanelRef} tabIndex={-1} aria-labelledby="load-report-title">
           <div className="load-report-heading"><div><p className="eyebrow">Live aggregate evidence</p><h2 id="load-report-title">{loadExperiment.status.replace('_', ' ')}</h2></div><code>{loadExperiment.id}</code></div>
           <div className="load-progress launch-progress"><span style={{ width: `${loadExperiment.processedLaunches / loadExperiment.requestedWorkflows * 100}%` }} /><strong>{loadExperiment.processedLaunches} / {loadExperiment.requestedWorkflows} launch responses</strong></div>
-          <div className="load-progress"><span style={{ width: `${loadExperiment.acceptedWorkflows === 0 ? 0 : loadExperiment.terminalWorkflows / loadExperiment.acceptedWorkflows * 100}%` }} /><strong>{loadExperiment.terminalWorkflows} / {loadExperiment.acceptedWorkflows} accepted workflows terminal</strong></div>
+          <div className="load-stage-flow" aria-label="Distributed workflow progress">
+            <div><span>Accepted</span><strong>{loadExperiment.acceptedWorkflows}</strong><i style={{ width: `${loadExperiment.acceptedWorkflows / loadExperiment.requestedWorkflows * 100}%` }} /></div>
+            <b>→</b>
+            <div><span>Payment observed</span><strong>{loadExperiment.paymentObservedWorkflows}</strong><i style={{ width: `${loadExperiment.acceptedWorkflows === 0 ? 0 : loadExperiment.paymentObservedWorkflows / loadExperiment.acceptedWorkflows * 100}%` }} /></div>
+            <b>→</b>
+            <div><span>Fulfilment observed</span><strong>{loadExperiment.fulfilmentObservedWorkflows}</strong><i style={{ width: `${loadExperiment.acceptedWorkflows === 0 ? 0 : loadExperiment.fulfilmentObservedWorkflows / loadExperiment.acceptedWorkflows * 100}%` }} /></div>
+            <b>→</b>
+            <div><span>Terminal evidence</span><strong>{loadExperiment.terminalWorkflows}</strong><i style={{ width: `${loadExperiment.acceptedWorkflows === 0 ? 0 : loadExperiment.terminalWorkflows / loadExperiment.acceptedWorkflows * 100}%` }} /></div>
+          </div>
           <dl className="load-metrics">
             <div><dt>Pending launches</dt><dd>{loadExperiment.pendingLaunches}</dd></div>
             <div><dt>Accepted</dt><dd>{loadExperiment.acceptedWorkflows} / {loadExperiment.requestedWorkflows}</dd></div>

@@ -166,6 +166,8 @@ class LoadExperimentService {
         List<Long> latencies = terminal.stream().map(Member::latencyMillis).sorted().toList();
         int proved = (int) terminal.stream().filter(Member::proved).count();
         int violations = (int) terminal.stream().filter(member -> !member.proved()).count();
+        int paymentObserved = (int) members.stream().filter(Member::paymentObserved).count();
+        int fulfilmentObserved = (int) members.stream().filter(Member::fulfilmentObserved).count();
         int duplicates = members.stream().mapToInt(Member::duplicateDeliveries).sum();
         int maxInFlight = maxInFlight(members);
         double throughput = throughput(terminal);
@@ -179,7 +181,8 @@ class LoadExperimentService {
                 experiment.requestedWorkflows(), processedLaunches,
                 experiment.requestedWorkflows() - processedLaunches,
                 members.size(), experiment.launchFailures(),
-                experiment.duplicatePercentage(), terminal.size(), proved, violations, duplicates,
+                experiment.duplicatePercentage(), paymentObserved, fulfilmentObserved,
+                terminal.size(), proved, violations, duplicates,
                 members.size() - terminal.size(), maxInFlight, throughput,
                 percentile(latencies, 0.5), percentile(latencies, 0.95), experiment.createdAt(),
                 experiment.completedAt(), experiment.workflowIds());
@@ -191,8 +194,13 @@ class LoadExperimentService {
         Instant ended = terminal && !run.timeline().isEmpty()
                 ? run.timeline().get(run.timeline().size() - 1).occurredAt() : null;
         boolean proved = terminal && "PROVED".equals(evidence.report(run).assessment());
+        boolean paymentObserved = run.timeline().stream()
+                .anyMatch(event -> "payment.authorized".equals(event.eventType()));
+        boolean fulfilmentObserved = run.timeline().stream()
+                .anyMatch(event -> "fulfilment.completed".equals(event.eventType()));
         int duplicates = (int) run.timeline().stream().filter(TimelineEventResponse::duplicateDelivery).count();
-        return new Member(run.createdAt(), ended, terminal, proved, duplicates);
+        return new Member(run.createdAt(), ended, terminal, proved,
+                paymentObserved, fulfilmentObserved, duplicates);
     }
 
     private int maxInFlight(List<Member> members) {
@@ -260,7 +268,8 @@ class LoadExperimentService {
     }
 
     private record Member(Instant startedAt, Instant endedAt, boolean terminal,
-                          boolean proved, int duplicateDeliveries) {
+                          boolean proved, boolean paymentObserved,
+                          boolean fulfilmentObserved, int duplicateDeliveries) {
         long latencyMillis() { return Duration.between(startedAt, endedAt).toMillis(); }
     }
 }
