@@ -1,0 +1,119 @@
+{
+  "annotations": { "list": [] },
+  "description": "Trace-first operational view of EventLab messaging and business decisions.",
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Explore all traces",
+      "tooltip": "Open Tempo Explore",
+      "type": "link",
+      "url": "/explore?left={\"datasource\":\"tempo\",\"queries\":[{\"query\":\"{}\",\"queryType\":\"traceql\"}]}"
+    }
+  ],
+  "panels": [
+    {
+      "datasource": { "type": "tempo", "uid": "tempo" },
+      "description": "Every explicit business decision. Open a result to inspect workflow and message IDs plus whether durable state changed.",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {},
+      "targets": [
+        {
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "limit": 100,
+          "query": "{ span.eventlab.decision != nil }",
+          "queryType": "traceql",
+          "refId": "A",
+          "streaming": true,
+          "tableType": "traces"
+        }
+      ],
+      "title": "Business decision evidence",
+      "type": "traces"
+    },
+    {
+      "datasource": { "type": "tempo", "uid": "tempo" },
+      "description": "Deliveries deliberately rejected by an inbox or aggregate-version guard.",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 9 },
+      "id": 2,
+      "options": {},
+      "targets": [
+        {
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "limit": 50,
+          "query": "{ span.eventlab.decision = \"DUPLICATE_IGNORED\" || span.eventlab.decision = \"STALE_IGNORED\" }",
+          "queryType": "traceql",
+          "refId": "A",
+          "streaming": true,
+          "tableType": "traces"
+        }
+      ],
+      "title": "Protected invariants",
+      "type": "traces"
+    },
+    {
+      "datasource": { "type": "tempo", "uid": "tempo" },
+      "description": "Retry scheduling, retry exhaustion, dead-letter recovery, and payment reversal decisions.",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 9 },
+      "id": 3,
+      "options": {},
+      "targets": [
+        {
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "limit": 50,
+          "query": "{ span.eventlab.decision = \"RETRY_SCHEDULED\" || span.eventlab.decision = \"DEAD_LETTERED\" || span.eventlab.decision = \"RECOVERY_ACCEPTED\" || span.eventlab.decision = \"PAYMENT_COMPENSATED\" }",
+          "queryType": "traceql",
+          "refId": "A",
+          "streaming": true,
+          "tableType": "traces"
+        }
+      ],
+      "title": "Failure and recovery decisions",
+      "type": "traces"
+    },
+    {
+      "datasource": { "type": "tempo", "uid": "tempo" },
+      "description": "Recent Service Bus processing and projection spans across EventLab services.",
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 18 },
+      "id": 4,
+      "options": {},
+      "targets": [
+        {
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "limit": 100,
+          "query": "{ name =~ \"eventlab[.]servicebus[.].*\" }",
+          "queryType": "traceql",
+          "refId": "A",
+          "streaming": true,
+          "tableType": "traces"
+        }
+      ],
+      "title": "Message-processing activity",
+      "type": "traces"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 41,
+  "tags": ["eventlab", "tracing", "messaging"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "EventLab Operations",
+  "uid": "eventlab-operations",
+  "version": 1,
+  "weekStart": ""
+}

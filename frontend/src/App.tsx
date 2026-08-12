@@ -49,6 +49,12 @@ export function traceUrl(
   return `${grafanaBaseUrl}/explore?left=${encodeURIComponent(JSON.stringify(left))}`
 }
 
+export function grafanaDashboardUrl(
+  grafanaBaseUrl = window.EVENTLAB_CONFIG?.grafanaBaseUrl ?? 'http://localhost:3000',
+) {
+  return `${grafanaBaseUrl}/d/eventlab-operations/eventlab-operations?from=now-1h&to=now`
+}
+
 export function traceEvidence(state: string): TraceEvidence | undefined {
   switch (state) {
     case 'DUPLICATE_IGNORED':
@@ -140,7 +146,7 @@ export function App() {
       <header className="hero">
         <nav aria-label="Primary navigation">
           <a className="wordmark" href="#top" aria-label="EventLab home"><span className="mark">EL</span>EventLab</a>
-          <div className="nav-links"><a href="./?tour">Project tour</a><span className="build-status"><i /> Milestone 7 · portfolio polish</span></div>
+          <div className="nav-links"><a href="./?tour">Project tour</a><a href={grafanaDashboardUrl()} target="_blank" rel="noreferrer">Operations</a><span className="build-status"><i /> Milestone 7 · portfolio polish</span></div>
         </nav>
         <div className="hero-copy" id="top">
           <p className="eyebrow">Distributed systems under pressure</p>

@@ -22,3 +22,14 @@ Every decision span includes:
 Successful fulfilment and deterministic rejection use the same fulfilment decision span with `FULFILMENT_COMPLETED` and `FULFILMENT_REJECTED` outcomes. Duplicate compensation and fulfilment commands are also recorded as `DUPLICATE_IGNORED` with no applied state change.
 
 Trace evidence complements the database invariants and scenario checks; it does not replace them. The trace explains which branch executed, while the persisted workflow, inbox, outbox, and participant records prove the final durable result.
+
+## Operations dashboard
+
+Grafana provisions **EventLab Operations** at `/d/eventlab-operations/eventlab-operations`. The live UI's **Operations** link opens it for the current hour. Its panels provide four starting points:
+
+- all business-decision spans;
+- duplicate and stale deliveries that protected an invariant;
+- retry, dead-letter, recovery, and compensation decisions;
+- recent Service Bus processing spans.
+
+Select any result to open its trace. The dashboard is intentionally trace-first: EventLab's disposable Tempo setup does not run a metrics generator or a separate Prometheus stack merely to manufacture charts. Azure Monitor remains the source for Container Apps platform CPU, memory, replicas, restarts, and ingress metrics.

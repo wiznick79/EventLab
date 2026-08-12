@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest'
 import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { App, grafanaTraceUrl, traceEvidence, traceUrl } from './App'
+import { App, grafanaDashboardUrl, grafanaTraceUrl, traceEvidence, traceUrl } from './App'
 import { PortfolioTour } from './PortfolioTour'
 
 describe('EventLab experiment console', () => {
@@ -34,6 +34,12 @@ describe('EventLab experiment console', () => {
 
     expect(url).toMatch(/^https:\/\/grafana\.example\.test\/explore\?left=/)
     expect(decodeURIComponent(url)).toContain('0123456789abcdef')
+  })
+
+  it('links to the provisioned operations dashboard', () => {
+    expect(grafanaDashboardUrl('https://grafana.example.test')).toBe(
+      'https://grafana.example.test/d/eventlab-operations/eventlab-operations?from=now-1h&to=now',
+    )
   })
 
   it('maps invariant claims to explicit trace evidence', () => {
