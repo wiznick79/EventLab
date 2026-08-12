@@ -79,7 +79,8 @@ h1 em { color: transparent; -webkit-text-stroke: 1px rgba(233, 237, 247, .62); f
 .plan-verdict { display: grid; grid-template-columns: 6rem 1fr; gap: .6rem 1rem; margin-top: 1rem; padding: 1rem; border: 1px solid var(--line); }
 .plan-verdict.proved { border-color: rgba(189,255,83,.45); background: rgba(189,255,83,.04); }
 .plan-verdict p { margin: 0; color: var(--muted); }
-.run-panel { margin-top: 4rem; border: 1px solid var(--line); background: rgba(7,16,15,.88); padding: clamp(1.25rem, 3vw, 2.5rem); }
+.run-panel { margin-top: 4rem; scroll-margin-top: 1.5rem; border: 1px solid var(--line); background: rgba(7,16,15,.88); padding: clamp(1.25rem, 3vw, 2.5rem); }
+.run-panel:focus { outline: 1px solid rgba(102,230,212,.55); outline-offset: 3px; }
 .run-heading { display: flex; justify-content: space-between; align-items: end; gap: 1.5rem; border-bottom: 1px solid var(--line); padding-bottom: 1.5rem; }
 .run-heading h2 { margin: 0; font-size: 2rem; font-weight: 500; }
 .run-heading code { color: var(--muted); font: .7rem 'DM Mono', monospace; overflow-wrap: anywhere; }

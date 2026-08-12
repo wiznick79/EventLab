@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
 import { App, expectedInvariant, grafanaDashboardUrl, grafanaTraceUrl, traceEvidence, traceUrl } from './App'
 import { isLiveLabOnline, offlineLiveLabMessage, PortfolioTour } from './PortfolioTour'
 
@@ -25,6 +25,22 @@ describe('EventLab experiment console', () => {
     expect(expectedInvariant({ paymentResultDeliveries: 2, fulfilmentBehavior: 'BUSINESS_REJECTION' })).toBe(
       'Two payment-result deliveries produce one payment state change; the payment is compensated and the workflow ends COMPENSATED.',
     )
+  })
+
+  it('reveals and scrolls to the live experiment after launch', async () => {
+    const scrollIntoView = vi.fn()
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
+    HTMLElement.prototype.scrollIntoView = scrollIntoView
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise(() => {}))
+
+    render(<App />)
+    fireEvent.click(screen.getAllByRole('button', { name: /run experiment/i })[0])
+
+    expect(screen.getByRole('heading', { name: 'Workflow in progress' })).toBeInTheDocument()
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' }))
+
+    vi.restoreAllMocks()
+    HTMLElement.prototype.scrollIntoView = originalScrollIntoView
   })
 
   it('builds a Grafana Explore link that looks up a trace by ID', () => {

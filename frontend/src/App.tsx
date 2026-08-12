@@ -106,13 +106,24 @@ export function App() {
   const [error, setError] = useState('')
   const [activeScenario, setActiveScenario] = useState('')
   const [activePlan, setActivePlan] = useState<ExperimentPlan | null>(null)
+  const [launchSequence, setLaunchSequence] = useState(0)
   const [builderPlan, setBuilderPlan] = useState<ExperimentPlan>({
     paymentResultDeliveries: 1,
     fulfilmentBehavior: 'SUCCESS',
   })
   const streamRef = useRef<EventSource | null>(null)
+  const runPanelRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => () => streamRef.current?.close(), [])
+  useEffect(() => {
+    if (launchSequence === 0) return
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+    runPanelRef.current?.scrollIntoView({
+      behavior: reducedMotion ? 'auto' : 'smooth',
+      block: 'start',
+    })
+    runPanelRef.current?.focus({ preventScroll: true })
+  }, [launchSequence])
 
   async function startScenario(scenarioId: string, experimentPlan?: ExperimentPlan) {
     streamRef.current?.close()
@@ -121,6 +132,7 @@ export function App() {
     setEvents([])
     setActiveScenario(scenarioId)
     setActivePlan(experimentPlan ?? null)
+    setLaunchSequence((current) => current + 1)
     try {
       const response = await fetch('/api/v1/runs', {
         method: 'POST',
@@ -245,7 +257,7 @@ export function App() {
           <button className="builder-run" type="button" onClick={() => startScenario('custom-plan', builderPlan)} disabled={starting}>{starting && activeScenario === 'custom-plan' ? 'Starting…' : 'Run custom experiment →'}</button>
         </section>
 
-        {(run || error) && <section className="run-panel" aria-live="polite">
+        {(starting || run || error) && <section className="run-panel" ref={runPanelRef} tabIndex={-1} aria-live="polite">
           <div className="run-heading">
             <div><p className="eyebrow">Live experiment</p><h2>{completed
               ? 'Workflow completed'
