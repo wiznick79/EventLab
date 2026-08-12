@@ -61,6 +61,8 @@ describe('EventLab experiment console', () => {
     expect(page.getByRole('heading', { name: /reliable messaging/i })).toBeInTheDocument()
     expect(page.getByRole('heading', { name: 'What each experiment proves' })).toBeInTheDocument()
     expect(page.getByText(/STALE_IGNORED · received 1 · current 2/)).toBeInTheDocument()
+    expect(page.getByRole('heading', { name: 'Watch the invariant emerge' })).toBeInTheDocument()
+    expect(page.getAllByRole('img', { name: /EventLab timeline recording/ })).toHaveLength(3)
     expect(page.queryByRole('button', { name: /run experiment/i })).not.toBeInTheDocument()
   })
 })

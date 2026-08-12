@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { PortfolioTour } from './PortfolioTour'
+import { DemoRecording } from './DemoRecording'
 
 type TimelineEvent = {
   sequence: number
@@ -75,8 +76,12 @@ export function traceEvidence(state: string): TraceEvidence | undefined {
 }
 
 export function App() {
+  const parameters = new URLSearchParams(window.location.search)
+  const recording = parameters.get('recording')
+  if (recording) return <DemoRecording scenario={recording} step={Number(parameters.get('step') ?? '1')} />
+
   const staticTour = import.meta.env.VITE_STATIC_TOUR === 'true'
-    || new URLSearchParams(window.location.search).has('tour')
+    || parameters.has('tour')
   if (staticTour) return <PortfolioTour />
 
   const [run, setRun] = useState<RunResponse | null>(null)

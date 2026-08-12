@@ -124,6 +124,13 @@ footer { display: flex; justify-content: space-between; padding-top: 2rem; paddi
 .tour-scenario-grid h3 { margin: 1.2rem 0 .7rem; font-size: 1.8rem; }
 .tour-scenario-grid p { color: var(--muted); line-height: 1.7; max-width: 36rem; }
 .tour-scenario-grid code { color: var(--acid); margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--line); font: .68rem/1.6 'DM Mono', monospace; }
+.recordings { background: #0a1513; }
+.recording-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.recording-grid figure { margin: 0; border: 1px solid var(--line); background: rgba(13,25,23,.8); }
+.recording-grid img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-bottom: 1px solid var(--line); }
+.recording-grid figcaption { padding: 1.2rem; }
+.recording-grid figcaption strong { font-size: 1rem; }
+.recording-grid figcaption p { margin: .5rem 0 0; color: var(--muted); font-size: .78rem; line-height: 1.6; }
 .proof-section { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(3rem, 10vw, 10rem); align-items: center; }
 .proof-section h2, .guarantees h2, .tour-cta h2 { font-size: clamp(2rem, 4vw, 4rem); letter-spacing: -.045em; font-weight: 500; margin: 0 0 1.5rem; }
 .proof-section > div > p:last-child, .tour-cta > p { color: var(--muted); line-height: 1.8; }
@@ -140,6 +147,29 @@ footer { display: flex; justify-content: space-between; padding-top: 2rem; paddi
 .tour-cta > p { max-width: 48rem; }
 .tour-cta .tour-actions { margin-top: 2rem; }
 
+.recording-page { width: 1280px; height: 720px; overflow: hidden; padding: 1.6rem 3.5rem; display: grid; grid-template-rows: auto auto 1fr auto; background: radial-gradient(circle at 85% 15%, rgba(102,230,212,.12), transparent 28rem), linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px), #07100f; background-size: auto, 42px 42px, 42px 42px; }
+.recording-page > header { display: flex; justify-content: space-between; align-items: center; }
+.recording-badge { color: var(--muted); font: .65rem 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .08em; }
+.recording-badge i { display: inline-block; width: .5rem; height: .5rem; margin-right: .6rem; border-radius: 50%; background: #ff776b; box-shadow: 0 0 12px #ff776b; }
+.recording-heading { display: flex; align-items: end; justify-content: space-between; gap: 3rem; padding: 2.8rem 0 1.5rem; border-bottom: 1px solid var(--line); }
+.recording-heading h1 { font-size: 3.4rem; line-height: 1; letter-spacing: -.05em; }
+.recording-heading p:last-child { margin: .8rem 0 0; color: var(--muted); }
+.recording-trace { max-width: 22rem; text-align: right; }
+.recording-trace small { display: block; color: var(--cyan); text-transform: uppercase; font: .6rem 'DM Mono', monospace; }
+.recording-trace code { display: block; margin-top: .4rem; color: var(--muted); font: .65rem 'DM Mono', monospace; }
+.recording-timeline { display: grid; align-content: center; grid-template-columns: repeat(3, 1fr); gap: .8rem; padding: 1.2rem 0; }
+.recording-timeline article { min-height: 9rem; display: grid; grid-template-columns: 2.2rem 1fr; gap: .8rem; padding: 1rem; border: 1px solid var(--line); background: rgba(13,25,23,.78); opacity: .7; }
+.recording-timeline article.current { opacity: 1; border-color: var(--acid); background: linear-gradient(140deg, rgba(189,255,83,.1), rgba(13,25,23,.9)); }
+.timeline-index { color: #586763; font: .65rem 'DM Mono', monospace; }
+.recording-timeline small { color: var(--cyan); font: .58rem 'DM Mono', monospace; text-transform: uppercase; }
+.recording-timeline h2 { margin: .35rem 0; font-size: 1rem; letter-spacing: .02em; }
+.recording-timeline p { margin: 0; color: var(--muted); font-size: .72rem; line-height: 1.4; }
+.recording-timeline code { grid-column: 2; align-self: end; color: var(--acid); font: .56rem 'DM Mono', monospace; }
+.recording-footer { display: grid; grid-template-columns: 12rem 1fr auto; gap: 1rem; align-items: center; padding: 1rem 0 0; border-top: 1px solid var(--line); color: var(--acid); font: .62rem 'DM Mono', monospace; }
+.recording-progress { display: flex; gap: .35rem; }
+.recording-progress i { height: 3px; flex: 1; background: var(--line); }
+.recording-progress i.active { background: var(--acid); box-shadow: 0 0 8px rgba(189,255,83,.5); }
+
 @media (max-width: 850px) {
   .scenario-grid { grid-template-columns: 1fr; }
   .scenario-card { min-height: 310px; }
@@ -154,6 +184,7 @@ footer { display: flex; justify-content: space-between; padding-top: 2rem; paddi
   .architecture-map { grid-template-columns: 1fr 1fr; grid-template-areas: 'workflow bus' 'participants bus' 'console telemetry'; }
   .participant-stack { grid-template-columns: 1fr; }
   .guarantees > div { grid-template-columns: 1fr 1fr; }
+  .recording-grid { grid-template-columns: 1fr; }
   .guarantees article:nth-child(2) { border-right: 0; }
   .guarantees article:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
 }

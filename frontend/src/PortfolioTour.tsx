@@ -36,6 +36,12 @@ const guarantees = [
   ['Traceable decisions', 'Business-decision spans explain why each delivery changed—or did not change—state.'],
 ]
 
+const recordings = [
+  ['duplicate.webp', 'Duplicate suppression', 'Two deliveries are correlated under one trace while the Workflow inbox applies exactly one transition.'],
+  ['recovery.webp', 'Dead-letter recovery', 'Bounded retries reach quarantine before an audited replay completes through the normal consumer path.'],
+  ['compensation.webp', 'Saga compensation', 'A rejected fulfilment reverses the authorized payment and reaches the compensated terminal state.'],
+]
+
 export function PortfolioTour() {
   const liveLabUrl = import.meta.env.VITE_STATIC_TOUR === 'true'
     ? 'https://github.com/wiznick79/EventLab/actions/workflows/azure-deploy.yml'
@@ -87,6 +93,8 @@ export function PortfolioTour() {
       <div><p className="eyebrow">Proof model</p><h2 id="proof-title">A green final state is not enough.</h2><p>EventLab combines three kinds of evidence: the projected timeline shows what a reviewer observed, decision spans explain which branch executed, and persisted records prove the durable invariant.</p></div>
       <ol><li><span>01</span><div><strong>Timeline</strong><p>Human-readable delivery and state history.</p></div></li><li><span>02</span><div><strong>Trace</strong><p>Correlated spans with explicit business decisions.</p></div></li><li><span>03</span><div><strong>Database invariant</strong><p>Inbox, outbox, aggregate version, and terminal state.</p></div></li></ol>
     </section>
+
+    <section className="tour-section recordings" aria-labelledby="recordings-title"><div className="section-heading"><div><p className="eyebrow">Recorded demonstrations</p><h2 id="recordings-title">Watch the invariant emerge</h2></div><p>Short deterministic captures preserve the primary teaching stories when the disposable Azure environment is offline.</p></div><div className="recording-grid">{recordings.map(([file, title, description]) => <figure key={file}><img src={`./recordings/${file}`} alt={`${title} EventLab timeline recording`} loading="lazy" /><figcaption><strong>{title}</strong><p>{description}</p></figcaption></figure>)}</div></section>
 
     <section className="tour-section guarantees" aria-labelledby="guarantees-title"><p className="eyebrow">Engineering choices</p><h2 id="guarantees-title">Reliability mechanisms</h2><div>{guarantees.map(([title, copy]) => <article key={title}><strong>{title}</strong><p>{copy}</p></article>)}</div></section>
 

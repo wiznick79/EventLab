@@ -79,7 +79,7 @@ Implemented with explicit Fulfilment aggregate versions, a persisted highest-app
 
 Implemented with separate persistent-bootstrap and disposable-application Terraform roots, GitHub-to-Azure OIDC, managed identities for Service Bus and PostgreSQL access, immutable public GHCR images, reviewed plan/deploy/destroy workflows, scheduled TTL cleanup, and startup Flyway migrations. The time-limited environment exposes EventLab plus an anonymous Grafana/Tempo trace viewer. Deployment smoke tests prove both a completed workflow and that the exact trace attached to an ignored duplicate can be retrieved through public Grafana without an Azure account.
 
-## Milestone 7: portfolio polish
+## Milestone 7: portfolio polish — completed 2026-08-12
 
 - Add explanatory copy, diagrams, and trace links.
 - Make every frontend invariant claim independently verifiable through explicit business-decision spans and attributes.
@@ -89,7 +89,7 @@ Implemented with separate persistent-bootstrap and disposable-application Terraf
 
 **Demonstration:** self-contained public project tour and recorded failure/recovery session.
 
-In progress: timeline invariant claims now identify the exact business-decision span and outcome to inspect. Shared tracing records duplicate rejection, aggregate-version rejection, retry scheduling, dead-letter exhaustion, recovery/replay identity, and payment compensation with consistent workflow, message, decision, and state-change attributes. The [permanent backend-independent project tour](https://wiznick79.github.io/EventLab/) explains the service topology, reliability mechanisms, scenario outcomes, and three-layer proof model. A provisioned trace-first Grafana operations dashboard groups business decisions, protected invariants, recovery paths, and message-processing activity. The remaining work is recorded scenarios.
+Completed with trace-verifiable timeline claims, shared decision instrumentation, a provisioned trace-first Grafana operations dashboard, and a [permanent backend-independent project tour](https://wiznick79.github.io/EventLab/). The tour explains topology, reliability mechanisms, outcomes, and the three-layer proof model, and embeds reproducible recordings of duplicate suppression, dead-letter recovery, and saga compensation.
 
 ## Optional later experiments
 
