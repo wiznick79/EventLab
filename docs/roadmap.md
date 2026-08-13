@@ -350,3 +350,16 @@ Implemented as a deterministic backend analysis of persisted phase boundaries, w
 **Demonstration:** constrain one stage, watch pressure accumulate and drain, then show that every workflow invariant remains proved and whether the observed dominant delay matched the declared hypothesis.
 
 Implemented through internal service controls capped at 500 ms, persisted experiment configuration, explicit `MATCHED`/`NOT MATCHED` evidence, and automatic best-effort cleanup across all processors.
+
+## Milestone 29: guided constraint impact comparison — completed 2026-08-13
+
+- Run an unconstrained baseline followed by the selected controlled bottleneck with otherwise identical settings.
+- Persist both constituent runs through the ordinary load-experiment evidence path.
+- Compare throughput, median latency, full-drain time, and dominant stall side by side.
+- Show relative changes against the baseline rather than presenting isolated measurements.
+- Require both runs to prove every workflow invariant before producing the impact report.
+- Keep balanced concurrency campaigns explicitly unconstrained and independent from this guided comparison.
+
+**Demonstration:** select a bottleneck and choose `Compare baseline → constrained`; EventLab runs both workloads, then shows the performance impact, the changed dominant stage, the attribution match, and the preserved correctness result in one report.
+
+Implemented as a two-run guided frontend workflow over the existing durable backend experiment API, preserving normal run identity and avoiding a second measurement implementation.

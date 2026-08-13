@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { App, dominantCampaignStall, expectedInvariant, formatRemaining, grafanaDashboardUrl, grafanaTraceUrl, presetPlan, traceEvidence, traceUrl, type LoadExperiment } from './App'
+import { App, dominantCampaignStall, expectedInvariant, formatRemaining, grafanaDashboardUrl, grafanaTraceUrl, percentageChange, presetPlan, traceEvidence, traceUrl, type LoadExperiment } from './App'
 import { isLiveLabOnline, offlineLiveLabMessage, PortfolioTour } from './PortfolioTour'
 
 describe('EventLab experiment console', () => {
@@ -49,6 +49,12 @@ describe('EventLab experiment console', () => {
       run('PAYMENT', 'Payment command drain'),
       run('TERMINAL_EVIDENCE', 'Terminal evidence tail'),
     ])).toBe('Mixed stalls across 2 runs')
+  })
+
+  it('calculates constrained impact relative to its baseline', () => {
+    expect(percentageChange(10, 7.5)).toBe(-25)
+    expect(percentageChange(2_000, 5_000)).toBe(150)
+    expect(percentageChange(0, 5_000)).toBe(0)
   })
 
   it('maps curated scenarios to the same plans used by the builder', () => {

@@ -149,6 +149,10 @@ export function dominantCampaignStall(runs: LoadExperiment[]) {
     : `Mixed stalls across ${completed.length} runs`
 }
 
+export function percentageChange(baseline: number, constrained: number) {
+  return baseline === 0 ? 0 : (constrained - baseline) / baseline * 100
+}
+
 export function formatRemaining(expiresAt: string | undefined, now = Date.now()) {
   if (!expiresAt) return 'No automatic expiry'
   const remaining = Math.max(0, Date.parse(expiresAt) - now)
@@ -279,6 +283,9 @@ export function App() {
   const [comparisonRunning, setComparisonRunning] = useState(false)
   const [comparisonProgress, setComparisonProgress] = useState('')
   const [comparisonResults, setComparisonResults] = useState<LoadExperiment[]>([])
+  const [impactPair, setImpactPair] = useState<{ baseline: LoadExperiment; constrained: LoadExperiment } | null>(null)
+  const [impactRunning, setImpactRunning] = useState(false)
+  const [impactProgress, setImpactProgress] = useState('')
   const [loadError, setLoadError] = useState('')
   const streamRef = useRef<EventSource | null>(null)
   const loadTimerRef = useRef<number | null>(null)
@@ -356,6 +363,44 @@ export function App() {
       const report: LoadExperiment = await response.json()
       setLoadExperiment(report)
       if (report.status === 'PROVED' || report.status === 'FAILED') return report
+    }
+  }
+
+  async function executeLoad(config: typeof loadConfig) {
+    const response = await fetch('/api/v1/load-experiments', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config),
+    })
+    if (!response.ok) throw new Error(response.status === 409
+      ? 'Another load experiment is still running.' : `Load experiment returned HTTP ${response.status}`)
+    const created: LoadExperiment = await response.json()
+    setLoadExperiment(created)
+    window.setTimeout(() => loadPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    const result = await waitForLoadExperiment(created.id)
+    setRecentLoadExperiments((current) => [result, ...current.filter((item) => item.id !== result.id)].slice(0, 12))
+    return result
+  }
+
+  async function runConstraintImpactComparison() {
+    if (loadConfig.constrainedStage === 'NONE') return
+    setImpactRunning(true)
+    setImpactPair(null)
+    setLoadError('')
+    try {
+      setImpactProgress('Running unconstrained baseline · 1 of 2')
+      const baseline = await executeLoad({ ...loadConfig, constrainedStage: 'NONE', processingDelayMillis: 0 })
+      if (baseline.status !== 'PROVED') throw new Error('Impact comparison stopped: baseline invariants did not pass.')
+      setImpactProgress('Baseline proved · settling for 2 seconds')
+      await new Promise((resolve) => window.setTimeout(resolve, 2000))
+      setImpactProgress(`Applying ${loadConfig.processingDelayMillis} ms ${loadConfig.constrainedStage.toLowerCase()} constraint · 2 of 2`)
+      const constrained = await executeLoad(loadConfig)
+      if (constrained.status !== 'PROVED') throw new Error('Impact comparison stopped: constrained invariants did not pass.')
+      setImpactPair({ baseline, constrained })
+      setImpactProgress('Complete · baseline and constrained runs proved')
+      await loadRecentLoadExperiments()
+    } catch (reason) {
+      setLoadError(reason instanceof Error ? reason.message : 'Could not complete the impact comparison')
+    } finally {
+      setImpactRunning(false)
     }
   }
 
@@ -699,8 +744,8 @@ export function App() {
             {loadConfig.trafficPattern === 'STEADY' && <label>Arrival interval<select aria-label="Load arrival interval" value={loadConfig.intervalMillis} onChange={(event) => setLoadConfig((current) => ({ ...current, intervalMillis: Number(event.target.value) }))}><option value="100">100 ms</option><option value="200">200 ms</option><option value="500">500 ms</option><option value="1000">1 second</option></select></label>}
           </div>
           <div className="load-safety"><strong>Bounded by design</strong><span>{deployment?.environment === 'local' ? 'Local ceiling: 100 workflows.' : 'Public demo ceiling: 25 workflows.'} One active experiment; injected delay is capped at 500 ms and automatically reset. Balanced comparisons always use no constraint.</span></div>
-          <div className="load-actions"><button className="builder-run" type="button" onClick={startLoadExperiment} disabled={loadStarting || comparisonRunning || !acceptingExperiments || loadExperiment?.status === 'LAUNCHING' || loadExperiment?.status === 'RUNNING'}>{loadStarting ? 'Starting pressure test…' : 'Run load experiment →'}</button><button className="comparison-run" type="button" onClick={runConcurrencyComparison} disabled={loadStarting || comparisonRunning || !acceptingExperiments || loadExperiment?.status === 'LAUNCHING' || loadExperiment?.status === 'RUNNING'}>{comparisonRunning ? comparisonProgress : 'Run balanced 9-run comparison'}</button></div>
-          {comparisonRunning && <p className="comparison-progress" aria-live="polite">{comparisonProgress}. Keep this page open; each result is persisted as it completes.</p>}
+          <div className="load-actions"><button className="builder-run" type="button" onClick={startLoadExperiment} disabled={loadStarting || comparisonRunning || impactRunning || !acceptingExperiments || loadExperiment?.status === 'LAUNCHING' || loadExperiment?.status === 'RUNNING'}>{loadStarting ? 'Starting pressure test…' : 'Run load experiment →'}</button>{loadConfig.constrainedStage !== 'NONE' && <button className="comparison-run impact-run" type="button" onClick={runConstraintImpactComparison} disabled={loadStarting || comparisonRunning || impactRunning || !acceptingExperiments || loadExperiment?.status === 'LAUNCHING' || loadExperiment?.status === 'RUNNING'}>{impactRunning ? impactProgress : 'Compare baseline → constrained'}</button>}<button className="comparison-run" type="button" onClick={runConcurrencyComparison} disabled={loadStarting || comparisonRunning || impactRunning || !acceptingExperiments || loadExperiment?.status === 'LAUNCHING' || loadExperiment?.status === 'RUNNING'}>{comparisonRunning ? comparisonProgress : 'Run balanced 9-run comparison'}</button></div>
+          {(comparisonRunning || impactRunning) && <p className="comparison-progress" aria-live="polite">{impactRunning ? impactProgress : comparisonProgress}. Keep this page open; each result is persisted as it completes.</p>}
           {loadError && <p className="run-error">{loadError}</p>}
         </section>
 
@@ -757,6 +802,18 @@ export function App() {
           </dl>
           <p className="load-verdict">{loadExperiment.status === 'PROVED' ? 'PROVED · every accepted workflow reached a terminal state and its individual evidence report passed.' : loadExperiment.statusReason === 'LAUNCH_INTERRUPTED' ? 'INTERRUPTED · the Lab Console restarted before every requested workflow could be launched. This is an incomplete experiment, not a capacity or invariant result.' : loadExperiment.status === 'FAILED' ? 'FAILED · at least one launch or distributed invariant did not pass.' : loadExperiment.status === 'LAUNCHING' ? 'LAUNCHING · accepted members appear immediately while the remaining requests are still in flight.' : 'IN PROGRESS · launch is complete; the accepted-work backlog and terminal evidence update once per second.'}</p>
           {loadExperiment.workflowIds.length > 0 && <button className="inspect-member" type="button" onClick={() => inspectRun(loadExperiment.workflowIds[0])}>Inspect one member’s timeline and traces →</button>}
+        </section>}
+
+        {impactPair && <section className="impact-comparison" aria-labelledby="impact-comparison-title">
+          <div className="impact-heading"><div><p className="eyebrow">Controlled impact report</p><h2 id="impact-comparison-title">Baseline versus constrained pipeline</h2></div><span className={impactPair.constrained.constraintAssessment.toLowerCase()}>{impactPair.constrained.constraintAssessment.replace('_', ' ')}</span></div>
+          <p>Identical workload and consumer concurrency; the second run adds only a {impactPair.constrained.processingDelayMillis} ms delay to {impactPair.constrained.constrainedStage.toLowerCase()} processing.</p>
+          <div className="impact-grid">
+            <article><span>Throughput</span><strong>{impactPair.baseline.throughputPerSecond.toFixed(2)} → {impactPair.constrained.throughputPerSecond.toFixed(2)}/s</strong><small>{percentageChange(impactPair.baseline.throughputPerSecond, impactPair.constrained.throughputPerSecond).toFixed(0)}% change</small></article>
+            <article><span>Median latency</span><strong>{(impactPair.baseline.medianLatencyMillis / 1000).toFixed(2)} → {(impactPair.constrained.medianLatencyMillis / 1000).toFixed(2)}s</strong><small>{percentageChange(impactPair.baseline.medianLatencyMillis, impactPair.constrained.medianLatencyMillis).toFixed(0)}% change</small></article>
+            <article><span>Full drain</span><strong>{(impactPair.baseline.drainDurationMillis / 1000).toFixed(2)} → {(impactPair.constrained.drainDurationMillis / 1000).toFixed(2)}s</strong><small>{percentageChange(impactPair.baseline.drainDurationMillis, impactPair.constrained.drainDurationMillis).toFixed(0)}% change</small></article>
+            <article><span>Observed bottleneck</span><strong>{impactPair.baseline.dominantStall.label} → {impactPair.constrained.dominantStall.label}</strong><small>{impactPair.constrained.dominantStall.sharePercent}% of constrained drain</small></article>
+          </div>
+          <div className="impact-proof"><strong>{impactPair.baseline.provedWorkflows}/{impactPair.baseline.acceptedWorkflows} baseline · {impactPair.constrained.provedWorkflows}/{impactPair.constrained.acceptedWorkflows} constrained</strong><span>Both runs preserved every workflow invariant with {impactPair.baseline.invariantViolations + impactPair.constrained.invariantViolations} total violations.</span></div>
         </section>}
 
         {recentLoadExperiments.length > 0 && <section className="load-comparison" aria-labelledby="load-comparison-title">
