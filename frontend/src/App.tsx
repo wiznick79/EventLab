@@ -905,7 +905,7 @@ export function App() {
             <p>{deadLetterInspection.operatorGuidance} The delivery count is the broker-reported value; application attempts are proved independently by the rejection events and traces.</p>
           </section>}
           {run && evidenceReport && <section className={`evidence-report ${evidenceReport.assessment.toLowerCase()}`} aria-labelledby="evidence-title">
-            <div className="evidence-heading"><div><span>Backend assessment</span><h3 id="evidence-title">{evidenceReport.assessment.replace('_', ' ')}</h3></div><a href={`/api/v1/runs/${run.workflowId}/evidence`} download={`eventlab-${run.workflowId}-evidence.json`}>Download evidence JSON ↓</a></div>
+            <div className="evidence-heading"><div><span>Backend assessment</span><h3 id="evidence-title">{evidenceReport.assessment.replace('_', ' ')}</h3></div><a href={`/api/v1/runs/${run.workflowId}/evidence/download`}>Download formatted JSON ↓</a></div>
             <ol>{evidenceReport.checks.map((check) => <li key={check.id}><strong>{check.status === 'PROVED' ? '✓' : check.status === 'FAILED' ? '!' : '…'} {check.label}</strong><span>{check.observation}</span>{check.traceIds.length > 0 && <small>{check.traceIds.length} supporting trace{check.traceIds.length === 1 ? '' : 's'}</small>}</li>)}</ol>
           </section>}
           {error && <p className="run-error">{error}</p>}

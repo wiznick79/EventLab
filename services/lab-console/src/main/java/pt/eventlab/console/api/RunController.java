@@ -1,8 +1,13 @@
 package pt.eventlab.console.api;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,11 +30,13 @@ class RunController {
     private final EvidenceReportService evidence;
     private final DeploymentControlService deployment;
     private final RunConsistencyService consistency;
+    private final ObjectMapper objectMapper;
 
     RunController(TimelineProjectionService timeline, TimelineStream stream,
             WorkflowClient workflowClient, DeadLetterRecoveryService recovery,
             ExperimentRunRegistry runs, EvidenceReportService evidence,
-            DeploymentControlService deployment, RunConsistencyService consistency) {
+            DeploymentControlService deployment, RunConsistencyService consistency,
+            ObjectMapper objectMapper) {
         this.timeline = timeline;
         this.stream = stream;
         this.workflowClient = workflowClient;
@@ -38,6 +45,7 @@ class RunController {
         this.evidence = evidence;
         this.deployment = deployment;
         this.consistency = consistency;
+        this.objectMapper = objectMapper;
     }
 
     @PostMapping
@@ -61,6 +69,23 @@ class RunController {
     @GetMapping("/{workflowId}/evidence")
     EvidenceReportResponse evidence(@PathVariable UUID workflowId) {
         return evidence.report(workflowId);
+    }
+
+    @GetMapping(path = "/{workflowId}/evidence/download", produces = MediaType.APPLICATION_JSON_VALUE)
+    ResponseEntity<String> downloadEvidence(@PathVariable UUID workflowId) {
+        try {
+            String body = objectMapper.writerWithDefaultPrettyPrinter()
+                    .writeValueAsString(evidence.report(workflowId)) + System.lineSeparator();
+            ContentDisposition disposition = ContentDisposition.attachment()
+                    .filename("eventlab-" + workflowId + "-evidence.json")
+                    .build();
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Could not serialize evidence report", exception);
+        }
     }
 
     @GetMapping("/{workflowId}/consistency")

@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -93,6 +95,21 @@ class LabConsoleApplicationTest {
                 .andExpect(jsonPath("$.workflowId").value(workflowId.toString()))
                 .andExpect(jsonPath("$.assessment").value("IN_PROGRESS"))
                 .andExpect(jsonPath("$.checks[0].id").value("payment-deliveries"));
+    }
+
+    @Test
+    void downloadsPrettyPrintedEvidenceJson() throws Exception {
+        UUID workflowId = UUID.randomUUID();
+        runs.register(new StartRunRequest("happy-path", null, java.math.BigDecimal.TEN, "EUR"),
+                new RunResponse(workflowId, UUID.randomUUID(), "PAYMENT_PENDING"));
+
+        mvc.perform(get("/api/v1/runs/{workflowId}/evidence/download", workflowId))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition",
+                        "attachment; filename=\"eventlab-" + workflowId + "-evidence.json\""))
+                .andExpect(content().contentType("application/json"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        System.lineSeparator() + "  \"workflowId\"")));
     }
 
     @Test
