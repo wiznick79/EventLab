@@ -27,6 +27,11 @@ public record LoadExperimentResponse(
         double throughputPerSecond,
         long medianLatencyMillis,
         long p95LatencyMillis,
+        long launchDurationMillis,
+        long firstPaymentDelayMillis,
+        long firstFulfilmentDelayMillis,
+        long firstTerminalDelayMillis,
+        long drainDurationMillis,
         Instant createdAt,
         Instant completedAt,
         List<UUID> workflowIds) {

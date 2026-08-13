@@ -181,6 +181,15 @@ class LoadExperimentService {
         int duplicates = members.stream().mapToInt(Member::duplicateDeliveries).sum();
         int maxInFlight = maxInFlight(members);
         double throughput = throughput(terminal);
+        long launchDuration = elapsed(experiment.createdAt(), experiment.launchedAt());
+        long firstPaymentDelay = delayFrom(experiment.createdAt(), members.stream()
+                .map(Member::paymentAt).filter(java.util.Objects::nonNull).min(Instant::compareTo).orElse(null));
+        long firstFulfilmentDelay = delayFrom(experiment.createdAt(), members.stream()
+                .map(Member::fulfilmentAt).filter(java.util.Objects::nonNull).min(Instant::compareTo).orElse(null));
+        long firstTerminalDelay = delayFrom(experiment.createdAt(), terminal.stream()
+                .map(Member::endedAt).min(Instant::compareTo).orElse(null));
+        long drainDuration = delayFrom(experiment.createdAt(), terminal.stream()
+                .map(Member::endedAt).max(Instant::compareTo).orElse(null));
         int processedLaunches = members.size() + experiment.launchFailures();
         String statusReason = "FAILED".equals(experiment.status())
                 && processedLaunches < experiment.requestedWorkflows()
@@ -194,7 +203,9 @@ class LoadExperimentService {
                 experiment.duplicatePercentage(), paymentObserved, fulfilmentObserved,
                 terminal.size(), proved, violations, duplicates,
                 members.size() - terminal.size(), maxInFlight, throughput,
-                percentile(latencies, 0.5), percentile(latencies, 0.95), experiment.createdAt(),
+                percentile(latencies, 0.5), percentile(latencies, 0.95),
+                launchDuration, firstPaymentDelay, firstFulfilmentDelay, firstTerminalDelay, drainDuration,
+                experiment.createdAt(),
                 experiment.completedAt(), experiment.workflowIds());
     }
 
@@ -209,8 +220,23 @@ class LoadExperimentService {
         boolean fulfilmentObserved = run.timeline().stream()
                 .anyMatch(event -> "fulfilment.completed".equals(event.eventType()));
         int duplicates = (int) run.timeline().stream().filter(TimelineEventResponse::duplicateDelivery).count();
+        Instant paymentAt = firstEventAt(run.timeline(), "payment.authorized");
+        Instant fulfilmentAt = firstEventAt(run.timeline(), "fulfilment.completed");
         return new Member(run.createdAt(), ended, terminal, proved,
-                paymentObserved, fulfilmentObserved, duplicates);
+                paymentObserved, fulfilmentObserved, duplicates, paymentAt, fulfilmentAt);
+    }
+
+    private Instant firstEventAt(List<TimelineEventResponse> timeline, String eventType) {
+        return timeline.stream().filter(event -> eventType.equals(event.eventType()))
+                .map(TimelineEventResponse::occurredAt).min(Instant::compareTo).orElse(null);
+    }
+
+    private long elapsed(Instant started, Instant ended) {
+        return ended == null ? 0 : Math.max(0, Duration.between(started, ended).toMillis());
+    }
+
+    private long delayFrom(Instant started, Instant observed) {
+        return observed == null ? 0 : elapsed(started, observed);
     }
 
     private int maxInFlight(List<Member> members) {
@@ -283,7 +309,8 @@ class LoadExperimentService {
 
     private record Member(Instant startedAt, Instant endedAt, boolean terminal,
                           boolean proved, boolean paymentObserved,
-                          boolean fulfilmentObserved, int duplicateDeliveries) {
+                          boolean fulfilmentObserved, int duplicateDeliveries,
+                          Instant paymentAt, Instant fulfilmentAt) {
         long latencyMillis() { return Duration.between(startedAt, endedAt).toMillis(); }
     }
 }

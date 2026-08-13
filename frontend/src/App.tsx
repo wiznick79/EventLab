@@ -79,6 +79,11 @@ type LoadExperiment = {
   throughputPerSecond: number
   medianLatencyMillis: number
   p95LatencyMillis: number
+  launchDurationMillis: number
+  firstPaymentDelayMillis: number
+  firstFulfilmentDelayMillis: number
+  firstTerminalDelayMillis: number
+  drainDurationMillis: number
   createdAt: string
   completedAt?: string
   workflowIds: string[]
@@ -666,6 +671,13 @@ export function App() {
             <div><span>Fulfilment observed</span><strong>{loadExperiment.fulfilmentObservedWorkflows}</strong><i style={{ width: `${loadExperiment.fulfilmentObservedWorkflows / loadExperiment.requestedWorkflows * 100}%` }} /></div>
             <b>→</b>
             <div><span>Terminal evidence</span><strong>{loadExperiment.terminalWorkflows}</strong><i style={{ width: `${loadExperiment.terminalWorkflows / loadExperiment.requestedWorkflows * 100}%` }} /></div>
+          </div>
+          <div className="phase-timing" aria-label="Load experiment phase timing">
+            <div><span>Launch complete</span><strong>{(loadExperiment.launchDurationMillis / 1000).toFixed(2)}s</strong></div><b>→</b>
+            <div><span>First payment</span><strong>{(loadExperiment.firstPaymentDelayMillis / 1000).toFixed(2)}s</strong></div><b>→</b>
+            <div><span>First fulfilment</span><strong>{(loadExperiment.firstFulfilmentDelayMillis / 1000).toFixed(2)}s</strong></div><b>→</b>
+            <div><span>First terminal</span><strong>{(loadExperiment.firstTerminalDelayMillis / 1000).toFixed(2)}s</strong></div><b>→</b>
+            <div><span>Full drain</span><strong>{(loadExperiment.drainDurationMillis / 1000).toFixed(2)}s</strong></div>
           </div>
           <dl className="load-metrics">
             <div><dt>Pending launches</dt><dd>{loadExperiment.pendingLaunches}</dd></div>

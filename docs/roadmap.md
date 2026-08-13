@@ -277,3 +277,15 @@ Implemented with three excluded warm-up experiments, two-second settling interva
 **Demonstration:** launch either a curated or custom experiment and land on its result directly beneath the initiating controls; move between all four interactive areas from the compact lab navigation.
 
 Implemented with state-aware visual ordering of the shared result panel, explicit section anchors, responsive sticky navigation, and unchanged backend/run identity semantics.
+
+## Milestone 23: load-pipeline phase diagnostics — completed 2026-08-13
+
+- Split aggregate load timing into launch, first payment, first fulfilment, first terminal, and full-drain milestones.
+- Derive timings from persisted experiment and business-event timestamps rather than browser clocks.
+- Update phase evidence live alongside the existing stage counts.
+- Preserve throughput and latency as outcome metrics while exposing where a slow-mode delay begins.
+- Keep unavailable future phases at zero until the corresponding backend evidence exists.
+
+**Demonstration:** compare a fast and slow run and identify the first phase whose elapsed time diverges, narrowing the investigation to admission, consumer readiness, or sustained pipeline drain.
+
+Implemented with backend-derived phase delays in the load response and a responsive timing strip directly beneath the distributed stage progression.

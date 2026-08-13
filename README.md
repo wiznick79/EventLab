@@ -10,7 +10,7 @@ The project is a portfolio and learning system, not a parcel-management product.
 
 ## Status
 
-Milestones 0–22 are complete. EventLab includes a disposable Azure environment, a permanent portfolio tour, repeatable resilience measurements, self-contained curated, custom, and load laboratories with warmed order-balanced concurrency trials and variability reporting, durable Run Inspector evidence, configurable recovery policies, backend-generated downloadable evidence reports, a live deployment Control Center, fail-closed evidence-pipeline readiness, authoritative-versus-projected consistency proof, a traceable poison-message quarantine experiment, and non-destructive native DLQ inspection.
+Milestones 0–23 are complete. EventLab includes a disposable Azure environment, a permanent portfolio tour, repeatable resilience measurements, self-contained curated, custom, and load laboratories with warmed order-balanced concurrency trials, variability reporting, and phase-level pipeline diagnostics, durable Run Inspector evidence, configurable recovery policies, backend-generated downloadable evidence reports, a live deployment Control Center, fail-closed evidence-pipeline readiness, authoritative-versus-projected consistency proof, a traceable poison-message quarantine experiment, and non-destructive native DLQ inspection.
 
 ## Target technology
 
