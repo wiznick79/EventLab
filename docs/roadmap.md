@@ -301,3 +301,15 @@ Implemented with backend-derived phase delays in the load response and a respons
 **Demonstration:** compare Payment, command-queued, and Fulfilment timestamps to distinguish delayed Workflow consumption from delayed command dispatch or Fulfilment processing.
 
 Implemented as an explicit business-process observation emitted in the same transaction as the command outbox row, retaining the system's reliability semantics while removing a large diagnostic blind spot.
+
+## Milestone 25: full-wave backlog localization — completed 2026-08-13
+
+- Measure both the first and last observed event at each asynchronous processing stage.
+- Present Payment, command-queued, Fulfilment, and terminal timing as first-to-last wave ranges.
+- Keep launch completion as a single admission boundary.
+- Derive every range from persisted backend evidence rather than browser polling time.
+- Use the widening ranges to distinguish fast pipeline activation from slow sustained draining.
+
+**Demonstration:** run a load experiment and compare the stage ranges; the stage whose trailing edge expands identifies where the bulk of the workflow wave is accumulating even when the first workflow passes quickly.
+
+Implemented with backend maximum-event timestamp derivation and a compact live phase strip that pairs each stage's leading and trailing edge.

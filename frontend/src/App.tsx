@@ -81,8 +81,11 @@ type LoadExperiment = {
   p95LatencyMillis: number
   launchDurationMillis: number
   firstPaymentDelayMillis: number
+  lastPaymentDelayMillis: number
   firstFulfilmentQueuedDelayMillis: number
+  lastFulfilmentQueuedDelayMillis: number
   firstFulfilmentDelayMillis: number
+  lastFulfilmentDelayMillis: number
   firstTerminalDelayMillis: number
   drainDurationMillis: number
   createdAt: string
@@ -675,11 +678,10 @@ export function App() {
           </div>
           <div className="phase-timing" aria-label="Load experiment phase timing">
             <div><span>Launch complete</span><strong>{(loadExperiment.launchDurationMillis / 1000).toFixed(2)}s</strong></div><b>→</b>
-            <div><span>First payment</span><strong>{(loadExperiment.firstPaymentDelayMillis / 1000).toFixed(2)}s</strong></div><b>→</b>
-            <div><span>Command queued</span><strong>{(loadExperiment.firstFulfilmentQueuedDelayMillis / 1000).toFixed(2)}s</strong></div><b>→</b>
-            <div><span>First fulfilment</span><strong>{(loadExperiment.firstFulfilmentDelayMillis / 1000).toFixed(2)}s</strong></div><b>→</b>
-            <div><span>First terminal</span><strong>{(loadExperiment.firstTerminalDelayMillis / 1000).toFixed(2)}s</strong></div><b>→</b>
-            <div><span>Full drain</span><strong>{(loadExperiment.drainDurationMillis / 1000).toFixed(2)}s</strong></div>
+            <div><span>Payment wave</span><strong>{(loadExperiment.firstPaymentDelayMillis / 1000).toFixed(2)}–{(loadExperiment.lastPaymentDelayMillis / 1000).toFixed(2)}s</strong></div><b>→</b>
+            <div><span>Command queued wave</span><strong>{(loadExperiment.firstFulfilmentQueuedDelayMillis / 1000).toFixed(2)}–{(loadExperiment.lastFulfilmentQueuedDelayMillis / 1000).toFixed(2)}s</strong></div><b>→</b>
+            <div><span>Fulfilment wave</span><strong>{(loadExperiment.firstFulfilmentDelayMillis / 1000).toFixed(2)}–{(loadExperiment.lastFulfilmentDelayMillis / 1000).toFixed(2)}s</strong></div><b>→</b>
+            <div><span>Terminal wave</span><strong>{(loadExperiment.firstTerminalDelayMillis / 1000).toFixed(2)}–{(loadExperiment.drainDurationMillis / 1000).toFixed(2)}s</strong></div>
           </div>
           <dl className="load-metrics">
             <div><dt>Pending launches</dt><dd>{loadExperiment.pendingLaunches}</dd></div>

@@ -184,11 +184,18 @@ class LoadExperimentService {
         long launchDuration = elapsed(experiment.createdAt(), experiment.launchedAt());
         long firstPaymentDelay = delayFrom(experiment.createdAt(), members.stream()
                 .map(Member::paymentAt).filter(java.util.Objects::nonNull).min(Instant::compareTo).orElse(null));
+        long lastPaymentDelay = delayFrom(experiment.createdAt(), members.stream()
+                .map(Member::paymentAt).filter(java.util.Objects::nonNull).max(Instant::compareTo).orElse(null));
         long firstFulfilmentQueuedDelay = delayFrom(experiment.createdAt(), members.stream()
                 .map(Member::fulfilmentQueuedAt).filter(java.util.Objects::nonNull)
                 .min(Instant::compareTo).orElse(null));
+        long lastFulfilmentQueuedDelay = delayFrom(experiment.createdAt(), members.stream()
+                .map(Member::fulfilmentQueuedAt).filter(java.util.Objects::nonNull)
+                .max(Instant::compareTo).orElse(null));
         long firstFulfilmentDelay = delayFrom(experiment.createdAt(), members.stream()
                 .map(Member::fulfilmentAt).filter(java.util.Objects::nonNull).min(Instant::compareTo).orElse(null));
+        long lastFulfilmentDelay = delayFrom(experiment.createdAt(), members.stream()
+                .map(Member::fulfilmentAt).filter(java.util.Objects::nonNull).max(Instant::compareTo).orElse(null));
         long firstTerminalDelay = delayFrom(experiment.createdAt(), terminal.stream()
                 .map(Member::endedAt).min(Instant::compareTo).orElse(null));
         long drainDuration = delayFrom(experiment.createdAt(), terminal.stream()
@@ -207,8 +214,9 @@ class LoadExperimentService {
                 terminal.size(), proved, violations, duplicates,
                 members.size() - terminal.size(), maxInFlight, throughput,
                 percentile(latencies, 0.5), percentile(latencies, 0.95),
-                launchDuration, firstPaymentDelay, firstFulfilmentQueuedDelay,
-                firstFulfilmentDelay, firstTerminalDelay, drainDuration,
+                launchDuration, firstPaymentDelay, lastPaymentDelay,
+                firstFulfilmentQueuedDelay, lastFulfilmentQueuedDelay,
+                firstFulfilmentDelay, lastFulfilmentDelay, firstTerminalDelay, drainDuration,
                 experiment.createdAt(),
                 experiment.completedAt(), experiment.workflowIds());
     }
