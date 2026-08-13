@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { App, expectedInvariant, formatRemaining, grafanaDashboardUrl, grafanaTraceUrl, presetPlan, traceEvidence, traceUrl } from './App'
+import { App, dominantCampaignStall, expectedInvariant, formatRemaining, grafanaDashboardUrl, grafanaTraceUrl, presetPlan, traceEvidence, traceUrl, type LoadExperiment } from './App'
 import { isLiveLabOnline, offlineLiveLabMessage, PortfolioTour } from './PortfolioTour'
 
 describe('EventLab experiment console', () => {
@@ -33,6 +33,22 @@ describe('EventLab experiment console', () => {
       '1h 1m 1s remaining',
     )
     expect(formatRemaining('2026-08-12T10:00:00Z', Date.parse('2026-08-12T11:00:00Z'))).toBe('Expired')
+  })
+
+  it('summarizes a repeated campaign stall without inventing a winner for mixed evidence', () => {
+    const run = (stage: LoadExperiment['dominantStall']['stage'], label: string) => ({
+      dominantStall: { stage, label, durationMillis: 1000, sharePercent: 50, explanation: '' },
+    } as LoadExperiment)
+
+    expect(dominantCampaignStall([
+      run('WORKFLOW_HANDOFF', 'Workflow handoff'),
+      run('WORKFLOW_HANDOFF', 'Workflow handoff'),
+      run('PAYMENT', 'Payment command drain'),
+    ])).toBe('Workflow handoff in 2/3 runs')
+    expect(dominantCampaignStall([
+      run('PAYMENT', 'Payment command drain'),
+      run('TERMINAL_EVIDENCE', 'Terminal evidence tail'),
+    ])).toBe('Mixed stalls across 2 runs')
   })
 
   it('maps curated scenarios to the same plans used by the builder', () => {

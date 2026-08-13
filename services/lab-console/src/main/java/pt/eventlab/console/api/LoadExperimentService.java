@@ -232,6 +232,8 @@ class LoadExperimentService {
                 firstFulfilmentQueuedDelay, lastFulfilmentQueuedDelay,
                 firstFulfilmentDelay, lastFulfilmentDelay, firstTerminalDelay, drainDuration,
                 brokerPressure.inspect(experiment.id()),
+                dominantStall(experiment.status(), lastPaymentDelay, lastFulfilmentQueuedDelay,
+                        lastFulfilmentDelay, drainDuration),
                 experiment.createdAt(),
                 experiment.completedAt(), experiment.workflowIds());
     }
@@ -266,6 +268,33 @@ class LoadExperimentService {
 
     private long delayFrom(Instant started, Instant observed) {
         return observed == null ? 0 : elapsed(started, observed);
+    }
+
+    static StallAttributionResponse dominantStall(String status, long paymentEnd,
+            long handoffEnd, long fulfilmentEnd, long drainEnd) {
+        if (!List.of("PROVED", "FAILED").contains(status) || drainEnd == 0) {
+            return new StallAttributionResponse("COLLECTING", "Collecting stage evidence",
+                    0, 0, "Attribution is finalized after the accepted workflow wave drains.");
+        }
+        record Segment(String stage, String label, long duration, String explanation) { }
+        List<Segment> segments = List.of(
+                new Segment("PAYMENT", "Payment command drain", paymentEnd,
+                        "Admission through the final observed payment result dominated this run."),
+                new Segment("WORKFLOW_HANDOFF", "Workflow handoff", gap(paymentEnd, handoffEnd),
+                        "The largest delay was between the final payment result and final queued fulfilment command."),
+                new Segment("FULFILMENT", "Fulfilment command drain", gap(handoffEnd, fulfilmentEnd),
+                        "The fulfilment command stage contributed the largest trailing delay."),
+                new Segment("TERMINAL_EVIDENCE", "Terminal evidence tail", gap(fulfilmentEnd, drainEnd),
+                        "Business work completed before the final terminal evidence reached the Lab Console."));
+        Segment dominant = segments.stream().max(java.util.Comparator.comparingLong(Segment::duration))
+                .orElseThrow();
+        int share = (int) Math.round(dominant.duration() * 100.0 / Math.max(1, drainEnd));
+        return new StallAttributionResponse(dominant.stage(), dominant.label(), dominant.duration(),
+                share, dominant.explanation());
+    }
+
+    private static long gap(long start, long end) {
+        return Math.max(0, end - start);
     }
 
     private int maxInFlight(List<Member> members) {

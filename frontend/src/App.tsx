@@ -56,7 +56,7 @@ type DeploymentStatus = {
   evidencePipeline?: { enabled: boolean; status: 'STARTING' | 'RUNNING' | 'DISABLED' | 'ERROR'; lastEventAt?: string; lastError?: string }
   dependencies: { name: string; status: 'UP' | 'DOWN' }[]
 }
-type LoadExperiment = {
+export type LoadExperiment = {
   id: string
   status: 'LAUNCHING' | 'RUNNING' | 'PROVED' | 'FAILED'
   statusReason?: 'LAUNCH_INTERRUPTED' | 'EVIDENCE_FAILED'
@@ -96,6 +96,13 @@ type LoadExperiment = {
     fulfilmentCommands: { current: number; peak: number }
     evidenceEvents: { current: number; peak: number }
   }
+  dominantStall: {
+    stage: 'COLLECTING' | 'PAYMENT' | 'WORKFLOW_HANDOFF' | 'FULFILMENT' | 'TERMINAL_EVIDENCE'
+    label: string
+    durationMillis: number
+    sharePercent: number
+    explanation: string
+  }
   createdAt: string
   completedAt?: string
   workflowIds: string[]
@@ -117,6 +124,24 @@ function comparisonStatistics(runs: LoadExperiment[]) {
   const maximum = Math.max(...values)
   const spread = middle === 0 ? 0 : (maximum - minimum) / middle * 100
   return { minimum, median: middle, maximum, spread, stable: values.length >= 3 && spread <= 25 }
+}
+
+export function dominantCampaignStall(runs: LoadExperiment[]) {
+  const completed = runs.filter((run) => run.dominantStall.stage !== 'COLLECTING')
+  if (completed.length === 0) return 'Collecting attribution'
+  const counts = new Map<string, { label: string; count: number }>()
+  completed.forEach((run) => {
+    const previous = counts.get(run.dominantStall.stage)
+    counts.set(run.dominantStall.stage, {
+      label: run.dominantStall.label,
+      count: (previous?.count ?? 0) + 1,
+    })
+  })
+  const highest = Math.max(...[...counts.values()].map((entry) => entry.count))
+  const leaders = [...counts.values()].filter((entry) => entry.count === highest)
+  return leaders.length === 1
+    ? `${leaders[0].label} in ${leaders[0].count}/${completed.length} runs`
+    : `Mixed stalls across ${completed.length} runs`
 }
 
 export function formatRemaining(expiresAt: string | undefined, now = Date.now()) {
@@ -700,6 +725,11 @@ export function App() {
               <div><span>Evidence events</span><strong>{loadExperiment.brokerPressure.evidenceEvents.current} / {loadExperiment.brokerPressure.evidenceEvents.peak}</strong></div>
             </div> : <p className="broker-pressure-unavailable">{loadExperiment.brokerPressure.status}. Workflow evidence and phase timings remain available.</p>}
           </section>
+          {loadExperiment.dominantStall.stage !== 'COLLECTING' && <aside className="stall-attribution">
+            <div><span>Dominant run delay</span><strong>{loadExperiment.dominantStall.label}</strong></div>
+            <code>{(loadExperiment.dominantStall.durationMillis / 1000).toFixed(2)}s · {loadExperiment.dominantStall.sharePercent}% of drain</code>
+            <p>{loadExperiment.dominantStall.explanation}</p>
+          </aside>}
           <dl className="load-metrics">
             <div><dt>Pending launches</dt><dd>{loadExperiment.pendingLaunches}</dd></div>
             <div><dt>Accepted</dt><dd>{loadExperiment.acceptedWorkflows} / {loadExperiment.requestedWorkflows}</dd></div>
@@ -720,15 +750,15 @@ export function App() {
         {recentLoadExperiments.length > 0 && <section className="load-comparison" aria-labelledby="load-comparison-title">
           <div><p className="eyebrow">Concurrency comparison</p><h2 id="load-comparison-title">Same guarantees, different consumer parallelism</h2><p>The five latest completed runs below update after every experiment. A campaign warms each profile once, then measures nine runs in rotated order so transient startup and ordering effects have less influence.</p></div>
           <div className="load-comparison-table" role="region" aria-label="Recent load experiment comparison" tabIndex={0}>
-            <table><thead><tr><th>Concurrency</th><th>Workload</th><th>Result</th><th>Proved</th><th>Violations</th><th>Throughput</th><th>Median</th><th>p95</th></tr></thead>
-              <tbody>{recentLoadExperiments.slice(0, 5).map((item) => <tr key={item.id}><td><strong>{item.consumerConcurrency}</strong></td><td>{item.requestedWorkflows} · {item.trafficPattern.toLowerCase()} · {item.duplicatePercentage}% dupes</td><td><span className={`comparison-status ${item.status.toLowerCase()}`}>{item.status}</span></td><td>{item.provedWorkflows}/{item.acceptedWorkflows}</td><td>{item.invariantViolations}</td><td>{item.throughputPerSecond.toFixed(2)}/s</td><td>{(item.medianLatencyMillis / 1000).toFixed(2)}s</td><td>{(item.p95LatencyMillis / 1000).toFixed(2)}s</td></tr>)}</tbody>
+            <table><thead><tr><th>Concurrency</th><th>Workload</th><th>Result</th><th>Proved</th><th>Violations</th><th>Throughput</th><th>Median</th><th>p95</th><th>Dominant delay</th></tr></thead>
+              <tbody>{recentLoadExperiments.slice(0, 5).map((item) => <tr key={item.id}><td><strong>{item.consumerConcurrency}</strong></td><td>{item.requestedWorkflows} · {item.trafficPattern.toLowerCase()} · {item.duplicatePercentage}% dupes</td><td><span className={`comparison-status ${item.status.toLowerCase()}`}>{item.status}</span></td><td>{item.provedWorkflows}/{item.acceptedWorkflows}</td><td>{item.invariantViolations}</td><td>{item.throughputPerSecond.toFixed(2)}/s</td><td>{(item.medianLatencyMillis / 1000).toFixed(2)}s</td><td>{(item.p95LatencyMillis / 1000).toFixed(2)}s</td><td><span className="stall-cell">{item.dominantStall.label}<small>{(item.dominantStall.durationMillis / 1000).toFixed(2)}s · {item.dominantStall.sharePercent}%</small></span></td></tr>)}</tbody>
             </table>
           </div>
           <p className="comparison-note">Concurrency is applied to the real Service Bus processors for the duration of one experiment, then restored to the sequential baseline. Higher is not automatically faster: broker prefetch, local CPU, database contention, and processor restart warm-up all affect the measured result.</p>
           {comparisonResults.length > 0 && <div className="comparison-summary"><h3>Current balanced comparison</h3><div>{([1, 4, 8] as ConcurrencyProfile[]).map((calls) => {
             const runs = comparisonResults.filter((item) => item.consumerConcurrency === calls)
             const stats = comparisonStatistics(runs)
-            return <article key={calls}><span>Concurrency {calls}</span><strong>{runs.length ? `${stats.median.toFixed(2)}/s` : 'Pending'}</strong><small>{runs.length}/3 measured · min {stats.minimum.toFixed(2)} · max {stats.maximum.toFixed(2)} · spread {stats.spread.toFixed(0)}% · {runs.length < 3 ? 'COLLECTING' : stats.stable ? 'STABLE' : 'INCONCLUSIVE'} · {runs.reduce((sum, item) => sum + item.invariantViolations, 0)} violations</small></article>
+            return <article key={calls}><span>Concurrency {calls}</span><strong>{runs.length ? `${stats.median.toFixed(2)}/s` : 'Pending'}</strong><small>{runs.length}/3 measured · min {stats.minimum.toFixed(2)} · max {stats.maximum.toFixed(2)} · spread {stats.spread.toFixed(0)}% · {runs.length < 3 ? 'COLLECTING' : stats.stable ? 'STABLE' : 'INCONCLUSIVE'} · {runs.reduce((sum, item) => sum + item.invariantViolations, 0)} violations</small><em>{dominantCampaignStall(runs)}</em></article>
           })}</div></div>}
         </section>}
 

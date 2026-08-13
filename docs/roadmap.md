@@ -325,3 +325,15 @@ Implemented with backend maximum-event timestamp derivation and a compact live p
 **Demonstration:** watch current and peak active-message counts during a load run, then correlate the entity that accumulates messages with the widening first-to-last phase range.
 
 Implemented with the Service Bus administration client, an evidence-derived emulator fallback, a non-invasive sampling cache, and a responsive four-stage pressure strip in the Load Lab.
+
+## Milestone 27: automatic stall attribution — completed 2026-08-13
+
+- Partition each completed load run into Payment drain, Workflow handoff, Fulfilment drain, and terminal-evidence tail.
+- Attribute the run to its longest evidence-backed segment and report its duration and share of total drain time.
+- Add the attribution to the live result and recent-run comparison table.
+- Aggregate repeated stage attributions within each balanced concurrency profile.
+- Report mixed attribution honestly when no single stage dominates the measured runs.
+
+**Demonstration:** run the balanced campaign and explain not only that a profile is variable, but whether its slow runs repeatedly accumulated at one stage or stalled at different stages.
+
+Implemented as a deterministic backend analysis of persisted phase boundaries, with campaign-level summaries that deliberately avoid converting mixed stalls into a false bottleneck claim.

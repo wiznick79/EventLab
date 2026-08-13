@@ -156,6 +156,15 @@ h1 em { color: transparent; -webkit-text-stroke: 1px rgba(233, 237, 247, .62); f
 .broker-pressure-stages div { min-width: 0; padding: .55rem .65rem; border-left: 2px solid var(--cyan); background: rgba(0,0,0,.12); }
 .broker-pressure-stages strong { margin-top: .25rem; color: var(--text); font-size: 1rem; }
 .broker-pressure-stages b { color: var(--lime); font-weight: 400; }
+.stall-attribution { display: grid; grid-template-columns: minmax(12rem, .8fr) auto 1.6fr; align-items: center; gap: 1rem; margin: -.8rem 0 1.5rem; padding: .8rem; border: 1px solid rgba(174,255,72,.3); background: rgba(174,255,72,.04); }
+.stall-attribution span, .stall-attribution strong { display: block; font-family: 'DM Mono', monospace; }
+.stall-attribution span { color: var(--muted); font-size: .55rem; text-transform: uppercase; }
+.stall-attribution strong { margin-top: .2rem; color: var(--lime); font-size: .82rem; }
+.stall-attribution code { color: var(--cyan); white-space: nowrap; }
+.stall-attribution p { margin: 0; color: var(--muted); font-size: .72rem; }
+.stall-cell { white-space: nowrap; }
+.stall-cell small { display: block; margin-top: .2rem; color: var(--muted); }
+.comparison-summary article em { display: block; margin-top: .45rem; color: var(--cyan); font-family: 'DM Mono', monospace; font-size: .58rem; font-style: normal; }
 .load-comparison { margin-top: 1.5rem; padding: clamp(1.5rem, 4vw, 3rem); border: 1px solid var(--line); background: rgba(13,25,23,.72); }
 .load-comparison h2 { margin: .25rem 0 .6rem; font-size: clamp(1.7rem, 4vw, 2.8rem); font-weight: 500; }
 .load-comparison > div > p { max-width: 72rem; color: var(--muted); }
@@ -443,6 +452,7 @@ footer { display: flex; justify-content: space-between; padding-top: 2rem; paddi
   .broker-pressure-heading p { margin-top: .4rem; }
   .broker-pressure-stages { grid-template-columns: 1fr 1fr; }
   .broker-pressure-stages b { display: none; }
+  .stall-attribution { grid-template-columns: 1fr; }
   .load-safety, .load-report-heading { align-items: start; flex-direction: column; }
   .history-plan { grid-column: 1; grid-row: auto; }
   .comparison-controls { grid-template-columns: 1fr; }

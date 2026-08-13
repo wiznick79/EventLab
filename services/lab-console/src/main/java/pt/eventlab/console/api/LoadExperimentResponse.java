@@ -37,6 +37,7 @@ public record LoadExperimentResponse(
         long firstTerminalDelayMillis,
         long drainDurationMillis,
         BrokerPressureResponse brokerPressure,
+        StallAttributionResponse dominantStall,
         Instant createdAt,
         Instant completedAt,
         List<UUID> workflowIds) {
