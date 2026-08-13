@@ -146,6 +146,16 @@ h1 em { color: transparent; -webkit-text-stroke: 1px rgba(233, 237, 247, .62); f
 .phase-timing span { color: var(--muted); font-size: .55rem; text-transform: uppercase; }
 .phase-timing strong { margin-top: .25rem; color: var(--cyan); font-size: .82rem; }
 .phase-timing b { color: var(--muted); font-weight: 400; }
+.broker-pressure { margin: -.8rem 0 1.5rem; padding: .85rem; border: 1px solid var(--line); background: rgba(102,230,212,.025); }
+.broker-pressure-heading { display: flex; justify-content: space-between; align-items: end; gap: 1rem; margin-bottom: .75rem; }
+.broker-pressure-heading span, .broker-pressure-heading strong, .broker-pressure-stages span, .broker-pressure-stages strong { display: block; font-family: 'DM Mono', monospace; }
+.broker-pressure-heading span, .broker-pressure-stages span { color: var(--muted); font-size: .55rem; text-transform: uppercase; }
+.broker-pressure-heading strong { margin-top: .2rem; color: var(--lime); font-size: .7rem; }
+.broker-pressure-heading p, .broker-pressure-unavailable { margin: 0; color: var(--muted); font-size: .7rem; }
+.broker-pressure-stages { display: grid; grid-template-columns: repeat(3, 1fr auto) 1fr; align-items: center; gap: .6rem; }
+.broker-pressure-stages div { min-width: 0; padding: .55rem .65rem; border-left: 2px solid var(--cyan); background: rgba(0,0,0,.12); }
+.broker-pressure-stages strong { margin-top: .25rem; color: var(--text); font-size: 1rem; }
+.broker-pressure-stages b { color: var(--lime); font-weight: 400; }
 .load-comparison { margin-top: 1.5rem; padding: clamp(1.5rem, 4vw, 3rem); border: 1px solid var(--line); background: rgba(13,25,23,.72); }
 .load-comparison h2 { margin: .25rem 0 .6rem; font-size: clamp(1.7rem, 4vw, 2.8rem); font-weight: 500; }
 .load-comparison > div > p { max-width: 72rem; color: var(--muted); }
@@ -429,6 +439,10 @@ footer { display: flex; justify-content: space-between; padding-top: 2rem; paddi
   .load-stage-flow b { display: none; }
   .phase-timing { grid-template-columns: 1fr 1fr; }
   .phase-timing b { display: none; }
+  .broker-pressure-heading { display: block; }
+  .broker-pressure-heading p { margin-top: .4rem; }
+  .broker-pressure-stages { grid-template-columns: 1fr 1fr; }
+  .broker-pressure-stages b { display: none; }
   .load-safety, .load-report-heading { align-items: start; flex-direction: column; }
   .history-plan { grid-column: 1; grid-row: auto; }
   .comparison-controls { grid-template-columns: 1fr; }

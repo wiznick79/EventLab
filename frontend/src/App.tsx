@@ -88,6 +88,14 @@ type LoadExperiment = {
   lastFulfilmentDelayMillis: number
   firstTerminalDelayMillis: number
   drainDurationMillis: number
+  brokerPressure: {
+    available: boolean
+    status: string
+    paymentCommands: { current: number; peak: number }
+    workflowEvents: { current: number; peak: number }
+    fulfilmentCommands: { current: number; peak: number }
+    evidenceEvents: { current: number; peak: number }
+  }
   createdAt: string
   completedAt?: string
   workflowIds: string[]
@@ -683,6 +691,15 @@ export function App() {
             <div><span>Fulfilment wave</span><strong>{(loadExperiment.firstFulfilmentDelayMillis / 1000).toFixed(2)}–{(loadExperiment.lastFulfilmentDelayMillis / 1000).toFixed(2)}s</strong></div><b>→</b>
             <div><span>Terminal wave</span><strong>{(loadExperiment.firstTerminalDelayMillis / 1000).toFixed(2)}–{(loadExperiment.drainDurationMillis / 1000).toFixed(2)}s</strong></div>
           </div>
+          <section className="broker-pressure" aria-label="Live Service Bus queue pressure">
+            <div className="broker-pressure-heading"><div><span>Live pipeline pressure</span><strong>{loadExperiment.brokerPressure.available ? 'BACKLOG · CURRENT / PEAK' : 'COUNTERS UNAVAILABLE'}</strong></div><p>{loadExperiment.brokerPressure.status === 'NATIVE_SERVICE_BUS_COUNTS' ? 'Native environment-wide Service Bus active-message counts.' : loadExperiment.brokerPressure.status === 'LOGICAL_EXPERIMENT_BACKLOG' ? 'Experiment-specific logical backlog derived from persisted stage evidence.' : 'Pressure source unavailable.'}</p></div>
+            {loadExperiment.brokerPressure.available ? <div className="broker-pressure-stages">
+              <div><span>Payment commands</span><strong>{loadExperiment.brokerPressure.paymentCommands.current} / {loadExperiment.brokerPressure.paymentCommands.peak}</strong></div><b>→</b>
+              <div><span>Workflow events</span><strong>{loadExperiment.brokerPressure.workflowEvents.current} / {loadExperiment.brokerPressure.workflowEvents.peak}</strong></div><b>→</b>
+              <div><span>Fulfilment commands</span><strong>{loadExperiment.brokerPressure.fulfilmentCommands.current} / {loadExperiment.brokerPressure.fulfilmentCommands.peak}</strong></div><b>→</b>
+              <div><span>Evidence events</span><strong>{loadExperiment.brokerPressure.evidenceEvents.current} / {loadExperiment.brokerPressure.evidenceEvents.peak}</strong></div>
+            </div> : <p className="broker-pressure-unavailable">{loadExperiment.brokerPressure.status}. Workflow evidence and phase timings remain available.</p>}
+          </section>
           <dl className="load-metrics">
             <div><dt>Pending launches</dt><dd>{loadExperiment.pendingLaunches}</dd></div>
             <div><dt>Accepted</dt><dd>{loadExperiment.acceptedWorkflows} / {loadExperiment.requestedWorkflows}</dd></div>

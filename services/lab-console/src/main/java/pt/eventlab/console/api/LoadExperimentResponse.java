@@ -36,6 +36,7 @@ public record LoadExperimentResponse(
         long lastFulfilmentDelayMillis,
         long firstTerminalDelayMillis,
         long drainDurationMillis,
+        BrokerPressureResponse brokerPressure,
         Instant createdAt,
         Instant completedAt,
         List<UUID> workflowIds) {

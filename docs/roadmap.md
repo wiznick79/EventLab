@@ -313,3 +313,15 @@ Implemented as an explicit business-process observation emitted in the same tran
 **Demonstration:** run a load experiment and compare the stage ranges; the stage whose trailing edge expands identifies where the bulk of the workflow wave is accumulating even when the first workflow passes quickly.
 
 Implemented with backend maximum-event timestamp derivation and a compact live phase strip that pairs each stage's leading and trailing edge.
+
+## Milestone 26: live broker-pressure diagnostics — completed 2026-08-13
+
+- Sample native Service Bus active-message counts once per second throughout a load experiment.
+- Cover the Payment command queue, Workflow event subscription, Fulfilment command queue, and evidence subscription.
+- Retain both current and peak pressure for each pipeline stage during the active process lifetime.
+- Display pressure next to the distributed phase timings while the workload executes.
+- Identify native figures honestly as environment-wide broker counters; where the local emulator omits management counters, fall back explicitly to experiment-specific logical backlog derived from persisted stage evidence.
+
+**Demonstration:** watch current and peak active-message counts during a load run, then correlate the entity that accumulates messages with the widening first-to-last phase range.
+
+Implemented with the Service Bus administration client, an evidence-derived emulator fallback, a non-invasive sampling cache, and a responsive four-stage pressure strip in the Load Lab.

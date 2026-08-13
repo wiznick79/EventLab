@@ -7,7 +7,9 @@ public record LabConsoleMessagingProperties(
         boolean enabled,
         String connectionString,
         String fullyQualifiedNamespace,
+        String paymentCommandsQueue,
         String fulfilmentCommandsQueue,
         String businessEventsTopic,
+        String workflowEventsSubscription,
         String labConsoleEventsSubscription) {
 }

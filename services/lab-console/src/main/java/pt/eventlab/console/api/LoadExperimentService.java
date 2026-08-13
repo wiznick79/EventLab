@@ -45,11 +45,12 @@ class LoadExperimentService {
     private final DeploymentControlService deployment;
     private final DeploymentProperties deploymentProperties;
     private final ConsumerConcurrencyClient concurrency;
+    private final BrokerPressureService brokerPressure;
 
     LoadExperimentService(LoadExperimentRepository experiments, ExperimentRunRegistry runs,
             WorkflowClient workflows, EvidenceReportService evidence,
             DeploymentControlService deployment, DeploymentProperties deploymentProperties,
-            ConsumerConcurrencyClient concurrency) {
+            ConsumerConcurrencyClient concurrency, BrokerPressureService brokerPressure) {
         this.experiments = experiments;
         this.runs = runs;
         this.workflows = workflows;
@@ -57,6 +58,7 @@ class LoadExperimentService {
         this.deployment = deployment;
         this.deploymentProperties = deploymentProperties;
         this.concurrency = concurrency;
+        this.brokerPressure = brokerPressure;
     }
 
     public synchronized LoadExperimentResponse start(StartLoadExperimentRequest request) {
@@ -72,6 +74,7 @@ class LoadExperimentService {
         LoadExperiment experiment = experiments.save(new LoadExperiment(UUID.randomUUID(), pattern,
                 request.workflowCount(), request.duplicatePercentage(), interval,
                 request.consumerConcurrency(), clock.instant()));
+        brokerPressure.begin(experiment.id());
         coordinator.submit(() -> launch(experiment));
         return response(experiment);
     }
@@ -88,6 +91,7 @@ class LoadExperimentService {
     @Scheduled(fixedDelay = 1000)
     public void assessRunningExperiments() {
         for (LoadExperiment experiment : experiments.findByStatus("RUNNING")) {
+            brokerPressure.sample(experiment.id());
             LoadExperimentResponse report = response(experiment);
             if (report.acceptedWorkflows() > 0
                     && report.terminalWorkflows() == report.acceptedWorkflows()) {
@@ -95,6 +99,9 @@ class LoadExperimentService {
                 experiments.save(experiment);
                 concurrency.configure(1);
             }
+        }
+        for (LoadExperiment experiment : experiments.findByStatus("LAUNCHING")) {
+            brokerPressure.sample(experiment.id());
         }
     }
 
@@ -177,6 +184,8 @@ class LoadExperimentService {
         int proved = (int) terminal.stream().filter(Member::proved).count();
         int violations = (int) terminal.stream().filter(member -> !member.proved()).count();
         int paymentObserved = (int) members.stream().filter(Member::paymentObserved).count();
+        int fulfilmentQueuedObserved = (int) members.stream()
+                .filter(member -> member.fulfilmentQueuedAt() != null).count();
         int fulfilmentObserved = (int) members.stream().filter(Member::fulfilmentObserved).count();
         int duplicates = members.stream().mapToInt(Member::duplicateDeliveries).sum();
         int maxInFlight = maxInFlight(members);
@@ -205,6 +214,11 @@ class LoadExperimentService {
                 && processedLaunches < experiment.requestedWorkflows()
                 ? "LAUNCH_INTERRUPTED"
                 : "FAILED".equals(experiment.status()) ? "EVIDENCE_FAILED" : null;
+        brokerPressure.recordLogical(experiment.id(),
+                Math.max(0, members.size() - paymentObserved),
+                Math.max(0, paymentObserved - fulfilmentQueuedObserved),
+                Math.max(0, fulfilmentQueuedObserved - fulfilmentObserved),
+                Math.max(0, fulfilmentObserved - terminal.size()));
         return new LoadExperimentResponse(experiment.id(), experiment.status(), statusReason,
                 experiment.trafficPattern(), experiment.consumerConcurrency(),
                 experiment.requestedWorkflows(), processedLaunches,
@@ -217,6 +231,7 @@ class LoadExperimentService {
                 launchDuration, firstPaymentDelay, lastPaymentDelay,
                 firstFulfilmentQueuedDelay, lastFulfilmentQueuedDelay,
                 firstFulfilmentDelay, lastFulfilmentDelay, firstTerminalDelay, drainDuration,
+                brokerPressure.inspect(experiment.id()),
                 experiment.createdAt(),
                 experiment.completedAt(), experiment.workflowIds());
     }
