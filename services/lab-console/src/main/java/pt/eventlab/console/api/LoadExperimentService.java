@@ -184,6 +184,9 @@ class LoadExperimentService {
         long launchDuration = elapsed(experiment.createdAt(), experiment.launchedAt());
         long firstPaymentDelay = delayFrom(experiment.createdAt(), members.stream()
                 .map(Member::paymentAt).filter(java.util.Objects::nonNull).min(Instant::compareTo).orElse(null));
+        long firstFulfilmentQueuedDelay = delayFrom(experiment.createdAt(), members.stream()
+                .map(Member::fulfilmentQueuedAt).filter(java.util.Objects::nonNull)
+                .min(Instant::compareTo).orElse(null));
         long firstFulfilmentDelay = delayFrom(experiment.createdAt(), members.stream()
                 .map(Member::fulfilmentAt).filter(java.util.Objects::nonNull).min(Instant::compareTo).orElse(null));
         long firstTerminalDelay = delayFrom(experiment.createdAt(), terminal.stream()
@@ -204,7 +207,8 @@ class LoadExperimentService {
                 terminal.size(), proved, violations, duplicates,
                 members.size() - terminal.size(), maxInFlight, throughput,
                 percentile(latencies, 0.5), percentile(latencies, 0.95),
-                launchDuration, firstPaymentDelay, firstFulfilmentDelay, firstTerminalDelay, drainDuration,
+                launchDuration, firstPaymentDelay, firstFulfilmentQueuedDelay,
+                firstFulfilmentDelay, firstTerminalDelay, drainDuration,
                 experiment.createdAt(),
                 experiment.completedAt(), experiment.workflowIds());
     }
@@ -221,9 +225,11 @@ class LoadExperimentService {
                 .anyMatch(event -> "fulfilment.completed".equals(event.eventType()));
         int duplicates = (int) run.timeline().stream().filter(TimelineEventResponse::duplicateDelivery).count();
         Instant paymentAt = firstEventAt(run.timeline(), "payment.authorized");
+        Instant fulfilmentQueuedAt = firstEventAt(run.timeline(), "fulfilment.command-queued");
         Instant fulfilmentAt = firstEventAt(run.timeline(), "fulfilment.completed");
         return new Member(run.createdAt(), ended, terminal, proved,
-                paymentObserved, fulfilmentObserved, duplicates, paymentAt, fulfilmentAt);
+                paymentObserved, fulfilmentObserved, duplicates,
+                paymentAt, fulfilmentQueuedAt, fulfilmentAt);
     }
 
     private Instant firstEventAt(List<TimelineEventResponse> timeline, String eventType) {
@@ -310,7 +316,7 @@ class LoadExperimentService {
     private record Member(Instant startedAt, Instant endedAt, boolean terminal,
                           boolean proved, boolean paymentObserved,
                           boolean fulfilmentObserved, int duplicateDeliveries,
-                          Instant paymentAt, Instant fulfilmentAt) {
+                          Instant paymentAt, Instant fulfilmentQueuedAt, Instant fulfilmentAt) {
         long latencyMillis() { return Duration.between(startedAt, endedAt).toMillis(); }
     }
 }

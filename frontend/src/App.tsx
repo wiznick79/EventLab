@@ -81,6 +81,7 @@ type LoadExperiment = {
   p95LatencyMillis: number
   launchDurationMillis: number
   firstPaymentDelayMillis: number
+  firstFulfilmentQueuedDelayMillis: number
   firstFulfilmentDelayMillis: number
   firstTerminalDelayMillis: number
   drainDurationMillis: number
@@ -675,6 +676,7 @@ export function App() {
           <div className="phase-timing" aria-label="Load experiment phase timing">
             <div><span>Launch complete</span><strong>{(loadExperiment.launchDurationMillis / 1000).toFixed(2)}s</strong></div><b>→</b>
             <div><span>First payment</span><strong>{(loadExperiment.firstPaymentDelayMillis / 1000).toFixed(2)}s</strong></div><b>→</b>
+            <div><span>Command queued</span><strong>{(loadExperiment.firstFulfilmentQueuedDelayMillis / 1000).toFixed(2)}s</strong></div><b>→</b>
             <div><span>First fulfilment</span><strong>{(loadExperiment.firstFulfilmentDelayMillis / 1000).toFixed(2)}s</strong></div><b>→</b>
             <div><span>First terminal</span><strong>{(loadExperiment.firstTerminalDelayMillis / 1000).toFixed(2)}s</strong></div><b>→</b>
             <div><span>Full drain</span><strong>{(loadExperiment.drainDurationMillis / 1000).toFixed(2)}s</strong></div>

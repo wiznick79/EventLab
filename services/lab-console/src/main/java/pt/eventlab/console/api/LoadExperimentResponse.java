@@ -29,6 +29,7 @@ public record LoadExperimentResponse(
         long p95LatencyMillis,
         long launchDurationMillis,
         long firstPaymentDelayMillis,
+        long firstFulfilmentQueuedDelayMillis,
         long firstFulfilmentDelayMillis,
         long firstTerminalDelayMillis,
         long drainDurationMillis,

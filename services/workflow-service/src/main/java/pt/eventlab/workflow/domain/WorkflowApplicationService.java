@@ -16,6 +16,7 @@ import pt.eventlab.contracts.MessageTypes;
 import pt.eventlab.contracts.WorkflowState;
 import pt.eventlab.contracts.messages.AuthorizePayment;
 import pt.eventlab.contracts.messages.PaymentAuthorized;
+import pt.eventlab.contracts.messages.FulfilmentCommandQueued;
 import pt.eventlab.contracts.messages.FulfilmentCompleted;
 import pt.eventlab.contracts.messages.FulfilmentDeadLettered;
 import pt.eventlab.contracts.messages.FulfilmentRejected;
@@ -85,10 +86,15 @@ public class WorkflowApplicationService {
 
         ExperimentPlan plan = ExperimentPlan.preset(workflow.scenarioId());
         int schemaVersion = plan.fulfilmentBehavior() == FulfilmentBehavior.UNSUPPORTED_CONTRACT ? 99 : 1;
+        UUID commandEventId = UUID.randomUUID();
         messages.sendFulfilmentCommand(new EventEnvelope<>(
-                UUID.randomUUID(), MessageTypes.REQUEST_FULFILMENT, schemaVersion,
+                commandEventId, MessageTypes.REQUEST_FULFILMENT, schemaVersion,
                 workflow.id(), event.eventId(), event.correlationId(), clock.instant(),
                 new RequestFulfilment(workflow.id(), workflow.scenarioId())));
+        messages.publishBusinessEvent(new EventEnvelope<>(
+                UUID.randomUUID(), MessageTypes.FULFILMENT_COMMAND_QUEUED, 1,
+                workflow.id(), event.eventId(), event.correlationId(), clock.instant(),
+                new FulfilmentCommandQueued(workflow.id(), commandEventId)));
     }
 
     @Transactional

@@ -289,3 +289,15 @@ Implemented with state-aware visual ordering of the shared result panel, explici
 **Demonstration:** compare a fast and slow run and identify the first phase whose elapsed time diverges, narrowing the investigation to admission, consumer readiness, or sustained pipeline drain.
 
 Implemented with backend-derived phase delays in the load response and a responsive timing strip directly beneath the distributed stage progression.
+
+## Milestone 24: Workflow-to-Fulfilment handoff evidence — completed 2026-08-13
+
+- Split the previously opaque Payment-to-Fulfilment interval at the Workflow transaction boundary.
+- Publish `fulfilment.command-queued` when Workflow consumes authorization and atomically commits the Fulfilment command to its outbox.
+- Preserve the command event ID in the diagnostic event for trace and causation correlation.
+- Project the handoff into ordinary durable run evidence.
+- Add the first queued-command timestamp to aggregate phase diagnostics.
+
+**Demonstration:** compare Payment, command-queued, and Fulfilment timestamps to distinguish delayed Workflow consumption from delayed command dispatch or Fulfilment processing.
+
+Implemented as an explicit business-process observation emitted in the same transaction as the command outbox row, retaining the system's reliability semantics while removing a large diagnostic blind spot.

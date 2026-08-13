@@ -81,6 +81,9 @@ public class TimelineProjectionService {
                     "Workflow", "PAYMENT_PENDING", "Workflow accepted; payment authorization requested");
             case MessageTypes.PAYMENT_AUTHORIZED -> new EventPresentation(
                     "Payment", "FULFILMENT_PENDING", "Payment authorized; fulfilment requested");
+            case MessageTypes.FULFILMENT_COMMAND_QUEUED -> new EventPresentation(
+                    "Workflow", "FULFILMENT_COMMAND_QUEUED",
+                    "Payment event consumed; fulfilment command committed to the outbox");
             case MessageTypes.FULFILMENT_ATTEMPT_FAILED -> new EventPresentation(
                     "Fulfilment", "RETRY_SCHEDULED", "Attempt " + envelope.payload().path("attempt").asInt()
                             + " failed; retry delay " + envelope.payload().path("nextDelayMilliseconds").asLong() + " ms");
