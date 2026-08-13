@@ -337,3 +337,16 @@ Implemented with the Service Bus administration client, an evidence-derived emul
 **Demonstration:** run the balanced campaign and explain not only that a profile is variable, but whether its slow runs repeatedly accumulated at one stage or stalled at different stages.
 
 Implemented as a deterministic backend analysis of persisted phase boundaries, with campaign-level summaries that deliberately avoid converting mixed stalls into a false bottleneck claim.
+
+## Milestone 28: controlled bottleneck experiments — completed 2026-08-13
+
+- Inject an explicitly selected, bounded per-message delay into Payment, Workflow handoff, Fulfilment, or evidence projection.
+- Persist the constrained stage and delay with the load experiment.
+- Declare the expected dominant stage before execution and compare it with backend stall attribution after the wave drains.
+- Distinguish business-event occurrence time from Lab Console observation time so evidence-projection pressure is measurable.
+- Reset every service to zero injected delay after completion, launch failure, or Lab Console restart.
+- Keep balanced concurrency campaigns unconstrained regardless of the standalone control selection.
+
+**Demonstration:** constrain one stage, watch pressure accumulate and drain, then show that every workflow invariant remains proved and whether the observed dominant delay matched the declared hypothesis.
+
+Implemented through internal service controls capped at 500 ms, persisted experiment configuration, explicit `MATCHED`/`NOT MATCHED` evidence, and automatic best-effort cleanup across all processors.

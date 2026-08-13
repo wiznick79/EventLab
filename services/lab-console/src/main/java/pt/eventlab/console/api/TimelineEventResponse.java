@@ -15,6 +15,7 @@ public record TimelineEventResponse(
         String state,
         String description,
         Instant occurredAt,
+        Instant observedAt,
         String traceId,
         boolean duplicateDelivery,
         JsonNode payload) {
@@ -26,7 +27,8 @@ public record TimelineEventResponse(
             return new TimelineEventResponse(
                     event.sequenceNumber(), event.logicalEventId(), event.workflowId(), event.eventType(),
                     event.serviceName(), event.state(), event.description(), event.occurredAt(),
-                    event.traceId(), event.duplicateDelivery(), OBJECT_MAPPER.readTree(event.payloadJson()));
+                    event.observedAt(), event.traceId(), event.duplicateDelivery(),
+                    OBJECT_MAPPER.readTree(event.payloadJson()));
         } catch (Exception exception) {
             throw new IllegalStateException("Stored timeline payload is invalid", exception);
         }

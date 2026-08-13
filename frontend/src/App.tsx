@@ -11,6 +11,7 @@ type TimelineEvent = {
   state: string
   description: string
   occurredAt: string
+  observedAt: string
   traceId?: string
   duplicateDelivery: boolean
   payload?: Record<string, unknown>
@@ -62,6 +63,10 @@ export type LoadExperiment = {
   statusReason?: 'LAUNCH_INTERRUPTED' | 'EVIDENCE_FAILED'
   trafficPattern: 'BURST' | 'STEADY'
   consumerConcurrency: 1 | 4 | 8
+  constrainedStage: 'NONE' | 'PAYMENT' | 'WORKFLOW' | 'FULFILMENT' | 'EVIDENCE'
+  processingDelayMillis: number
+  expectedStallStage: string
+  constraintAssessment: 'NOT_APPLICABLE' | 'COLLECTING' | 'MATCHED' | 'NOT_MATCHED'
   requestedWorkflows: number
   processedLaunches: number
   pendingLaunches: number
@@ -267,7 +272,7 @@ export function App() {
     fulfilmentMaxAttempts: 4,
     recoveryMode: 'MANUAL',
   })
-  const [loadConfig, setLoadConfig] = useState({ workflowCount: 10, trafficPattern: 'BURST', duplicatePercentage: 20, intervalMillis: 200, consumerConcurrency: 1 })
+  const [loadConfig, setLoadConfig] = useState({ workflowCount: 10, trafficPattern: 'BURST', duplicatePercentage: 20, intervalMillis: 200, consumerConcurrency: 1, constrainedStage: 'NONE', processingDelayMillis: 0 })
   const [loadExperiment, setLoadExperiment] = useState<LoadExperiment | null>(null)
   const [recentLoadExperiments, setRecentLoadExperiments] = useState<LoadExperiment[]>([])
   const [loadStarting, setLoadStarting] = useState(false)
@@ -372,7 +377,7 @@ export function App() {
         setComparisonProgress(`${measured ? 'Measured run' : 'Warm-up'} ${phaseIndex} of ${measured ? 9 : 3} · consumer concurrency ${calls}`)
         const response = await fetch('/api/v1/load-experiments', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...loadConfig, consumerConcurrency: calls }),
+          body: JSON.stringify({ ...loadConfig, consumerConcurrency: calls, constrainedStage: 'NONE', processingDelayMillis: 0 }),
         })
         if (!response.ok) throw new Error(response.status === 409
           ? 'Another load experiment is still running.' : `Load experiment returned HTTP ${response.status}`)
@@ -689,9 +694,11 @@ export function App() {
             <label>Traffic pattern<select aria-label="Load traffic pattern" value={loadConfig.trafficPattern} onChange={(event) => setLoadConfig((current) => ({ ...current, trafficPattern: event.target.value }))}><option value="BURST">Burst · launch concurrently</option><option value="STEADY">Steady · controlled arrival</option></select></label>
             <label>Duplicate mix<select aria-label="Load duplicate percentage" value={loadConfig.duplicatePercentage} onChange={(event) => setLoadConfig((current) => ({ ...current, duplicatePercentage: Number(event.target.value) }))}><option value="0">0% normal deliveries</option><option value="10">10% duplicate deliveries</option><option value="20">20% duplicate deliveries</option><option value="50">50% duplicate deliveries</option></select></label>
             <label>Consumer concurrency<select aria-label="Consumer concurrency" value={loadConfig.consumerConcurrency} onChange={(event) => setLoadConfig((current) => ({ ...current, consumerConcurrency: Number(event.target.value) }))}><option value="1">1 · sequential baseline</option><option value="4">4 · moderate parallelism</option><option value="8">8 · high parallelism</option></select></label>
+            <label>Controlled bottleneck<select aria-label="Controlled bottleneck" value={loadConfig.constrainedStage} onChange={(event) => setLoadConfig((current) => ({ ...current, constrainedStage: event.target.value, processingDelayMillis: event.target.value === 'NONE' ? 0 : current.processingDelayMillis || 300 }))}><option value="NONE">None · observe natural pressure</option><option value="PAYMENT">Payment command consumer</option><option value="WORKFLOW">Workflow handoff consumer</option><option value="FULFILMENT">Fulfilment command consumer</option><option value="EVIDENCE">Terminal evidence projection</option></select></label>
+            {loadConfig.constrainedStage !== 'NONE' && <label>Injected processing delay<select aria-label="Injected processing delay" value={loadConfig.processingDelayMillis} onChange={(event) => setLoadConfig((current) => ({ ...current, processingDelayMillis: Number(event.target.value) }))}><option value="150">150 ms · light</option><option value="300">300 ms · visible</option><option value="500">500 ms · strong</option></select></label>}
             {loadConfig.trafficPattern === 'STEADY' && <label>Arrival interval<select aria-label="Load arrival interval" value={loadConfig.intervalMillis} onChange={(event) => setLoadConfig((current) => ({ ...current, intervalMillis: Number(event.target.value) }))}><option value="100">100 ms</option><option value="200">200 ms</option><option value="500">500 ms</option><option value="1000">1 second</option></select></label>}
           </div>
-          <div className="load-safety"><strong>Bounded by design</strong><span>{deployment?.environment === 'local' ? 'Local ceiling: 100 workflows.' : 'Public demo ceiling: 25 workflows.'} One active load experiment at a time.</span></div>
+          <div className="load-safety"><strong>Bounded by design</strong><span>{deployment?.environment === 'local' ? 'Local ceiling: 100 workflows.' : 'Public demo ceiling: 25 workflows.'} One active experiment; injected delay is capped at 500 ms and automatically reset. Balanced comparisons always use no constraint.</span></div>
           <div className="load-actions"><button className="builder-run" type="button" onClick={startLoadExperiment} disabled={loadStarting || comparisonRunning || !acceptingExperiments || loadExperiment?.status === 'LAUNCHING' || loadExperiment?.status === 'RUNNING'}>{loadStarting ? 'Starting pressure test…' : 'Run load experiment →'}</button><button className="comparison-run" type="button" onClick={runConcurrencyComparison} disabled={loadStarting || comparisonRunning || !acceptingExperiments || loadExperiment?.status === 'LAUNCHING' || loadExperiment?.status === 'RUNNING'}>{comparisonRunning ? comparisonProgress : 'Run balanced 9-run comparison'}</button></div>
           {comparisonRunning && <p className="comparison-progress" aria-live="polite">{comparisonProgress}. Keep this page open; each result is persisted as it completes.</p>}
           {loadError && <p className="run-error">{loadError}</p>}
@@ -699,6 +706,11 @@ export function App() {
 
         {loadExperiment && <section className={`load-report ${loadExperiment.status.toLowerCase()}`} ref={loadPanelRef} tabIndex={-1} aria-labelledby="load-report-title">
           <div className="load-report-heading"><div><p className="eyebrow">Live aggregate evidence</p><h2 id="load-report-title">{loadExperiment.status.replace('_', ' ')}</h2></div><code>{loadExperiment.id}</code></div>
+          {loadExperiment.constrainedStage !== 'NONE' && <aside className={`constraint-hypothesis ${loadExperiment.constraintAssessment.toLowerCase()}`}>
+            <div><span>Controlled bottleneck hypothesis</span><strong>{loadExperiment.constrainedStage.toLowerCase()} · {loadExperiment.processingDelayMillis} ms per message</strong></div>
+            <p>Expected attribution: {loadExperiment.expectedStallStage.replaceAll('_', ' ').toLowerCase()}</p>
+            <code>{loadExperiment.constraintAssessment === 'COLLECTING' ? 'MEASURING' : loadExperiment.constraintAssessment.replace('_', ' ')}</code>
+          </aside>}
           <div className="load-progress launch-progress"><span style={{ width: `${loadExperiment.processedLaunches / loadExperiment.requestedWorkflows * 100}%` }} /><strong>{loadExperiment.processedLaunches} / {loadExperiment.requestedWorkflows} launch responses</strong></div>
           <div className="load-stage-flow" aria-label="Distributed workflow progress">
             <div><span>Accepted</span><strong>{loadExperiment.acceptedWorkflows}</strong><i style={{ width: `${loadExperiment.acceptedWorkflows / loadExperiment.requestedWorkflows * 100}%` }} /></div>

@@ -20,6 +20,8 @@ public class LoadExperiment {
     private int duplicatePercentage;
     private int intervalMillis;
     private int consumerConcurrency;
+    private String constrainedStage;
+    private int processingDelayMillis;
     private String workflowIds;
     private int launchFailures;
     private Instant createdAt;
@@ -31,6 +33,13 @@ public class LoadExperiment {
 
     public LoadExperiment(UUID id, String trafficPattern, int requestedWorkflows,
             int duplicatePercentage, int intervalMillis, int consumerConcurrency, Instant createdAt) {
+        this(id, trafficPattern, requestedWorkflows, duplicatePercentage, intervalMillis,
+                consumerConcurrency, "NONE", 0, createdAt);
+    }
+
+    public LoadExperiment(UUID id, String trafficPattern, int requestedWorkflows,
+            int duplicatePercentage, int intervalMillis, int consumerConcurrency,
+            String constrainedStage, int processingDelayMillis, Instant createdAt) {
         this.id = id;
         this.status = "LAUNCHING";
         this.trafficPattern = trafficPattern;
@@ -38,6 +47,8 @@ public class LoadExperiment {
         this.duplicatePercentage = duplicatePercentage;
         this.intervalMillis = intervalMillis;
         this.consumerConcurrency = consumerConcurrency;
+        this.constrainedStage = constrainedStage;
+        this.processingDelayMillis = processingDelayMillis;
         this.workflowIds = "";
         this.createdAt = createdAt;
     }
@@ -68,6 +79,8 @@ public class LoadExperiment {
     public int duplicatePercentage() { return duplicatePercentage; }
     public int intervalMillis() { return intervalMillis; }
     public int consumerConcurrency() { return consumerConcurrency; }
+    public String constrainedStage() { return constrainedStage; }
+    public int processingDelayMillis() { return processingDelayMillis; }
     public int launchFailures() { return launchFailures; }
     public Instant createdAt() { return createdAt; }
     public Instant launchedAt() { return launchedAt; }

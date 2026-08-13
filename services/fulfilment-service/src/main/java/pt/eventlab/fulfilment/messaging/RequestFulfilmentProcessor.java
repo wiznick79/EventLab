@@ -25,6 +25,7 @@ class RequestFulfilmentProcessor {
     private final FulfilmentMessagingProperties properties;
     private volatile ServiceBusProcessorClient processor;
     private volatile int concurrency = 1;
+    private volatile int processingDelayMillis;
 
     RequestFulfilmentProcessor(FulfilmentMessagingProperties properties,
             ServiceBusEnvelopeCodec codec, FulfilmentApplicationService fulfilments) {
@@ -55,9 +56,12 @@ class RequestFulfilmentProcessor {
 
     int concurrency() { return concurrency; }
 
+    void configureDelay(int delayMillis) { processingDelayMillis = delayMillis; }
+
     @PostConstruct void start() { processor.start(); }
 
     private void process(ServiceBusReceivedMessageContext context) {
+        applyDelay();
         EventEnvelope<RequestFulfilment> command = codec.decode(
                 context.getMessage().getBody(), RequestFulfilment.class);
         if (command.schemaVersion() != 1) {
@@ -85,6 +89,16 @@ class RequestFulfilmentProcessor {
                 Thread.currentThread().interrupt();
             }
             context.abandon();
+        }
+    }
+
+    private void applyDelay() {
+        if (processingDelayMillis == 0) return;
+        try {
+            Thread.sleep(processingDelayMillis);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Fulfilment constraint interrupted", exception);
         }
     }
 

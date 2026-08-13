@@ -65,6 +65,7 @@ public class TimelineEvent {
     public String state() { return state; }
     public String description() { return description; }
     public Instant occurredAt() { return occurredAt; }
+    public Instant observedAt() { return observedAt; }
     public String traceId() { return traceId; }
     public String payloadJson() { return payloadJson; }
     public boolean duplicateDelivery() { return duplicateDelivery; }

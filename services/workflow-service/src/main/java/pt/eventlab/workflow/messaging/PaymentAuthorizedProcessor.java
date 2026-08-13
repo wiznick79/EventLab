@@ -34,6 +34,7 @@ class PaymentAuthorizedProcessor {
     private final WorkflowMessagingProperties properties;
     private volatile ServiceBusProcessorClient processor;
     private volatile int concurrency = 1;
+    private volatile int processingDelayMillis;
     private final ServiceBusTraceContext traceContext;
     private final PaymentAuthorizedHandler handler;
     private final FulfilmentCompletedHandler fulfilmentHandler;
@@ -92,6 +93,8 @@ class PaymentAuthorizedProcessor {
 
     int concurrency() { return concurrency; }
 
+    void configureDelay(int delayMillis) { processingDelayMillis = delayMillis; }
+
     @PostConstruct
     void start() {
         processor.start();
@@ -120,6 +123,7 @@ class PaymentAuthorizedProcessor {
 
     private void handle(ServiceBusReceivedMessageContext context) {
         if (MessageTypes.PAYMENT_AUTHORIZED.equals(context.getMessage().getSubject())) {
+            applyDelay();
             EventEnvelope<PaymentAuthorized> event = codec.decode(
                     context.getMessage().getBody(), PaymentAuthorized.class);
             handler.handle(event);
@@ -145,6 +149,16 @@ class PaymentAuthorizedProcessor {
             deadLetteredHandler.handle(event);
         }
         context.complete();
+    }
+
+    private void applyDelay() {
+        if (processingDelayMillis == 0) return;
+        try {
+            Thread.sleep(processingDelayMillis);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Workflow constraint interrupted", exception);
+        }
     }
 
     @PreDestroy

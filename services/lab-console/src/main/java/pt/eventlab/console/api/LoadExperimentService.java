@@ -46,11 +46,13 @@ class LoadExperimentService {
     private final DeploymentProperties deploymentProperties;
     private final ConsumerConcurrencyClient concurrency;
     private final BrokerPressureService brokerPressure;
+    private final ProcessingConstraintClient processingConstraint;
 
     LoadExperimentService(LoadExperimentRepository experiments, ExperimentRunRegistry runs,
             WorkflowClient workflows, EvidenceReportService evidence,
             DeploymentControlService deployment, DeploymentProperties deploymentProperties,
-            ConsumerConcurrencyClient concurrency, BrokerPressureService brokerPressure) {
+            ConsumerConcurrencyClient concurrency, BrokerPressureService brokerPressure,
+            ProcessingConstraintClient processingConstraint) {
         this.experiments = experiments;
         this.runs = runs;
         this.workflows = workflows;
@@ -59,6 +61,7 @@ class LoadExperimentService {
         this.deploymentProperties = deploymentProperties;
         this.concurrency = concurrency;
         this.brokerPressure = brokerPressure;
+        this.processingConstraint = processingConstraint;
     }
 
     public synchronized LoadExperimentResponse start(StartLoadExperimentRequest request) {
@@ -69,11 +72,19 @@ class LoadExperimentService {
                     "Only one load experiment can run at a time");
         }
         String pattern = request.trafficPattern().toUpperCase();
+        String constrainedStage = request.constrainedStage().toUpperCase();
         int interval = "BURST".equals(pattern) ? 0 : request.intervalMillis();
-        concurrency.configure(request.consumerConcurrency());
+        processingConstraint.configure(constrainedStage, request.processingDelayMillis());
+        try {
+            concurrency.configure(request.consumerConcurrency());
+        } catch (RuntimeException exception) {
+            processingConstraint.resetBestEffort();
+            throw exception;
+        }
         LoadExperiment experiment = experiments.save(new LoadExperiment(UUID.randomUUID(), pattern,
                 request.workflowCount(), request.duplicatePercentage(), interval,
-                request.consumerConcurrency(), clock.instant()));
+                request.consumerConcurrency(), constrainedStage,
+                request.processingDelayMillis(), clock.instant()));
         brokerPressure.begin(experiment.id());
         coordinator.submit(() -> launch(experiment));
         return response(experiment);
@@ -97,7 +108,11 @@ class LoadExperimentService {
                     && report.terminalWorkflows() == report.acceptedWorkflows()) {
                 experiment.completed(report.invariantViolations() == 0, clock.instant());
                 experiments.save(experiment);
-                concurrency.configure(1);
+                try {
+                    concurrency.configure(1);
+                } finally {
+                    processingConstraint.resetBestEffort();
+                }
             }
         }
         for (LoadExperiment experiment : experiments.findByStatus("LAUNCHING")) {
@@ -107,6 +122,7 @@ class LoadExperimentService {
 
     @EventListener(ApplicationReadyEvent.class)
     public void markLaunchesAbandonedByRestart() {
+        processingConstraint.resetBestEffort();
         boolean abandoned = false;
         for (LoadExperiment experiment : experiments.findByStatus("LAUNCHING")) {
             experiment.completed(false, clock.instant());
@@ -153,6 +169,10 @@ class LoadExperimentService {
         LoadExperiment current = find(experiment.id());
         current.launchCompleted(clock.instant());
         experiments.save(current);
+        if ("FAILED".equals(current.status())) {
+            concurrency.configure(1);
+            processingConstraint.resetBestEffort();
+        }
     }
 
     private void recordAccepted(UUID experimentId, UUID workflowId) {
@@ -219,8 +239,17 @@ class LoadExperimentService {
                 Math.max(0, paymentObserved - fulfilmentQueuedObserved),
                 Math.max(0, fulfilmentQueuedObserved - fulfilmentObserved),
                 Math.max(0, fulfilmentObserved - terminal.size()));
+        StallAttributionResponse attribution = dominantStall(experiment.status(), lastPaymentDelay,
+                lastFulfilmentQueuedDelay, lastFulfilmentDelay, drainDuration);
+        String expectedStall = expectedStall(experiment.constrainedStage());
+        String constraintAssessment = "NONE".equals(experiment.constrainedStage())
+                ? "NOT_APPLICABLE"
+                : "COLLECTING".equals(attribution.stage()) ? "COLLECTING"
+                : expectedStall.equals(attribution.stage()) ? "MATCHED" : "NOT_MATCHED";
         return new LoadExperimentResponse(experiment.id(), experiment.status(), statusReason,
                 experiment.trafficPattern(), experiment.consumerConcurrency(),
+                experiment.constrainedStage(), experiment.processingDelayMillis(),
+                expectedStall, constraintAssessment,
                 experiment.requestedWorkflows(), processedLaunches,
                 experiment.requestedWorkflows() - processedLaunches,
                 members.size(), experiment.launchFailures(),
@@ -232,8 +261,7 @@ class LoadExperimentService {
                 firstFulfilmentQueuedDelay, lastFulfilmentQueuedDelay,
                 firstFulfilmentDelay, lastFulfilmentDelay, firstTerminalDelay, drainDuration,
                 brokerPressure.inspect(experiment.id()),
-                dominantStall(experiment.status(), lastPaymentDelay, lastFulfilmentQueuedDelay,
-                        lastFulfilmentDelay, drainDuration),
+                attribution,
                 experiment.createdAt(),
                 experiment.completedAt(), experiment.workflowIds());
     }
@@ -242,7 +270,7 @@ class LoadExperimentService {
         RunDetailsResponse run = runs.details(workflowId);
         boolean terminal = TERMINAL_STATES.contains(run.state());
         Instant ended = terminal && !run.timeline().isEmpty()
-                ? run.timeline().get(run.timeline().size() - 1).occurredAt() : null;
+                ? run.timeline().get(run.timeline().size() - 1).observedAt() : null;
         boolean proved = terminal && "PROVED".equals(evidence.report(run).assessment());
         boolean paymentObserved = run.timeline().stream()
                 .anyMatch(event -> "payment.authorized".equals(event.eventType()));
@@ -297,6 +325,16 @@ class LoadExperimentService {
         return Math.max(0, end - start);
     }
 
+    private String expectedStall(String constrainedStage) {
+        return switch (constrainedStage) {
+            case "PAYMENT" -> "PAYMENT";
+            case "WORKFLOW" -> "WORKFLOW_HANDOFF";
+            case "FULFILMENT" -> "FULFILMENT";
+            case "EVIDENCE" -> "TERMINAL_EVIDENCE";
+            default -> "NONE";
+        };
+    }
+
     private int maxInFlight(List<Member> members) {
         record Point(Instant at, int delta) { }
         List<Point> points = new ArrayList<>();
@@ -346,6 +384,20 @@ class LoadExperimentService {
         if (!List.of(1, 4, 8).contains(request.consumerConcurrency())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "consumerConcurrency must be 1, 4, or 8");
+        }
+        if (!List.of("NONE", "PAYMENT", "WORKFLOW", "FULFILMENT", "EVIDENCE")
+                .contains(request.constrainedStage().toUpperCase())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "constrainedStage must be NONE, PAYMENT, WORKFLOW, FULFILMENT, or EVIDENCE");
+        }
+        if (request.processingDelayMillis() < 0 || request.processingDelayMillis() > 500) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "processingDelayMillis must be between 0 and 500");
+        }
+        if (!"NONE".equalsIgnoreCase(request.constrainedStage())
+                && request.processingDelayMillis() < 50) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "a constrained stage requires at least 50 ms processing delay");
         }
         if ("STEADY".equalsIgnoreCase(request.trafficPattern())
                 && (request.intervalMillis() < 50 || request.intervalMillis() > 2000)) {

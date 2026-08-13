@@ -5,11 +5,19 @@ public record StartLoadExperimentRequest(
         String trafficPattern,
         int duplicatePercentage,
         int intervalMillis,
-        int consumerConcurrency) {
+        int consumerConcurrency,
+        String constrainedStage,
+        int processingDelayMillis) {
 
     public StartLoadExperimentRequest {
         if (consumerConcurrency == 0) {
             consumerConcurrency = 1;
+        }
+        if (constrainedStage == null || constrainedStage.isBlank()) {
+            constrainedStage = "NONE";
+        }
+        if ("NONE".equalsIgnoreCase(constrainedStage)) {
+            processingDelayMillis = 0;
         }
     }
 }

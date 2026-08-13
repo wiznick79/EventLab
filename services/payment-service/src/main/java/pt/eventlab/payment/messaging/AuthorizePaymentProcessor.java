@@ -30,6 +30,7 @@ class AuthorizePaymentProcessor {
     private final PaymentMessagingProperties properties;
     private volatile ServiceBusProcessorClient processor;
     private volatile int concurrency = 1;
+    private volatile int processingDelayMillis;
     private final ServiceBusTraceContext traceContext;
     private final AuthorizePaymentHandler handler;
     private final CompensatePaymentHandler compensationHandler;
@@ -75,6 +76,8 @@ class AuthorizePaymentProcessor {
 
     int concurrency() { return concurrency; }
 
+    void configureDelay(int delayMillis) { processingDelayMillis = delayMillis; }
+
     @PostConstruct
     void start() {
         processor.start();
@@ -89,6 +92,7 @@ class AuthorizePaymentProcessor {
     }
 
     private void handle(ServiceBusReceivedMessageContext context) {
+        applyDelay();
         if (MessageTypes.COMPENSATE_PAYMENT.equals(context.getMessage().getSubject())) {
             EventEnvelope<CompensatePayment> command = codec.decode(
                     context.getMessage().getBody(), CompensatePayment.class);
@@ -99,6 +103,16 @@ class AuthorizePaymentProcessor {
             handler.handle(command);
         }
         context.complete();
+    }
+
+    private void applyDelay() {
+        if (processingDelayMillis == 0) return;
+        try {
+            Thread.sleep(processingDelayMillis);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Payment constraint interrupted", exception);
+        }
     }
 
     @PreDestroy

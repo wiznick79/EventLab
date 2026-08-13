@@ -28,6 +28,7 @@ public class BusinessEventProjectionProcessor {
     private final LabConsoleMessagingProperties properties;
     private volatile ServiceBusProcessorClient processor;
     private volatile int concurrency = 1;
+    private volatile int processingDelayMillis;
     private final BusinessEventProjectionHandler handler;
     private final ServiceBusTraceContext traceContext;
     private final EvidencePipelineStatus pipelineStatus;
@@ -79,6 +80,13 @@ public class BusinessEventProjectionProcessor {
 
     public int concurrency() { return concurrency; }
 
+    public void configureDelay(int delayMillis) {
+        if (delayMillis < 0 || delayMillis > 500) {
+            throw new IllegalArgumentException("processing delay must be between 0 and 500 ms");
+        }
+        processingDelayMillis = delayMillis;
+    }
+
     @PostConstruct
     void start() {
         processor.start();
@@ -94,10 +102,21 @@ public class BusinessEventProjectionProcessor {
     }
 
     private void handle(ServiceBusReceivedMessageContext context) {
+        applyDelay();
         EventEnvelope<JsonNode> event = codec.decode(context.getMessage().getBody(), JsonNode.class);
         handler.handle(event, traceContext.traceId(context.getMessage()));
         context.complete();
         pipelineStatus.received();
+    }
+
+    private void applyDelay() {
+        if (processingDelayMillis == 0) return;
+        try {
+            Thread.sleep(processingDelayMillis);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Evidence constraint interrupted", exception);
+        }
     }
 
     @PreDestroy
