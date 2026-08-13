@@ -50,7 +50,21 @@ h1 em { color: transparent; -webkit-text-stroke: 1px rgba(233, 237, 247, .62); f
 .signal span:nth-child(1) { --i: 0; } .signal span:nth-child(2) { --i: 1; } .signal span:nth-child(3) { --i: 2; }
 .signal span:nth-child(4) { --i: 3; } .signal span:nth-child(5) { --i: 4; } .signal span:nth-child(6) { --i: 5; background: var(--cyan); }
 
-.workspace { padding-top: 6rem; padding-bottom: 7rem; }
+.workspace { display: flex; flex-direction: column; padding-top: 3rem; padding-bottom: 7rem; }
+.lab-navigation { position: sticky; top: 0; z-index: 20; justify-content: center; gap: clamp(.6rem, 3vw, 2.5rem); padding: .85rem clamp(1.5rem, 6vw, 6.5rem); border-bottom: 1px solid var(--line); background: rgba(7,16,15,.94); backdrop-filter: blur(12px); }
+.lab-navigation a { color: var(--muted); text-decoration: none; font: .64rem 'DM Mono', monospace; text-transform: uppercase; letter-spacing: .08em; }
+.lab-navigation a:hover, .lab-navigation a:focus-visible { color: var(--acid); }
+.workspace > .section-heading { order: 1; }
+.workspace > .scenario-grid { order: 2; }
+.workspace > .scenario-builder { order: 4; }
+.workspace.custom-result-active > .scenario-builder { order: 3; }
+.workspace > .run-panel { order: 3; }
+.workspace.custom-result-active > .run-panel { order: 4; }
+.workspace > .load-lab { order: 5; }
+.workspace > .load-report { order: 6; }
+.workspace > .load-comparison { order: 7; }
+.workspace > .run-history { order: 8; }
+#scenario-title, #builder-title, #load-lab-title, #history-title { scroll-margin-top: 4rem; }
 .control-center { display: grid; grid-template-columns: 1.2fr .8fr 1fr; gap: 2rem; padding: 2rem clamp(1.5rem, 6vw, 6.5rem); border-bottom: 1px solid var(--line); background: rgba(13,25,23,.92); }
 .control-center.read_only { border-color: rgba(255,205,91,.5); }
 .control-center.expired { border-color: rgba(255,157,143,.5); }
@@ -383,6 +397,8 @@ footer { display: flex; justify-content: space-between; padding-top: 2rem; paddi
 }
 
 @media (max-width: 520px) {
+  .lab-navigation { justify-content: flex-start; overflow-x: auto; }
+  .lab-navigation a { white-space: nowrap; }
   .build-status { display: none; }
   .control-center { grid-template-columns: 1fr; }
   .control-center > div:first-child, .owner-controls { grid-column: 1; }

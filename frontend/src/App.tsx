@@ -576,7 +576,9 @@ export function App() {
         {deployment && deployment.environment !== 'local' && <div className="owner-controls"><strong>Owner operations</strong><span>GitHub permissions restrict deployment changes to repository collaborators.</span><a href="https://github.com/wiznick79/EventLab/actions/workflows/azure-deploy.yml" target="_blank" rel="noreferrer">Extend / redeploy ↗</a><a href="https://github.com/wiznick79/EventLab/actions/workflows/azure-destroy.yml" target="_blank" rel="noreferrer">Destroy environment ↗</a></div>}
       </section>
 
-      <section className="workspace" aria-labelledby="scenario-title">
+      <nav className="lab-navigation" aria-label="Interactive labs"><a href="#scenario-title">Curated scenarios</a><a href="#builder-title">Scenario builder</a><a href="#load-lab-title">Load lab</a><a href="#history-title">Evidence archive</a></nav>
+
+      <section className={`workspace ${activeScenario === 'custom-plan' ? 'custom-result-active' : 'preset-result-active'}`} aria-labelledby="scenario-title">
         <div className="section-heading">
           <div><p className="eyebrow">Scenario library</p><h2 id="scenario-title">Run the system, then break it</h2></div>
           <p>The successful payment path establishes the baseline. Upcoming experiments introduce one controlled failure at a time.</p>

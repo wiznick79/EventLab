@@ -264,3 +264,16 @@ Implemented as a visible browser-coordinated sequence over the ordinary persiste
 **Demonstration:** watch the latest-results table change during the campaign, then explain that a profile with more than 25% throughput spread is `INCONCLUSIVE` even when every workflow invariant is proved.
 
 Implemented with three excluded warm-up experiments, two-second settling intervals, live durable-result insertion, campaign-only measured summaries, and a deliberately conservative variability verdict.
+
+## Milestone 22: self-contained interactive laboratories — completed 2026-08-13
+
+- Keep each experiment control surface adjacent to the evidence it produces.
+- Place curated-scenario results beneath the scenario library.
+- Place custom-plan results beneath the Scenario Builder.
+- Keep live load results, campaign summaries, and load history with the Load Lab.
+- Finish with the durable Evidence Archive rather than sending new results below unrelated sections.
+- Add sticky section navigation while preserving smooth focus-aware scrolling.
+
+**Demonstration:** launch either a curated or custom experiment and land on its result directly beneath the initiating controls; move between all four interactive areas from the compact lab navigation.
+
+Implemented with state-aware visual ordering of the shared result panel, explicit section anchors, responsive sticky navigation, and unchanged backend/run identity semantics.
