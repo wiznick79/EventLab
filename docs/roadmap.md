@@ -363,3 +363,16 @@ Implemented through internal service controls capped at 500 ms, persisted experi
 **Demonstration:** select a bottleneck and choose `Compare baseline → constrained`; EventLab runs both workloads, then shows the performance impact, the changed dominant stage, the attribution match, and the preserved correctness result in one report.
 
 Implemented as a two-run guided frontend workflow over the existing durable backend experiment API, preserving normal run identity and avoiding a second measurement implementation.
+
+## Milestone 30: shareable load-result evidence — completed 2026-08-13
+
+- Give every load experiment a stable `/load-experiments/{id}` browser route.
+- Reopen a persisted result directly from the recent-results table or a copied link.
+- Resume live polling when a shared result is still running.
+- Download the complete backend response as formatted JSON.
+- Download a concise Markdown report containing configuration, correctness, performance, attribution, and conclusion.
+- Generate both artifacts from the same backend assessment used by the interactive report.
+
+**Demonstration:** open a historical load result, copy its stable URL, and download either machine-readable evidence or a review-ready Markdown summary without rerunning the workload.
+
+Implemented with route restoration in the interactive console, attachment-safe backend endpoints, pretty-printed JSON, and a deterministic Markdown evidence projection.

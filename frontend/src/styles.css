@@ -130,6 +130,9 @@ h1 em { color: transparent; -webkit-text-stroke: 1px rgba(233, 237, 247, .62); f
 .load-report-heading { display: flex; justify-content: space-between; gap: 2rem; align-items: end; }
 .load-report-heading h2 { margin: 0; font-size: 2.4rem; font-weight: 500; color: var(--acid); }
 .load-report-heading code { color: var(--cyan); font-size: .68rem; }
+.load-report-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: .65rem; }
+.load-report-actions button, .load-report-actions a { padding: .45rem .6rem; border: 1px solid var(--line); color: var(--cyan); background: transparent; font: .6rem 'DM Mono', monospace; text-decoration: none; cursor: pointer; }
+.load-result-link { padding: 0; border: 0; color: var(--cyan); background: transparent; font: inherit; text-decoration: underline; cursor: pointer; }
 .load-progress { position: relative; height: 2.5rem; margin: 1.5rem 0; overflow: hidden; border: 1px solid var(--line); }
 .load-progress span { position: absolute; inset: 0 auto 0 0; background: rgba(102,230,212,.18); transition: width .4s ease; }
 .load-progress.launch-progress { margin-bottom: -.75rem; }
@@ -477,6 +480,8 @@ footer { display: flex; justify-content: space-between; padding-top: 2rem; paddi
   .broker-pressure-stages b { display: none; }
   .stall-attribution { grid-template-columns: 1fr; }
   .constraint-hypothesis { grid-template-columns: 1fr; }
+  .load-report-heading { align-items: start; }
+  .load-report-actions { justify-content: flex-start; }
   .load-safety, .load-report-heading { align-items: start; flex-direction: column; }
   .history-plan { grid-column: 1; grid-row: auto; }
   .comparison-controls { grid-template-columns: 1fr; }

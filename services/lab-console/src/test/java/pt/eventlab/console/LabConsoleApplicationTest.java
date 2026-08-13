@@ -19,6 +19,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import pt.eventlab.console.api.RunResponse;
 import pt.eventlab.console.api.StartRunRequest;
 import pt.eventlab.console.domain.ExperimentRunRegistry;
+import pt.eventlab.console.domain.LoadExperiment;
+import pt.eventlab.console.domain.LoadExperimentRepository;
 import pt.eventlab.console.domain.TimelineProjectionService;
 import pt.eventlab.contracts.EventEnvelope;
 import pt.eventlab.contracts.ExperimentPlan;
@@ -46,6 +48,9 @@ class LabConsoleApplicationTest {
 
     @Autowired
     private MockMvc mvc;
+
+    @Autowired
+    private LoadExperimentRepository loadExperiments;
 
     @Test
     void contextLoads() {
@@ -110,6 +115,28 @@ class LabConsoleApplicationTest {
                 .andExpect(content().contentType("application/json"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
                         System.lineSeparator() + "  \"workflowId\"")));
+    }
+
+    @Test
+    void downloadsLoadEvidenceAsFormattedJsonAndMarkdown() throws Exception {
+        UUID experimentId = UUID.randomUUID();
+        LoadExperiment experiment = new LoadExperiment(experimentId, "BURST", 10, 20, 0, 1,
+                "NONE", 0, Instant.now());
+        experiment.launchCompleted(Instant.now());
+        loadExperiments.save(experiment);
+
+        mvc.perform(get("/api/v1/load-experiments/{id}/download.json", experimentId))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition",
+                        "attachment; filename=\"eventlab-load-" + experimentId + ".json\""))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        System.lineSeparator() + "  \"id\"")));
+        mvc.perform(get("/api/v1/load-experiments/{id}/download.md", experimentId))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition",
+                        "attachment; filename=\"eventlab-load-" + experimentId + ".md\""))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "# EventLab load experiment")));
     }
 
     @Test

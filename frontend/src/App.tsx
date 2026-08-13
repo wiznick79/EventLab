@@ -265,6 +265,7 @@ export function App() {
   const [recentRuns, setRecentRuns] = useState<RunSummary[]>([])
   const [comparison, setComparison] = useState<[string, string]>(['', ''])
   const [copied, setCopied] = useState(false)
+  const [loadLinkCopied, setLoadLinkCopied] = useState(false)
   const [evidenceReport, setEvidenceReport] = useState<EvidenceReport | null>(null)
   const [runConsistency, setRunConsistency] = useState<RunConsistency | null>(null)
   const [deadLetterInspection, setDeadLetterInspection] = useState<DeadLetterInspection | null>(null)
@@ -301,9 +302,13 @@ export function App() {
     const clockTimer = window.setInterval(() => setClockTick(Date.now()), 1000)
     const route = window.location.pathname.match(/^\/runs\/([0-9a-f-]+)$/i)
     if (route) void inspectRun(route[1], false)
+    const loadRoute = window.location.pathname.match(/^\/load-experiments\/([0-9a-f-]+)$/i)
+    if (loadRoute) void inspectLoadExperiment(loadRoute[1], false)
     const restoreRoute = () => {
       const restored = window.location.pathname.match(/^\/runs\/([0-9a-f-]+)$/i)
       if (restored) void inspectRun(restored[1], false)
+      const restoredLoad = window.location.pathname.match(/^\/load-experiments\/([0-9a-f-]+)$/i)
+      if (restoredLoad) void inspectLoadExperiment(restoredLoad[1], false)
     }
     window.addEventListener('popstate', restoreRoute)
     return () => {
@@ -335,6 +340,7 @@ export function App() {
         ? 'Another load experiment is still running.' : `Load experiment returned HTTP ${response.status}`)
       const created: LoadExperiment = await response.json()
       setLoadExperiment(created)
+      window.history.pushState({}, '', `/load-experiments/${created.id}`)
       window.setTimeout(() => loadPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
       if (loadTimerRef.current) window.clearInterval(loadTimerRef.current)
       loadTimerRef.current = window.setTimeout(() => void pollLoadExperiment(created.id), 1000)
@@ -353,6 +359,31 @@ export function App() {
     } catch {
       // The live experiment remains usable when historical comparison is unavailable.
     }
+  }
+
+  async function inspectLoadExperiment(id: string, navigate = true) {
+    setLoadError('')
+    try {
+      const response = await fetch(`/api/v1/load-experiments/${id}`)
+      if (!response.ok) throw new Error(`Load experiment returned HTTP ${response.status}`)
+      const report: LoadExperiment = await response.json()
+      setLoadExperiment(report)
+      if (navigate) window.history.pushState({}, '', `/load-experiments/${id}`)
+      window.setTimeout(() => loadPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+      if (report.status === 'LAUNCHING' || report.status === 'RUNNING') {
+        if (loadTimerRef.current) window.clearTimeout(loadTimerRef.current)
+        loadTimerRef.current = window.setTimeout(() => void pollLoadExperiment(id), 1000)
+      }
+    } catch (reason) {
+      setLoadError(reason instanceof Error ? reason.message : 'Could not inspect the load experiment')
+    }
+  }
+
+  async function copyLoadEvidenceLink() {
+    if (!loadExperiment) return
+    await navigator.clipboard.writeText(`${window.location.origin}/load-experiments/${loadExperiment.id}`)
+    setLoadLinkCopied(true)
+    window.setTimeout(() => setLoadLinkCopied(false), 1800)
   }
 
   async function waitForLoadExperiment(id: string) {
@@ -750,7 +781,7 @@ export function App() {
         </section>
 
         {loadExperiment && <section className={`load-report ${loadExperiment.status.toLowerCase()}`} ref={loadPanelRef} tabIndex={-1} aria-labelledby="load-report-title">
-          <div className="load-report-heading"><div><p className="eyebrow">Live aggregate evidence</p><h2 id="load-report-title">{loadExperiment.status.replace('_', ' ')}</h2></div><code>{loadExperiment.id}</code></div>
+          <div className="load-report-heading"><div><p className="eyebrow">Live aggregate evidence</p><h2 id="load-report-title">{loadExperiment.status.replace('_', ' ')}</h2></div><div className="load-report-actions"><code>{loadExperiment.id}</code><button type="button" onClick={copyLoadEvidenceLink}>{loadLinkCopied ? 'Copied' : 'Copy result link'}</button><a href={`/api/v1/load-experiments/${loadExperiment.id}/download.json`}>JSON ↓</a><a href={`/api/v1/load-experiments/${loadExperiment.id}/download.md`}>Markdown ↓</a></div></div>
           {loadExperiment.constrainedStage !== 'NONE' && <aside className={`constraint-hypothesis ${loadExperiment.constraintAssessment.toLowerCase()}`}>
             <div><span>Controlled bottleneck hypothesis</span><strong>{loadExperiment.constrainedStage.toLowerCase()} · {loadExperiment.processingDelayMillis} ms per message</strong></div>
             <p>Expected attribution: {loadExperiment.expectedStallStage.replaceAll('_', ' ').toLowerCase()}</p>
@@ -819,8 +850,8 @@ export function App() {
         {recentLoadExperiments.length > 0 && <section className="load-comparison" aria-labelledby="load-comparison-title">
           <div><p className="eyebrow">Concurrency comparison</p><h2 id="load-comparison-title">Same guarantees, different consumer parallelism</h2><p>The five latest completed runs below update after every experiment. A campaign warms each profile once, then measures nine runs in rotated order so transient startup and ordering effects have less influence.</p></div>
           <div className="load-comparison-table" role="region" aria-label="Recent load experiment comparison" tabIndex={0}>
-            <table><thead><tr><th>Concurrency</th><th>Workload</th><th>Result</th><th>Proved</th><th>Violations</th><th>Throughput</th><th>Median</th><th>p95</th><th>Dominant delay</th></tr></thead>
-              <tbody>{recentLoadExperiments.slice(0, 5).map((item) => <tr key={item.id}><td><strong>{item.consumerConcurrency}</strong></td><td>{item.requestedWorkflows} · {item.trafficPattern.toLowerCase()} · {item.duplicatePercentage}% dupes</td><td><span className={`comparison-status ${item.status.toLowerCase()}`}>{item.status}</span></td><td>{item.provedWorkflows}/{item.acceptedWorkflows}</td><td>{item.invariantViolations}</td><td>{item.throughputPerSecond.toFixed(2)}/s</td><td>{(item.medianLatencyMillis / 1000).toFixed(2)}s</td><td>{(item.p95LatencyMillis / 1000).toFixed(2)}s</td><td><span className="stall-cell">{item.dominantStall.label}<small>{(item.dominantStall.durationMillis / 1000).toFixed(2)}s · {item.dominantStall.sharePercent}%</small></span></td></tr>)}</tbody>
+            <table><thead><tr><th>Run</th><th>Concurrency</th><th>Workload</th><th>Result</th><th>Proved</th><th>Violations</th><th>Throughput</th><th>Median</th><th>p95</th><th>Dominant delay</th></tr></thead>
+              <tbody>{recentLoadExperiments.slice(0, 5).map((item) => <tr key={item.id}><td><button className="load-result-link" type="button" onClick={() => inspectLoadExperiment(item.id)}>{item.id.slice(0, 8)}</button></td><td><strong>{item.consumerConcurrency}</strong></td><td>{item.requestedWorkflows} · {item.trafficPattern.toLowerCase()} · {item.duplicatePercentage}% dupes</td><td><span className={`comparison-status ${item.status.toLowerCase()}`}>{item.status}</span></td><td>{item.provedWorkflows}/{item.acceptedWorkflows}</td><td>{item.invariantViolations}</td><td>{item.throughputPerSecond.toFixed(2)}/s</td><td>{(item.medianLatencyMillis / 1000).toFixed(2)}s</td><td>{(item.p95LatencyMillis / 1000).toFixed(2)}s</td><td><span className="stall-cell">{item.dominantStall.label}<small>{(item.dominantStall.durationMillis / 1000).toFixed(2)}s · {item.dominantStall.sharePercent}%</small></span></td></tr>)}</tbody>
             </table>
           </div>
           <p className="comparison-note">Concurrency is applied to the real Service Bus processors for the duration of one experiment, then restored to the sequential baseline. Higher is not automatically faster: broker prefetch, local CPU, database contention, and processor restart warm-up all affect the measured result.</p>
