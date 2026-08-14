@@ -77,3 +77,33 @@ updates:
           - "*"
     commit-message:
       prefix: deps(terraform)
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:15"
+      timezone: Europe/Lisbon
+    open-pull-requests-limit: 10
+    groups:
+      local-container-images:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: deps(docker)
+
+  - package-ecosystem: docker
+    directory: /infrastructure/docker
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:30"
+      timezone: Europe/Lisbon
+    open-pull-requests-limit: 10
+    groups:
+      deployment-container-images:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: deps(docker)

@@ -1,5 +1,9 @@
 locals {
-  github_subject = "repo:${var.github_owner}@${var.github_owner_id}/${var.github_repository}@${var.github_repository_id}:environment:${var.github_environment}"
+  # GitHub defines this exact subject format for environment-scoped OIDC
+  # tokens. Numeric owner/repository IDs are useful audit metadata, but are
+  # not valid components of the token's `sub` claim.
+  github_subject         = "repo:${var.github_owner}/${var.github_repository}:environment:${var.github_environment}"
+  github_cleanup_subject = "repo:${var.github_owner}/${var.github_repository}:environment:${var.github_cleanup_environment}"
 }
 
 resource "random_string" "state_suffix" {
@@ -22,6 +26,14 @@ resource "azurerm_resource_group" "bootstrap" {
   }
 }
 
+resource "azurerm_resource_group" "environments" {
+  name     = "rg-eventlab-environments"
+  location = var.location
+  tags = merge(var.tags, {
+    purpose = "ephemeral-environment-boundary"
+  })
+}
+
 resource "azurerm_storage_account" "state" {
   name                            = "steventlab${random_string.state_suffix.result}"
   resource_group_name             = azurerm_resource_group.bootstrap.name
@@ -30,7 +42,8 @@ resource "azurerm_storage_account" "state" {
   account_replication_type        = "LRS"
   min_tls_version                 = "TLS1_2"
   allow_nested_items_to_be_public = false
-  shared_access_key_enabled       = true
+  shared_access_key_enabled       = false
+  public_network_access_enabled   = true
   tags                            = var.tags
 
   blob_properties {
@@ -43,6 +56,13 @@ resource "azurerm_storage_account" "state" {
     container_delete_retention_policy {
       days = 7
     }
+  }
+
+
+  network_rules {
+    default_action = "Deny"
+    bypass         = ["AzureServices"]
+    ip_rules       = var.state_allowed_ips
   }
 }
 
@@ -70,16 +90,39 @@ resource "azuread_application_federated_identity_credential" "github_environment
   subject        = local.github_subject
 }
 
+resource "azuread_application_federated_identity_credential" "github_cleanup_environment" {
+  application_id = azuread_application.github.id
+  display_name   = "github-${var.github_owner}-${var.github_repository}-${var.github_cleanup_environment}"
+  description    = "GitHub Actions OIDC for unattended EventLab expiry cleanup"
+  audiences      = ["api://AzureADTokenExchange"]
+  issuer         = "https://token.actions.githubusercontent.com"
+  subject        = local.github_cleanup_subject
+}
+
 resource "azurerm_role_assignment" "github_contributor" {
-  scope                = "/subscriptions/${var.subscription_id}"
+  scope                = azurerm_resource_group.environments.id
   role_definition_name = "Contributor"
   principal_id         = azuread_service_principal.github.object_id
   principal_type       = "ServicePrincipal"
 }
 
 resource "azurerm_role_assignment" "github_rbac_administrator" {
-  scope                = "/subscriptions/${var.subscription_id}"
+  scope                = azurerm_resource_group.environments.id
   role_definition_name = "Role Based Access Control Administrator"
+  principal_id         = azuread_service_principal.github.object_id
+  principal_type       = "ServicePrincipal"
+}
+
+resource "azurerm_role_assignment" "github_state_blob_data" {
+  scope                = azurerm_storage_account.state.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azuread_service_principal.github.object_id
+  principal_type       = "ServicePrincipal"
+}
+
+resource "azurerm_role_assignment" "github_state_account" {
+  scope                = azurerm_storage_account.state.id
+  role_definition_name = "Storage Account Contributor"
   principal_id         = azuread_service_principal.github.object_id
   principal_type       = "ServicePrincipal"
 }

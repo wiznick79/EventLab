@@ -9,7 +9,7 @@ on:
         default: demo
 
 permissions:
-  contents: write
+  contents: read
   id-token: write
   actions: write
 
@@ -29,14 +29,34 @@ jobs:
       ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
       ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      GH_TOKEN: ${{ github.token }}
+      TARGET_ENVIRONMENT: ${{ inputs.environment_name }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: azure/login@v3
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: azure/login@d54469830ea7d513b7371e02a077c3ee5cb7b112 # v3
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - uses: hashicorp/setup-terraform@v4
+      - name: Validate target and allow runner state access
+        id: state_firewall
+        run: |
+          [[ "$TARGET_ENVIRONMENT" =~ ^[a-z0-9][a-z0-9-]{1,14}$ ]] || { echo "Invalid environment name" >&2; exit 1; }
+          RUNNER_IP="$(curl --fail --silent --show-error https://api.ipify.org)"
+          [[ "$RUNNER_IP" =~ ^[0-9a-fA-F:.]+$ ]] || { echo "Invalid runner IP" >&2; exit 1; }
+          echo "runner_ip=${RUNNER_IP}" >> "$GITHUB_OUTPUT"
+          az storage account network-rule add --resource-group "${{ vars.TF_STATE_RESOURCE_GROUP }}" \
+            --account-name "${{ vars.TF_STATE_STORAGE_ACCOUNT }}" --ip-address "$RUNNER_IP" --only-show-errors
+          for _ in $(seq 1 12); do
+            az storage container show --auth-mode login --name "${{ vars.TF_STATE_CONTAINER }}" \
+              --account-name "${{ vars.TF_STATE_STORAGE_ACCOUNT }}" --only-show-errors >/dev/null 2>&1 && break
+            sleep 5
+          done
+          az storage container show --auth-mode login --name "${{ vars.TF_STATE_CONTAINER }}" \
+            --account-name "${{ vars.TF_STATE_STORAGE_ACCOUNT }}" --only-show-errors >/dev/null
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
         with:
           terraform_version: 1.15.8
       - name: Initialize remote state
@@ -54,29 +74,24 @@ jobs:
           -var="environment_name=${{ inputs.environment_name }}"
           -var="destroy_after=2099-01-01T00:00:00Z"
           -var="image_tag=0000000000000000000000000000000000000000"
-      - name: Verify resource group deletion
+      - name: Verify environment resources were deleted
         run: |
-          if az group show --name "rg-eventlab-${{ inputs.environment_name }}" >/dev/null 2>&1; then
-            echo "Resource group rg-eventlab-${{ inputs.environment_name }} remains after destroy" >&2
+          REMAINING="$(az resource list --resource-group "${{ vars.AZURE_ENVIRONMENT_RESOURCE_GROUP }}" \
+            --query "[?tags.project=='eventlab' && tags.environment=='$TARGET_ENVIRONMENT'].id" -o tsv)"
+          if [[ -n "$REMAINING" ]]; then
+            echo "Tagged resources remain after destroy: $REMAINING" >&2
             exit 1
           fi
       - name: Publish offline live-lab status
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          CURRENT_ENVIRONMENT="$(jq -r '.environment // empty' ../../../frontend/public/live-lab.json)"
-          if [[ -n "${CURRENT_ENVIRONMENT}" && "${CURRENT_ENVIRONMENT}" != "${{ inputs.environment_name }}" ]]; then
-            echo "The advertised ${CURRENT_ENVIRONMENT} environment remains unchanged"
-            exit 0
-          fi
-          jq -n \
-            --arg environment "${{ inputs.environment_name }}" \
-            --arg updatedAt "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
-            '{state:"offline", environment:$environment, updatedAt:$updatedAt}' \
-            > ../../../frontend/public/live-lab.json
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add ../../../frontend/public/live-lab.json
-          git diff --cached --quiet || git commit -m "Mark live lab offline [skip ci]"
-          git push
-          gh workflow run portfolio.yml --ref main
+          gh workflow run portfolio.yml --ref main -f live_state=offline \
+            -f environment_name="$TARGET_ENVIRONMENT" \
+            -f updated_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+      - name: Remove runner access to Terraform state
+        if: always() && steps.state_firewall.outputs.runner_ip != ''
+        run: |
+          az storage account network-rule remove --resource-group "${{ vars.TF_STATE_RESOURCE_GROUP }}" \
+            --account-name "${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
+            --ip-address "${{ steps.state_firewall.outputs.runner_ip }}" --only-show-errors

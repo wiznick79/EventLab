@@ -1,8 +1,10 @@
 package pt.eventlab.workflow;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,11 +32,38 @@ class WorkflowServiceApplicationTest {
 
     @Test
     void storesStateAndOutgoingMessagesInOneTransaction() {
+        int workflowsBefore = count("workflow_runs");
+        int messagesBefore = count("outbox_messages where published_at is null");
         workflows.start("happy-path", new BigDecimal("129.90"), "EUR");
 
-        assertEquals(1, jdbcTemplate.queryForObject(
-                "select count(*) from workflow_runs", Integer.class));
-        assertEquals(2, jdbcTemplate.queryForObject(
-                "select count(*) from outbox_messages where published_at is null", Integer.class));
+        assertEquals(workflowsBefore + 1, count("workflow_runs"));
+        assertEquals(messagesBefore + 2, count("outbox_messages where published_at is null"));
+    }
+
+    @Test
+    void returnsTheOriginalWorkflowForAnIdenticalIdempotentRequest() {
+        UUID key = UUID.randomUUID();
+        int workflowsBefore = count("workflow_runs");
+        int messagesBefore = count("outbox_messages where published_at is null");
+
+        var first = workflows.start(key, "happy-path", new BigDecimal("129.90"), "EUR");
+        var duplicate = workflows.start(key, "happy-path", new BigDecimal("129.90"), "EUR");
+
+        assertEquals(first.id(), duplicate.id());
+        assertEquals(workflowsBefore + 1, count("workflow_runs"));
+        assertEquals(messagesBefore + 2, count("outbox_messages where published_at is null"));
+    }
+
+    @Test
+    void rejectsReuseOfAnIdempotencyKeyForDifferentInput() {
+        UUID key = UUID.randomUUID();
+        workflows.start(key, "happy-path", new BigDecimal("129.90"), "EUR");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> workflows.start(key, "happy-path", new BigDecimal("130.00"), "EUR"));
+    }
+
+    private int count(String tableAndCondition) {
+        return jdbcTemplate.queryForObject("select count(*) from " + tableAndCondition, Integer.class);
     }
 }

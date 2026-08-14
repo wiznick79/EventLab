@@ -7,6 +7,22 @@ on:
       - 'frontend/**'
       - '.github/workflows/portfolio.yml'
   workflow_dispatch:
+    inputs:
+      live_state:
+        description: Optional live-lab state override
+        required: false
+      live_url:
+        description: Public EventLab URL when online
+        required: false
+      expires_at:
+        description: RFC3339 expiry when online
+        required: false
+      environment_name:
+        description: Advertised environment
+        required: false
+      updated_at:
+        description: RFC3339 status update time
+        required: false
 
 permissions:
   contents: read
@@ -21,14 +37,37 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Preserve current live-lab status
+        env:
+          LIVE_STATE: ${{ inputs.live_state }}
+          LIVE_URL: ${{ inputs.live_url }}
+          EXPIRES_AT: ${{ inputs.expires_at }}
+          ENVIRONMENT_NAME: ${{ inputs.environment_name }}
+          UPDATED_AT: ${{ inputs.updated_at }}
         run: |
+          if [[ "${LIVE_STATE}" == "online" ]]; then
+            jq -n --arg url "${LIVE_URL}" --arg expiresAt "${EXPIRES_AT}" \
+              --arg environment "${ENVIRONMENT_NAME}" --arg updatedAt "${UPDATED_AT}" \
+              '{state:"online", url:$url, expiresAt:$expiresAt, environment:$environment, updatedAt:$updatedAt}' \
+              > frontend/public/live-lab.json
+            jq -e '.url | startswith("https://")' frontend/public/live-lab.json >/dev/null
+            jq -e '.expiresAt | fromdateiso8601 > now' frontend/public/live-lab.json >/dev/null
+            exit 0
+          fi
+          if [[ "${LIVE_STATE}" == "offline" ]]; then
+            jq -n --arg environment "${ENVIRONMENT_NAME}" --arg updatedAt "${UPDATED_AT}" \
+              '{state:"offline", environment:$environment, updatedAt:$updatedAt}' \
+              > frontend/public/live-lab.json
+            exit 0
+          fi
           STATUS_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/live-lab.json"
           if STATUS="$(curl --fail --silent --show-error --max-time 10 "${STATUS_URL}")" \
             && jq -e '.state == "online" and (.url | type == "string") and (.expiresAt | fromdateiso8601 > now)' \
@@ -41,8 +80,8 @@ jobs:
           npm ci
           npm test
           VITE_STATIC_TOUR=true npm run build
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
           path: frontend/dist
 
@@ -55,4 +94,4 @@ jobs:
     steps:
       - name: Deploy portfolio
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

@@ -20,7 +20,7 @@ class OutboxDispatcherTest {
         OutboxTransport transport = mock(OutboxTransport.class);
         OutboxMessage message = new OutboxMessage(
                 UUID.randomUUID(), UUID.randomUUID(), OutboxDestination.TOPIC,
-                "business-events", "{}", Map.of());
+                "business-events", "{}", Map.of(), 0);
         when(outbox.lockNextBatch(50)).thenReturn(List.of(message));
         OutboxDispatcher dispatcher = new OutboxDispatcher(outbox, transport, true);
 
@@ -30,7 +30,7 @@ class OutboxDispatcherTest {
         verify(transport, times(2)).send(message);
         InOrder updates = inOrder(outbox);
         updates.verify(outbox).markFailed(
-                message.outboxId(), "Injected failure after broker send and before outbox acknowledgement");
+                message, "Injected failure after broker send and before outbox acknowledgement");
         updates.verify(outbox).markPublished(message.outboxId());
     }
 }

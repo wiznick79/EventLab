@@ -20,28 +20,28 @@ variable "github_owner" {
   default     = "wiznick79"
 }
 
-variable "github_owner_id" {
-  description = "Immutable GitHub organization or user ID used in OIDC subjects."
-  type        = string
-  default     = "49661706"
-}
-
 variable "github_repository" {
   description = "GitHub repository name without its owner."
   type        = string
   default     = "EventLab"
 }
 
-variable "github_repository_id" {
-  description = "Immutable GitHub repository ID used in OIDC subjects."
-  type        = string
-  default     = "1330006750"
-}
-
 variable "github_environment" {
   description = "Protected GitHub environment trusted by the Azure federated credential."
   type        = string
   default     = "azure"
+}
+
+variable "github_cleanup_environment" {
+  description = "Unattended GitHub environment trusted only by scheduled expiry cleanup."
+  type        = string
+  default     = "azure-cleanup"
+}
+
+variable "state_allowed_ips" {
+  description = "Administrative public IPs allowed to reach Terraform state. CI adds its short-lived runner IP for each run."
+  type        = list(string)
+  default     = []
 }
 
 variable "tags" {

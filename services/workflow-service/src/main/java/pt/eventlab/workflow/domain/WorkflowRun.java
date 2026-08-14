@@ -46,17 +46,37 @@ public class WorkflowRun {
     }
 
     public static WorkflowRun start(String scenarioId, BigDecimal amount, String currency, Instant now) {
+        return start(UUID.randomUUID(), scenarioId, amount, currency, now);
+    }
+
+    public static WorkflowRun start(
+            UUID experimentPlanId, String scenarioId, BigDecimal amount, String currency, Instant now) {
+        if (experimentPlanId == null) {
+            throw new IllegalArgumentException("idempotencyKey is required");
+        }
         if (scenarioId == null || scenarioId.isBlank()) {
             throw new IllegalArgumentException("scenarioId is required");
+        }
+        if (scenarioId.length() > 100) {
+            throw new IllegalArgumentException("scenarioId must not exceed 100 characters");
         }
         if (amount == null || amount.signum() <= 0) {
             throw new IllegalArgumentException("amount must be positive");
         }
-        if (currency == null || currency.length() != 3) {
+        if (amount.scale() > 2 || amount.precision() > 19) {
+            throw new IllegalArgumentException("amount must fit a 19-digit value with at most 2 decimals");
+        }
+        if (currency == null || !currency.matches("[A-Za-z]{3}")) {
             throw new IllegalArgumentException("currency must be a three-letter code");
         }
-        return new WorkflowRun(UUID.randomUUID(), UUID.randomUUID(), scenarioId,
+        return new WorkflowRun(UUID.randomUUID(), experimentPlanId, scenarioId,
                 amount, currency.toUpperCase(), now);
+    }
+
+    boolean represents(String requestedScenarioId, BigDecimal requestedAmount, String requestedCurrency) {
+        return scenarioId.equals(requestedScenarioId)
+                && amount.compareTo(requestedAmount) == 0
+                && currency.equalsIgnoreCase(requestedCurrency);
     }
 
     public void recordPaymentAuthorized(Instant now, Instant deadline) {

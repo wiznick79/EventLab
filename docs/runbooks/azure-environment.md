@@ -8,7 +8,7 @@ EventLab Azure environments are deliberately disposable. Service Bus Standard an
 2. Copy `infrastructure/terraform/bootstrap/terraform.tfvars.example` to the ignored `terraform.tfvars` file and set the subscription and tenant IDs. France Central is the project default because the current subscription policy permits it while rejecting West Europe. Recheck the `Allowed resource deployment regions` policy before changing regions.
 3. Run `terraform init`, `terraform plan -out bootstrap.tfplan`, inspect the plan, and apply that saved plan.
 4. Register the Container Apps resource provider with `az provider register --namespace Microsoft.App --wait`. The deployment workflow repeats this idempotently before each apply.
-5. Create a GitHub environment named `azure`. Add required reviewers for manual deployments while ensuring scheduled cleanup can still run unattended.
+5. Create a reviewer-protected GitHub environment named `azure` for plan/deploy/destroy and an unreviewed `azure-cleanup` environment for the scheduled expiry workflow. The bootstrap creates a distinct OIDC subject for each; copy the same output variables to both environments.
 6. Add these bootstrap outputs as GitHub environment variables:
 
 | GitHub variable | Terraform output |
@@ -20,10 +20,11 @@ EventLab Azure environments are deliberately disposable. Service Bus Standard an
 | `TF_STATE_STORAGE_ACCOUNT` | `backend_storage_account_name` |
 | `TF_STATE_CONTAINER` | `backend_container_name` |
 | `TF_STATE_KEY_PREFIX` | `backend_key_prefix` |
+| `AZURE_ENVIRONMENT_RESOURCE_GROUP` | `environment_resource_group_name` |
 
 No client secret is required. GitHub receives a short-lived Azure token only when a workflow uses the repository's `azure` environment.
 
-The bootstrap resource group may retain an older metadata location after an allowed-region policy change. Terraform intentionally preserves it because resource-group location does not constrain contained resources; the state storage and disposable application resources use the configured deployment location.
+The bootstrap stack also creates the persistent `rg-eventlab-environments` authorization boundary. GitHub's Contributor and RBAC Administrator roles are scoped to that group rather than the subscription. Terraform state disables shared keys and defaults its firewall to deny; each workflow temporarily adds and then removes its runner IP while authenticating to the backend with OIDC.
 
 ## Image publication
 
@@ -34,7 +35,7 @@ The bootstrap resource group may retain an older metadata location after an allo
 1. Run **Build immutable images** for the chosen commit and confirm all five matrix jobs pass.
 2. Run **Plan Azure environment** with the same full commit SHA and inspect the Terraform summary.
 3. Run **Deploy Azure environment** with a 2-hour lifetime for the first test.
-4. The deployment applies the saved plan and runs the happy-path scenario through the public frontend URL. It then runs the duplicate-delivery scenario and requires the ignored duplicate's exact trace ID to be retrievable anonymously through the deployed Grafana/Tempo datasource.
+4. The deployment resolves every selected tag to an OCI digest, applies the saved plan, provisions separate database roles, and runs the happy-path scenario through the public frontend URL. It then runs the duplicate-delivery scenario and requires the ignored duplicate's exact trace ID to be retrievable anonymously through the deployed Grafana/Tempo datasource.
 
 The final smoke test also requires the Control Center to report `ONLINE`, the scheduled expiry, and all three participant services as `UP`. It submits a custom Scenario Builder plan, loads its direct Run Inspector route, and waits for the backend evidence report to prove the expected invariants.
 
@@ -42,23 +43,21 @@ The same status response must report the evidence pipeline as enabled and `RUNNI
 
 For the custom smoke-test run, the workflow also queries `/api/v1/runs/{workflowId}/consistency` and requires authoritative Workflow state and projected Lab Console state to both be `COMPLETED`. This catches a live but lagging evidence subscriber that endpoint health and processor lifecycle alone cannot detect.
 
-The workflow summary publishes separate EventLab and Grafana URLs. Both are public for the lifetime of the disposable environment; visitors do not need an Azure or Grafana account.
+The workflow summary publishes EventLab and its `/grafana` trace route. Grafana has internal-only Container Apps ingress and is proxied through the rate-limited EventLab frontend; visitors still need neither an Azure nor Grafana account.
 
 After both smoke tests pass, the deployment workflow publishes the EventLab URL and expiry to `frontend/public/live-lab.json` and rebuilds the permanent portfolio. The tour then links visitors directly to the running lab. When no valid environment is advertised, it links to these launch instructions instead; the Actions workflow remains available as secondary implementation evidence.
 
-Flyway runs during each Java service startup against its owned database. Service Bus access uses each Container App's system-assigned managed identity; namespace SAS authentication is disabled.
+Flyway runs during each Java service startup against its owned database and login. PostgreSQL is reachable only through the Container Apps virtual network and private DNS. Service Bus access uses each Container App's system-assigned managed identity with entity-scoped Sender/Receiver assignments; namespace SAS authentication is disabled.
 
 ## Destroy and verify
 
-Run **Destroy Azure environment** as soon as the demonstration ends. It destroys resources through the normal remote state and fails if an ephemeral EventLab resource group remains.
+Run **Destroy Azure environment** as soon as the demonstration ends. It destroys resources through the normal remote state and fails if tagged resources for that environment remain in the persistent authorization-boundary group.
 
 After deletion is verified, manual destroy and scheduled expiry cleanup mark the permanent tour's live-lab status offline and republish it. The frontend also treats an expired timestamp as offline, so a delayed status update cannot send visitors to an environment whose lifetime has elapsed.
 
-The scheduled cleanup checks `destroy_after` twice per hour. Missing expiry tags fail loudly; expired environments are destroyed through the same Terraform state rather than by deleting resource groups out of band.
+The scheduled cleanup checks resource `destroy_after` tags twice per hour. Invalid metadata fails loudly; expired environments are destroyed through the same Terraform state rather than by deleting resources out of band.
 
 Ten minutes before `destroy_after`, the Lab Console changes to `READ_ONLY`. New experiment requests return HTTP 503, including requests made outside the frontend; existing run timelines, comparisons, trace links, and evidence downloads remain readable. To extend the demonstration, an authorized collaborator reruns **Deploy Azure environment** with the same environment name and a new supported lifetime. To end it early, run **Destroy Azure environment**. Visitors can see these handoff links, but only collaborators with repository workflow permission can execute them.
-
-The application provider permits deletion of the disposable resource group when Azure has added platform-managed children that are not in Terraform state, such as the Application Insights Smart Detection action group. This exception is scoped to the disposable application root; cleanup still fails unless the subsequent Azure CLI check confirms that the complete resource group is gone.
 
 ## Failure response
 

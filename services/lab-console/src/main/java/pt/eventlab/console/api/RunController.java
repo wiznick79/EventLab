@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import pt.eventlab.console.domain.TimelineProjectionService;
@@ -30,13 +31,14 @@ class RunController {
     private final EvidenceReportService evidence;
     private final DeploymentControlService deployment;
     private final RunConsistencyService consistency;
+    private final ExperimentAdmissionService admission;
     private final ObjectMapper objectMapper;
 
     RunController(TimelineProjectionService timeline, TimelineStream stream,
             WorkflowClient workflowClient, DeadLetterRecoveryService recovery,
             ExperimentRunRegistry runs, EvidenceReportService evidence,
             DeploymentControlService deployment, RunConsistencyService consistency,
-            ObjectMapper objectMapper) {
+            ExperimentAdmissionService admission, ObjectMapper objectMapper) {
         this.timeline = timeline;
         this.stream = stream;
         this.workflowClient = workflowClient;
@@ -45,14 +47,20 @@ class RunController {
         this.evidence = evidence;
         this.deployment = deployment;
         this.consistency = consistency;
+        this.admission = admission;
         this.objectMapper = objectMapper;
     }
 
     @PostMapping
-    RunResponse start(@RequestBody StartRunRequest request) {
+    RunResponse start(
+            @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyHeader,
+            @RequestBody StartRunRequest request) {
         deployment.requireAcceptingExperiments();
-        RunResponse response = workflowClient.start(request);
-        runs.register(request, response);
+        admission.acquire();
+        StartRunRequest idempotentRequest = request.withIdempotencyKey(
+                resolveIdempotencyKey(idempotencyHeader, request.idempotencyKey()));
+        RunResponse response = workflowClient.start(idempotentRequest);
+        runs.register(idempotentRequest, response);
         return response;
     }
 
@@ -106,11 +114,28 @@ class RunController {
 
     @GetMapping(path = "/{workflowId}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     SseEmitter stream(@PathVariable UUID workflowId) {
+        runs.details(workflowId);
         return stream.subscribe(workflowId, timeline.timeline(workflowId));
     }
 
     @PostMapping("/{workflowId}/recover")
     void recover(@PathVariable UUID workflowId) {
+        runs.details(workflowId);
         recovery.recover(workflowId);
+    }
+
+    private UUID resolveIdempotencyKey(String header, UUID body) {
+        if (header == null || header.isBlank()) return body == null ? UUID.randomUUID() : body;
+        UUID parsed;
+        try {
+            parsed = UUID.fromString(header);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Idempotency-Key must be a UUID", exception);
+        }
+        if (body != null && !body.equals(parsed)) {
+            throw new IllegalArgumentException(
+                    "Idempotency-Key header and request body must identify the same operation");
+        }
+        return parsed;
     }
 }

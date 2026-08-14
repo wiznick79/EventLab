@@ -55,6 +55,17 @@ class DeploymentControlService {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                     "The evidence pipeline is not running; new experiments are paused");
         }
+        if (!"local".equalsIgnoreCase(properties.environment())) {
+            List<String> unavailable = probes.stream()
+                    .map(this::probe)
+                    .filter(result -> !"UP".equals(result.status()))
+                    .map(DependencyStatusResponse::name)
+                    .toList();
+            if (!unavailable.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                        "Required services are unavailable: " + String.join(", ", unavailable));
+            }
+        }
     }
 
     private String mode(Instant now) {
