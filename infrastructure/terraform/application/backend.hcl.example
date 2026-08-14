@@ -3,3 +3,4 @@ storage_account_name = "steventlabxxxxxxxx"
 container_name       = "tfstate"
 key                  = "eventlab/demo.tfstate"
 use_oidc             = true
+use_azuread_auth     = true
