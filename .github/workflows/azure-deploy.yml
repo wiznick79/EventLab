@@ -130,6 +130,27 @@ jobs:
             sleep 5
           done
           [[ "$STATUS" == "Succeeded" ]] || { echo "Database role job timed out" >&2; exit 1; }
+      - name: Wait for application readiness
+        run: |
+          URL="$(terraform output -raw frontend_url)"
+          DEADLINE=$((SECONDS + 600))
+          while (( SECONDS < DEADLINE )); do
+            STATUS="$(curl --fail --silent --connect-timeout 5 --max-time 10 \
+              "${URL}/api/v1/deployment/status" 2>/dev/null || true)"
+            if jq -e '
+              .mode == "ONLINE"
+              and .acceptingExperiments == true
+              and .evidencePipeline.enabled == true
+              and .evidencePipeline.status == "RUNNING"
+              and ([.dependencies[] | select(.status == "UP")] | length == 3)
+            ' <<< "$STATUS" >/dev/null 2>&1; then
+              echo "Application dependencies reported ready" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Application did not become ready after database provisioning" >&2
+          exit 1
       - name: Smoke test happy path
         run: |
           URL="$(terraform output -raw frontend_url)"
