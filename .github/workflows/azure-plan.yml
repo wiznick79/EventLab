@@ -54,14 +54,20 @@ jobs:
           [[ "$RUNNER_IP" =~ ^[0-9a-fA-F:.]+$ ]] || exit 1
           echo "runner_ip=${RUNNER_IP}" >> "$GITHUB_OUTPUT"
           az storage account network-rule add --resource-group "${{ vars.TF_STATE_RESOURCE_GROUP }}" \
-            --account-name "${{ vars.TF_STATE_STORAGE_ACCOUNT }}" --ip-address "$RUNNER_IP" --only-show-errors
-          for _ in $(seq 1 12); do
-            az storage container show --auth-mode login --name "${{ vars.TF_STATE_CONTAINER }}" \
-              --account-name "${{ vars.TF_STATE_STORAGE_ACCOUNT }}" --only-show-errors >/dev/null 2>&1 && break
+            --account-name "${{ vars.TF_STATE_STORAGE_ACCOUNT }}" --ip-address "$RUNNER_IP" \
+            --only-show-errors --output none
+          SUCCESSFUL_PROBES=0
+          for _ in $(seq 1 36); do
+            if az storage container show --auth-mode login --name "${{ vars.TF_STATE_CONTAINER }}" \
+              --account-name "${{ vars.TF_STATE_STORAGE_ACCOUNT }}" --only-show-errors >/dev/null 2>&1; then
+              SUCCESSFUL_PROBES=$((SUCCESSFUL_PROBES + 1))
+              [[ "$SUCCESSFUL_PROBES" -ge 3 ]] && break
+            else
+              SUCCESSFUL_PROBES=0
+            fi
             sleep 5
           done
-          az storage container show --auth-mode login --name "${{ vars.TF_STATE_CONTAINER }}" \
-            --account-name "${{ vars.TF_STATE_STORAGE_ACCOUNT }}" --only-show-errors >/dev/null
+          [[ "$SUCCESSFUL_PROBES" -ge 3 ]] || { echo "Terraform state firewall did not stabilize" >&2; exit 1; }
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
         with:
           terraform_version: 1.15.8
