@@ -52,6 +52,18 @@
         </dependencies>
     </dependencyManagement>
 
+    <dependencies>
+        <!-- Surefire uses Mockito as an explicit Java agent on JDK 21+. Keep it
+             as an inherited test dependency so a clean CI repository always
+             resolves the agent before the first test fork starts. -->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
     <build>
         <pluginManagement>
             <plugins>
