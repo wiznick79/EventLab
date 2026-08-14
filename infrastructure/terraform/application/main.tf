@@ -219,6 +219,8 @@ resource "azurerm_container_app_job" "database_roles" {
             --command="DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$USER_NAME') THEN CREATE ROLE $USER_NAME LOGIN PASSWORD '$USER_PASSWORD'; ELSE ALTER ROLE $USER_NAME PASSWORD '$USER_PASSWORD'; END IF; END \$\$;"
           psql "host=$DATABASE_HOST dbname=postgres user=$DATABASE_ADMIN sslmode=require" \
             --set=ON_ERROR_STOP=1 --command="ALTER DATABASE $DATABASE OWNER TO $USER_NAME"
+          psql "host=$DATABASE_HOST dbname=$DATABASE user=$DATABASE_ADMIN sslmode=require" \
+            --set=ON_ERROR_STOP=1 --command="GRANT USAGE, CREATE ON SCHEMA public TO $USER_NAME"
         done
       EOT
       ]
