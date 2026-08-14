@@ -1,4 +1,7 @@
 {
-  "state": "offline",
-  "updatedAt": "2026-08-12T00:00:00Z"
+  "state": "online",
+  "url": "https://eventlab.delightfulforest-0456ddd7.francecentral.azurecontainerapps.io",
+  "expiresAt": "2026-08-14T13:00:46Z",
+  "environment": "demo",
+  "updatedAt": "2026-08-14T11:06:26Z"
 }
