@@ -53,6 +53,15 @@ resource "azurerm_container_app" "workflow" {
           value = env.value
         }
       }
+      startup_probe {
+        transport               = "HTTP"
+        port                    = 8080
+        path                    = "/actuator/health/readiness"
+        initial_delay           = 5
+        interval_seconds        = 10
+        timeout                 = 2
+        failure_count_threshold = 30
+      }
       readiness_probe {
         transport = "HTTP"
         port      = 8080
@@ -114,6 +123,15 @@ resource "azurerm_container_app" "payment" {
           value = env.value
         }
       }
+      startup_probe {
+        transport               = "HTTP"
+        port                    = 8080
+        path                    = "/actuator/health/readiness"
+        initial_delay           = 5
+        interval_seconds        = 10
+        timeout                 = 2
+        failure_count_threshold = 30
+      }
       readiness_probe {
         transport = "HTTP"
         port      = 8080
@@ -174,6 +192,15 @@ resource "azurerm_container_app" "fulfilment" {
           name  = env.key
           value = env.value
         }
+      }
+      startup_probe {
+        transport               = "HTTP"
+        port                    = 8080
+        path                    = "/actuator/health/readiness"
+        initial_delay           = 5
+        interval_seconds        = 10
+        timeout                 = 2
+        failure_count_threshold = 30
       }
       readiness_probe {
         transport = "HTTP"
@@ -258,6 +285,15 @@ resource "azurerm_container_app" "console" {
           name  = env.key
           value = env.value
         }
+      }
+      startup_probe {
+        transport               = "HTTP"
+        port                    = 8080
+        path                    = "/actuator/health/readiness"
+        initial_delay           = 5
+        interval_seconds        = 10
+        timeout                 = 2
+        failure_count_threshold = 30
       }
       readiness_probe {
         transport = "HTTP"
