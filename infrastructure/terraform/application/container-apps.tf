@@ -121,6 +121,16 @@ resource "azurerm_container_app" "payment" {
       }
     }
   }
+
+  ingress {
+    external_enabled = false
+    target_port      = 8080
+    transport        = "http"
+    traffic_weight {
+      percentage      = 100
+      latest_revision = true
+    }
+  }
 }
 
 resource "azurerm_container_app" "fulfilment" {
