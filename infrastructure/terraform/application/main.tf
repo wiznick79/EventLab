@@ -201,7 +201,7 @@ resource "azurerm_container_app_job" "database_roles" {
   template {
     container {
       name    = "database-roles"
-      image   = "postgres:17.6-alpine@sha256:ef257d1a78fbc245feaeaf6b68a08a7f69aceacf250c4f8c67c8aef4dd4ccbb0"
+      image   = "postgres:17.6-alpine@sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94"
       cpu     = 0.25
       memory  = "0.5Gi"
       command = ["sh", "-ceu"]
