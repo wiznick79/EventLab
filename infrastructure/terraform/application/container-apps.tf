@@ -54,18 +54,16 @@ resource "azurerm_container_app" "workflow" {
         }
       }
       startup_probe {
-        transport               = "HTTP"
+        transport               = "TCP"
         port                    = 8080
-        path                    = "/actuator/health/readiness"
         initial_delay           = 5
         interval_seconds        = 10
         timeout                 = 2
         failure_count_threshold = 30
       }
       readiness_probe {
-        transport = "HTTP"
+        transport = "TCP"
         port      = 8080
-        path      = "/actuator/health/readiness"
       }
     }
   }
@@ -124,18 +122,16 @@ resource "azurerm_container_app" "payment" {
         }
       }
       startup_probe {
-        transport               = "HTTP"
+        transport               = "TCP"
         port                    = 8080
-        path                    = "/actuator/health/readiness"
         initial_delay           = 5
         interval_seconds        = 10
         timeout                 = 2
         failure_count_threshold = 30
       }
       readiness_probe {
-        transport = "HTTP"
+        transport = "TCP"
         port      = 8080
-        path      = "/actuator/health/readiness"
       }
     }
   }
@@ -194,18 +190,16 @@ resource "azurerm_container_app" "fulfilment" {
         }
       }
       startup_probe {
-        transport               = "HTTP"
+        transport               = "TCP"
         port                    = 8080
-        path                    = "/actuator/health/readiness"
         initial_delay           = 5
         interval_seconds        = 10
         timeout                 = 2
         failure_count_threshold = 30
       }
       readiness_probe {
-        transport = "HTTP"
+        transport = "TCP"
         port      = 8080
-        path      = "/actuator/health/readiness"
       }
     }
   }
@@ -287,18 +281,16 @@ resource "azurerm_container_app" "console" {
         }
       }
       startup_probe {
-        transport               = "HTTP"
+        transport               = "TCP"
         port                    = 8080
-        path                    = "/actuator/health/readiness"
         initial_delay           = 5
         interval_seconds        = 10
         timeout                 = 2
         failure_count_threshold = 30
       }
       readiness_probe {
-        transport = "HTTP"
+        transport = "TCP"
         port      = 8080
-        path      = "/actuator/health/readiness"
       }
     }
   }
