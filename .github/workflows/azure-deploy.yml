@@ -69,8 +69,6 @@ jobs:
             sleep 5
           done
           [[ "$SUCCESSFUL_PROBES" -ge 3 ]] || { echo "Terraform state firewall did not stabilize" >&2; exit 1; }
-      - name: Register Container Apps provider
-        run: az provider register --namespace Microsoft.App --wait
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
         with:
           terraform_version: 1.15.8
