@@ -29,6 +29,7 @@ public class ExperimentRunRegistry {
 
     @Transactional
     public void register(StartRunRequest request, RunResponse response) {
+        if (runs.existsById(response.workflowId())) return;
         var plan = request.resolvedExperimentPlan();
         String scenarioId = request.scenarioId() == null ? plan.scenarioId() : request.scenarioId();
         runs.save(new ExperimentRun(response.workflowId(), response.experimentPlanId(),

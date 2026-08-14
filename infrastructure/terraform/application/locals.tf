@@ -17,13 +17,20 @@ locals {
   }
 
   service_images = {
-    workflow          = "${var.image_registry}/workflow-service:${var.image_tag}"
-    payment           = "${var.image_registry}/payment-service:${var.image_tag}"
-    fulfilment        = "${var.image_registry}/fulfilment-service:${var.image_tag}"
-    console           = "${var.image_registry}/lab-console:${var.image_tag}"
-    frontend          = "${var.image_registry}/frontend:${var.image_tag}"
-    tempo             = "${var.image_registry}/frontend:${var.image_tag}-tempo"
-    telemetry_gateway = "${var.image_registry}/frontend:${var.image_tag}-telemetry-gateway"
-    grafana           = "${var.image_registry}/frontend:${var.image_tag}-grafana"
+    workflow          = "${var.image_registry}/workflow-service@${var.image_digests.workflow}"
+    payment           = "${var.image_registry}/payment-service@${var.image_digests.payment}"
+    fulfilment        = "${var.image_registry}/fulfilment-service@${var.image_digests.fulfilment}"
+    console           = "${var.image_registry}/lab-console@${var.image_digests.console}"
+    frontend          = "${var.image_registry}/frontend@${var.image_digests.frontend}"
+    tempo             = "${var.image_registry}/frontend@${var.image_digests.tempo}"
+    telemetry_gateway = "${var.image_registry}/frontend@${var.image_digests.telemetry_gateway}"
+    grafana           = "${var.image_registry}/frontend@${var.image_digests.grafana}"
+  }
+
+  database_users = {
+    workflow   = "workflow_app"
+    payment    = "payment_app"
+    fulfilment = "fulfilment_app"
+    console    = "console_app"
   }
 }

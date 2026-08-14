@@ -10,6 +10,7 @@ import io.opentelemetry.context.Context;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
@@ -21,6 +22,7 @@ import pt.eventlab.contracts.EventEnvelope;
 public final class OutboxStore {
 
     private static final TypeReference<Map<String, String>> HEADERS_TYPE = new TypeReference<>() { };
+    private static final int MAX_ATTEMPTS = 10;
 
     private final ServiceBusEnvelopeCodec codec;
     private final JdbcTemplate jdbcTemplate;
@@ -70,13 +72,15 @@ public final class OutboxStore {
     public List<OutboxMessage> lockNextBatch(int batchSize) {
         return jdbcTemplate.query("""
                 select outbox_id, event_id, destination_type, destination_name,
-                       payload_json, trace_headers_json
+                       payload_json, trace_headers_json, attempts
                 from outbox_messages
                 where published_at is null
+                  and quarantined_at is null
+                  and (next_attempt_at is null or next_attempt_at <= ?)
                 order by created_at
                 limit ?
                 for update skip locked
-                """, this::map, batchSize);
+                """, this::map, Timestamp.from(Instant.now()), batchSize);
     }
 
     public void markPublished(UUID outboxId) {
@@ -87,12 +91,19 @@ public final class OutboxStore {
                 """, Timestamp.from(Instant.now()), outboxId);
     }
 
-    public void markFailed(UUID outboxId, String error) {
+    public boolean markFailed(OutboxMessage message, String error) {
+        int attempts = message.attempts() + 1;
+        boolean quarantined = attempts >= MAX_ATTEMPTS;
+        long delaySeconds = Math.min(60, 1L << Math.min(attempts - 1, 6));
+        Instant now = Instant.now();
         jdbcTemplate.update("""
                 update outbox_messages
-                set attempts = attempts + 1, last_error = ?
+                set attempts = ?, last_error = ?, next_attempt_at = ?, quarantined_at = ?
                 where outbox_id = ?
-                """, error.substring(0, Math.min(error.length(), 1000)), outboxId);
+                """, attempts, error.substring(0, Math.min(error.length(), 1000)),
+                Timestamp.from(now.plus(Duration.ofSeconds(delaySeconds))),
+                quarantined ? Timestamp.from(now) : null, message.outboxId());
+        return quarantined;
     }
 
     private OutboxMessage map(ResultSet resultSet, int rowNumber) throws SQLException {
@@ -103,7 +114,8 @@ public final class OutboxStore {
                     OutboxDestination.valueOf(resultSet.getString("destination_type")),
                     resultSet.getString("destination_name"),
                     resultSet.getString("payload_json"),
-                    objectMapper.readValue(resultSet.getString("trace_headers_json"), HEADERS_TYPE));
+                    objectMapper.readValue(resultSet.getString("trace_headers_json"), HEADERS_TYPE),
+                    resultSet.getInt("attempts"));
         } catch (JsonProcessingException exception) {
             throw new SQLException("Invalid trace headers in outbox", exception);
         }

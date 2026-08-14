@@ -33,6 +33,8 @@ Milestones 0–30 are complete. EventLab includes a disposable Azure environment
 - [How to verify frontend claims in traces](docs/runbooks/reading-traces.md)
 - [How to regenerate recorded demonstrations](docs/runbooks/recording-demos.md)
 - [Performance and resilience testing](docs/runbooks/performance-testing.md)
+- [Security and threat model](docs/security-model.md)
+- [Vulnerability reporting](SECURITY.md)
 - [Architecture decisions](docs/decisions/README.md)
 
 The permanent static tour is published through GitHub Pages from the same frontend with `VITE_STATIC_TOUR=true`. It contains no API calls and remains useful while the disposable Azure lab is offline. Locally, open `http://localhost:5173/?tour` after starting Vite.

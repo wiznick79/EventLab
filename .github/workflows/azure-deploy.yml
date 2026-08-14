@@ -17,7 +17,7 @@ on:
         required: false
 
 permissions:
-  contents: write
+  contents: read
   id-token: write
   actions: write
 
@@ -37,18 +37,39 @@ jobs:
       ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
       ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: azure/login@v3
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: azure/login@d54469830ea7d513b7371e02a077c3ee5cb7b112 # v3
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Allow this runner to reach Terraform state
+        id: state_firewall
+        run: |
+          RUNNER_IP="$(curl --fail --silent --show-error https://api.ipify.org)"
+          [[ "$RUNNER_IP" =~ ^[0-9a-fA-F:.]+$ ]] || { echo "Invalid runner IP" >&2; exit 1; }
+          echo "runner_ip=${RUNNER_IP}" >> "$GITHUB_OUTPUT"
+          az storage account network-rule add \
+            --resource-group "${{ vars.TF_STATE_RESOURCE_GROUP }}" \
+            --account-name "${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
+            --ip-address "$RUNNER_IP" --only-show-errors
+          for _ in $(seq 1 12); do
+            az storage container show --auth-mode login --name "${{ vars.TF_STATE_CONTAINER }}" \
+              --account-name "${{ vars.TF_STATE_STORAGE_ACCOUNT }}" --only-show-errors >/dev/null 2>&1 && break
+            sleep 5
+          done
+          az storage container show --auth-mode login --name "${{ vars.TF_STATE_CONTAINER }}" \
+            --account-name "${{ vars.TF_STATE_STORAGE_ACCOUNT }}" --only-show-errors >/dev/null
       - name: Register Container Apps provider
         run: az provider register --namespace Microsoft.App --wait
-      - uses: hashicorp/setup-terraform@v4
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
         with:
           terraform_version: 1.15.8
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
       - name: Initialize remote state
         run: >-
           terraform init -input=false
@@ -62,24 +83,58 @@ jobs:
         env:
           REQUESTED_IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
-          IMAGE_TAG="${REQUESTED_IMAGE_TAG:-${GITHUB_SHA}}"
+          IMAGE_TAG="${REQUESTED_IMAGE_TAG:-$(gh run list --workflow images.yml --branch main --status success --limit 1 --json headSha --jq '.[0].headSha')}"
+          [[ "$IMAGE_TAG" =~ ^[0-9a-f]{40}$ ]] || { echo "No successful immutable image set found" >&2; exit 1; }
+          REGISTRY="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/eventlab"
+          declare -A REFERENCES=(
+            [workflow]="$REGISTRY/workflow-service:$IMAGE_TAG"
+            [payment]="$REGISTRY/payment-service:$IMAGE_TAG"
+            [fulfilment]="$REGISTRY/fulfilment-service:$IMAGE_TAG"
+            [console]="$REGISTRY/lab-console:$IMAGE_TAG"
+            [frontend]="$REGISTRY/frontend:$IMAGE_TAG"
+            [tempo]="$REGISTRY/frontend:$IMAGE_TAG-tempo"
+            [telemetry_gateway]="$REGISTRY/frontend:$IMAGE_TAG-telemetry-gateway"
+            [grafana]="$REGISTRY/frontend:$IMAGE_TAG-grafana"
+          )
+          DIGESTS='{}'
+          for NAME in "${!REFERENCES[@]}"; do
+            DIGEST="$(docker buildx imagetools inspect "${REFERENCES[$NAME]}" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+            [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "Invalid digest for $NAME" >&2; exit 1; }
+            DIGESTS="$(jq --arg name "$NAME" --arg digest "$DIGEST" '. + {($name):$digest}' <<< "$DIGESTS")"
+          done
           DESTROY_AFTER="$(date -u -d '+${{ inputs.lifetime_hours }} hours' '+%Y-%m-%dT%H:%M:%SZ')"
           echo "destroy_after=${DESTROY_AFTER}" >> "$GITHUB_OUTPUT"
+          jq -n --argjson digests "$DIGESTS" '{image_digests:$digests}' > deployment.auto.tfvars.json
           terraform plan -input=false -lock-timeout=5m \
             -var="subscription_id=${{ vars.AZURE_SUBSCRIPTION_ID }}" \
             -var="environment_name=${{ inputs.environment_name }}" \
             -var="destroy_after=${DESTROY_AFTER}" \
             -var="image_tag=${IMAGE_TAG}" \
             -out=application.tfplan
-      - name: Apply reviewed plan
+      - name: Apply saved plan
         run: terraform apply -input=false -auto-approve application.tfplan
+      - name: Provision least-privilege database roles
+        run: |
+          RESOURCE_GROUP="$(terraform output -raw resource_group_name)"
+          JOB_NAME="$(terraform output -raw database_role_job_name)"
+          EXECUTION="$(az containerapp job start --resource-group "$RESOURCE_GROUP" --name "$JOB_NAME" --query name -o tsv)"
+          for _ in $(seq 1 60); do
+            STATUS="$(az containerapp job execution list --resource-group "$RESOURCE_GROUP" --name "$JOB_NAME" \
+              --query "[?name=='$EXECUTION'].properties.status | [0]" -o tsv)"
+            [[ "$STATUS" == "Succeeded" ]] && break
+            [[ "$STATUS" == "Failed" ]] && { echo "Database role job failed" >&2; exit 1; }
+            sleep 5
+          done
+          [[ "$STATUS" == "Succeeded" ]] || { echo "Database role job timed out" >&2; exit 1; }
       - name: Smoke test happy path
         run: |
           URL="$(terraform output -raw frontend_url)"
           curl --fail --connect-timeout 10 --max-time 30 --retry 20 --retry-all-errors --retry-delay 15 "${URL}/"
+          IDEMPOTENCY_KEY="$(uuidgen)"
           RUN="$(curl --fail --connect-timeout 10 --max-time 30 --retry 10 --retry-all-errors --retry-delay 10 \
             -H 'Content-Type: application/json' \
-            -d '{"scenarioId":"happy-path","amount":129.90,"currency":"EUR"}' \
+            -H "Idempotency-Key: ${IDEMPOTENCY_KEY}" \
+            -d "{\"scenarioId\":\"happy-path\",\"amount\":129.90,\"currency\":\"EUR\",\"idempotencyKey\":\"${IDEMPOTENCY_KEY}\"}" \
             "${URL}/api/v1/runs")"
           WORKFLOW_ID="$(jq -r '.workflowId' <<< "$RUN")"
           for _ in $(seq 1 30); do
@@ -96,9 +151,11 @@ jobs:
         run: |
           URL="$(terraform output -raw frontend_url)"
           GRAFANA_URL="$(terraform output -raw grafana_url)"
+          IDEMPOTENCY_KEY="$(uuidgen)"
           RUN="$(curl --fail --connect-timeout 10 --max-time 30 \
             -H 'Content-Type: application/json' \
-            -d '{"scenarioId":"duplicate-payment-result","amount":129.90,"currency":"EUR"}' \
+            -H "Idempotency-Key: ${IDEMPOTENCY_KEY}" \
+            -d "{\"scenarioId\":\"duplicate-payment-result\",\"amount\":129.90,\"currency\":\"EUR\",\"idempotencyKey\":\"${IDEMPOTENCY_KEY}\"}" \
             "${URL}/api/v1/runs")"
           WORKFLOW_ID="$(jq -er '.workflowId' <<< "$RUN")"
 
@@ -146,9 +203,11 @@ jobs:
             and ([.dependencies[] | select(.status == "UP")] | length == 3)
           ' <<< "$STATUS" >/dev/null
 
+          IDEMPOTENCY_KEY="$(uuidgen)"
           RUN="$(curl --fail --connect-timeout 10 --max-time 30 \
             -H 'Content-Type: application/json' \
-            -d '{"scenarioId":"custom-plan","experimentPlan":{"paymentResultDeliveries":2,"fulfilmentBehavior":"SUCCESS","fulfilmentMaxAttempts":4,"recoveryMode":"MANUAL"},"amount":129.90,"currency":"EUR"}' \
+            -H "Idempotency-Key: ${IDEMPOTENCY_KEY}" \
+            -d "{\"scenarioId\":\"custom-plan\",\"experimentPlan\":{\"paymentResultDeliveries\":2,\"fulfilmentBehavior\":\"SUCCESS\",\"fulfilmentMaxAttempts\":4,\"recoveryMode\":\"MANUAL\"},\"amount\":129.90,\"currency\":\"EUR\",\"idempotencyKey\":\"${IDEMPOTENCY_KEY}\"}" \
             "${URL}/api/v1/runs")"
           WORKFLOW_ID="$(jq -er '.workflowId' <<< "$RUN")"
           curl --fail --silent --show-error "${URL}/runs/${WORKFLOW_ID}" | grep -q 'id="root"'
@@ -175,9 +234,11 @@ jobs:
       - name: Smoke test poison-message quarantine
         run: |
           URL="$(terraform output -raw frontend_url)"
+          IDEMPOTENCY_KEY="$(uuidgen)"
           RUN="$(curl --fail --connect-timeout 10 --max-time 30 \
             -H 'Content-Type: application/json' \
-            -d '{"scenarioId":"custom-plan","experimentPlan":{"paymentResultDeliveries":1,"fulfilmentBehavior":"UNSUPPORTED_CONTRACT","fulfilmentMaxAttempts":4,"recoveryMode":"MANUAL"},"amount":42.00,"currency":"EUR"}' \
+            -H "Idempotency-Key: ${IDEMPOTENCY_KEY}" \
+            -d "{\"scenarioId\":\"custom-plan\",\"experimentPlan\":{\"paymentResultDeliveries\":1,\"fulfilmentBehavior\":\"UNSUPPORTED_CONTRACT\",\"fulfilmentMaxAttempts\":4,\"recoveryMode\":\"MANUAL\"},\"amount\":42.00,\"currency\":\"EUR\",\"idempotencyKey\":\"${IDEMPOTENCY_KEY}\"}" \
             "${URL}/api/v1/runs")"
           WORKFLOW_ID="$(jq -er '.workflowId' <<< "$RUN")"
 
@@ -210,19 +271,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           URL="$(terraform output -raw frontend_url)"
-          jq -n \
-            --arg url "${URL}" \
-            --arg expiresAt "${{ steps.plan.outputs.destroy_after }}" \
-            --arg environment "${{ inputs.environment_name }}" \
-            --arg updatedAt "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
-            '{state:"online", url:$url, expiresAt:$expiresAt, environment:$environment, updatedAt:$updatedAt}' \
-            > ../../../frontend/public/live-lab.json
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add ../../../frontend/public/live-lab.json
-          git diff --cached --quiet || git commit -m "Publish live lab status [skip ci]"
-          git push
-          gh workflow run portfolio.yml --ref main
+          gh workflow run portfolio.yml --ref main \
+            -f live_state=online -f live_url="$URL" \
+            -f expires_at="${{ steps.plan.outputs.destroy_after }}" \
+            -f environment_name="${{ inputs.environment_name }}" \
+            -f updated_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
       - name: Publish environment summary
         if: always()
         run: |
@@ -230,3 +283,10 @@ jobs:
           echo "- Expires: ${{ steps.plan.outputs.destroy_after }}" >> "$GITHUB_STEP_SUMMARY"
           terraform output -raw frontend_url 2>/dev/null | sed 's/^/- EventLab: /' >> "$GITHUB_STEP_SUMMARY" || true
           terraform output -raw grafana_url 2>/dev/null | sed 's/^/- Grafana: /' >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Remove runner access to Terraform state
+        if: always() && steps.state_firewall.outputs.runner_ip != ''
+        run: |
+          az storage account network-rule remove \
+            --resource-group "${{ vars.TF_STATE_RESOURCE_GROUP }}" \
+            --account-name "${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
+            --ip-address "${{ steps.state_firewall.outputs.runner_ip }}" --only-show-errors

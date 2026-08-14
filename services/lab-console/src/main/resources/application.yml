@@ -48,3 +48,4 @@ eventlab:
     version: ${DEPLOYMENT_VERSION:development}
     expires-at: ${DEPLOYMENT_EXPIRES_AT:}
     read-only-lead-seconds: ${DEPLOYMENT_READ_ONLY_LEAD_SECONDS:600}
+    max-runs-per-minute: ${DEPLOYMENT_MAX_RUNS_PER_MINUTE:120}

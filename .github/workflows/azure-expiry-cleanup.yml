@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   id-token: write
   actions: write
 
@@ -17,7 +17,7 @@ concurrency:
 jobs:
   cleanup:
     runs-on: ubuntu-latest
-    environment: azure
+    environment: azure-cleanup
     defaults:
       run:
         working-directory: infrastructure/terraform/application
@@ -26,38 +26,59 @@ jobs:
       ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
       ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: azure/login@v3
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: azure/login@d54469830ea7d513b7371e02a077c3ee5cb7b112 # v3
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Allow this runner to reach Terraform state
+        id: state_firewall
+        run: |
+          RUNNER_IP="$(curl --fail --silent --show-error https://api.ipify.org)"
+          [[ "$RUNNER_IP" =~ ^[0-9a-fA-F:.]+$ ]] || { echo "Invalid runner IP" >&2; exit 1; }
+          echo "runner_ip=${RUNNER_IP}" >> "$GITHUB_OUTPUT"
+          az storage account network-rule add --resource-group "${{ vars.TF_STATE_RESOURCE_GROUP }}" \
+            --account-name "${{ vars.TF_STATE_STORAGE_ACCOUNT }}" --ip-address "$RUNNER_IP" --only-show-errors
+          for _ in $(seq 1 12); do
+            az storage container show --auth-mode login --name "${{ vars.TF_STATE_CONTAINER }}" \
+              --account-name "${{ vars.TF_STATE_STORAGE_ACCOUNT }}" --only-show-errors >/dev/null 2>&1 && break
+            sleep 5
+          done
+          az storage container show --auth-mode login --name "${{ vars.TF_STATE_CONTAINER }}" \
+            --account-name "${{ vars.TF_STATE_STORAGE_ACCOUNT }}" --only-show-errors >/dev/null
       - name: Inspect expiry tags
         id: expiry
         run: |
           NOW="$(date -u +%s)"
-          EXPIRED_ENVIRONMENTS=""
+          EXPIRED_ENVIRONMENTS='[]'
+          RESOURCES="$(az resource list --resource-group "${{ vars.AZURE_ENVIRONMENT_RESOURCE_GROUP }}" \
+            --query "[?tags.project=='eventlab' && tags.lifecycle=='ephemeral'].{name:name,environment:tags.environment,expiry:tags.destroy_after}" -o json)"
           while IFS=$'\t' read -r NAME ENVIRONMENT EXPIRY; do
-            [ -z "$NAME" ] && continue
-            if [ -z "$ENVIRONMENT" ] || [ -z "$EXPIRY" ]; then
-              echo "Ephemeral group ${NAME} is missing environment or destroy_after metadata" >&2
+            [[ -z "$NAME" ]] && continue
+            if [[ ! "$ENVIRONMENT" =~ ^[a-z0-9][a-z0-9-]{1,14}$ ]] || [[ -z "$EXPIRY" ]]; then
+              echo "Ephemeral resource ${NAME} has invalid lifecycle metadata" >&2
               exit 1
             fi
             if [ "$(date -u -d "$EXPIRY" +%s)" -le "$NOW" ]; then
-              EXPIRED_ENVIRONMENTS="${EXPIRED_ENVIRONMENTS} ${ENVIRONMENT}"
+              EXPIRED_ENVIRONMENTS="$(jq --arg environment "$ENVIRONMENT" '. + [$environment] | unique' <<< "$EXPIRED_ENVIRONMENTS")"
             fi
-          done < <(az group list --tag project=eventlab \
-            --query "[?tags.lifecycle=='ephemeral'].[name,tags.environment,tags.destroy_after]" -o tsv)
-          echo "environments=${EXPIRED_ENVIRONMENTS# }" >> "$GITHUB_OUTPUT"
-      - uses: hashicorp/setup-terraform@v4
-        if: steps.expiry.outputs.environments != ''
+          done < <(jq -r '.[] | [.name, .environment, .expiry] | @tsv' <<< "$RESOURCES")
+          echo "environments=$(jq -c . <<< "$EXPIRED_ENVIRONMENTS")" >> "$GITHUB_OUTPUT"
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
+        if: steps.expiry.outputs.environments != '[]'
         with:
           terraform_version: 1.15.8
       - name: Initialize remote state
-        if: steps.expiry.outputs.environments != ''
+        if: steps.expiry.outputs.environments != '[]'
+        env:
+          EXPIRED_ENVIRONMENTS_JSON: ${{ steps.expiry.outputs.environments }}
         run: |
-          for ENVIRONMENT in ${{ steps.expiry.outputs.environments }}; do
+          while IFS= read -r ENVIRONMENT; do
             terraform init -input=false -reconfigure \
               -backend-config="resource_group_name=${{ vars.TF_STATE_RESOURCE_GROUP }}" \
               -backend-config="storage_account_name=${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
@@ -69,29 +90,29 @@ jobs:
               -var="environment_name=${ENVIRONMENT}" \
               -var="destroy_after=2099-01-01T00:00:00Z" \
               -var="image_tag=0000000000000000000000000000000000000000"
-            if az group show --name "rg-eventlab-${ENVIRONMENT}" >/dev/null 2>&1; then
-              echo "Resource group rg-eventlab-${ENVIRONMENT} remains after cleanup" >&2
+            REMAINING="$(az resource list --resource-group "${{ vars.AZURE_ENVIRONMENT_RESOURCE_GROUP }}" \
+              --query "[?tags.project=='eventlab' && tags.environment=='$ENVIRONMENT'].id" -o tsv)"
+            if [[ -n "$REMAINING" ]]; then
+              echo "Tagged resources remain after cleanup for $ENVIRONMENT" >&2
               exit 1
             fi
-          done
+          done < <(jq -r '.[]' <<< "$EXPIRED_ENVIRONMENTS_JSON")
       - name: Publish offline live-lab status
-        if: steps.expiry.outputs.environments != ''
+        if: steps.expiry.outputs.environments != '[]'
         env:
           GH_TOKEN: ${{ github.token }}
+          EXPIRED_ENVIRONMENTS_JSON: ${{ steps.expiry.outputs.environments }}
         run: |
-          CURRENT_ENVIRONMENT="$(jq -r '.environment // empty' ../../../frontend/public/live-lab.json)"
-          case " ${{ steps.expiry.outputs.environments }} " in
-            *" ${CURRENT_ENVIRONMENT} "*) ;;
-            *) echo "The advertised ${CURRENT_ENVIRONMENT:-none} environment was not cleaned up"; exit 0 ;;
-          esac
-          jq -n \
-            --arg environment "${{ steps.expiry.outputs.environments }}" \
-            --arg updatedAt "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
-            '{state:"offline", environment:$environment, updatedAt:$updatedAt}' \
-            > ../../../frontend/public/live-lab.json
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add ../../../frontend/public/live-lab.json
-          git diff --cached --quiet || git commit -m "Mark live lab offline [skip ci]"
-          git push
-          gh workflow run portfolio.yml --ref main
+          STATUS_URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${{ github.event.repository.name }}/live-lab.json"
+          CURRENT_ENVIRONMENT="$(curl --fail --silent --show-error --max-time 10 "$STATUS_URL" | jq -r '.environment // empty' || true)"
+          jq -e --arg environment "$CURRENT_ENVIRONMENT" 'index($environment) != null' \
+            <<< "$EXPIRED_ENVIRONMENTS_JSON" >/dev/null || exit 0
+          gh workflow run portfolio.yml --ref main -f live_state=offline \
+            -f environment_name="$CURRENT_ENVIRONMENT" \
+            -f updated_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+      - name: Remove runner access to Terraform state
+        if: always() && steps.state_firewall.outputs.runner_ip != ''
+        run: |
+          az storage account network-rule remove --resource-group "${{ vars.TF_STATE_RESOURCE_GROUP }}" \
+            --account-name "${{ vars.TF_STATE_STORAGE_ACCOUNT }}" \
+            --ip-address "${{ steps.state_firewall.outputs.runner_ip }}" --only-show-errors

@@ -9,5 +9,6 @@ public record OutboxMessage(
         OutboxDestination destinationType,
         String destinationName,
         String payload,
-        Map<String, String> traceHeaders) {
+        Map<String, String> traceHeaders,
+        int attempts) {
 }

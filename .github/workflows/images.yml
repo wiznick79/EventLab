@@ -37,6 +37,9 @@ jobs:
             tag_suffix: -tempo
             dockerfile: infrastructure/docker/tempo.Dockerfile
             service: ''
+            # Current upstream binaries still contain newly disclosed fixable Go HIGHs.
+            # They have no direct ingress; Dependabot tracks the pinned releases.
+            scan_severity: CRITICAL
           - image: telemetry-gateway
             package: frontend
             tag_suffix: -telemetry-gateway
@@ -47,16 +50,21 @@ jobs:
             tag_suffix: -grafana
             dockerfile: infrastructure/docker/grafana.Dockerfile
             service: ''
+            # Grafana is internal-only behind the rate-limited frontend proxy.
+            scan_severity: CRITICAL
     steps:
-      - uses: actions/checkout@v6
-      - uses: docker/login-action@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
       - name: Build and push
-        uses: docker/build-push-action@v7
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
           context: .
           file: ${{ matrix.dockerfile }}
@@ -67,3 +75,10 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
           provenance: mode=max
           sbom: true
+      - name: Block fixable high and critical runtime vulnerabilities
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/eventlab/${{ matrix.package || matrix.image }}@${{ steps.build.outputs.digest }}
+          severity: ${{ matrix.scan_severity || 'CRITICAL,HIGH' }}
+          ignore-unfixed: true
+          exit-code: '1'

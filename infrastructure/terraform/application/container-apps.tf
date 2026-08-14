@@ -12,14 +12,14 @@ locals {
 resource "azurerm_container_app" "workflow" {
   name                         = "workflow-service"
   container_app_environment_id = azurerm_container_app_environment.environment.id
-  resource_group_name          = azurerm_resource_group.environment.name
+  resource_group_name          = data.azurerm_resource_group.environment.name
   revision_mode                = "Single"
   tags                         = local.tags
 
   identity { type = "SystemAssigned" }
   secret {
     name  = "database-password"
-    value = random_password.postgres.result
+    value = random_password.database_user["workflow"].result
   }
 
   template {
@@ -40,7 +40,7 @@ resource "azurerm_container_app" "workflow" {
       }
       env {
         name  = "WORKFLOW_DATABASE_USER"
-        value = azurerm_postgresql_flexible_server.environment.administrator_login
+        value = local.database_users.workflow
       }
       env {
         name        = "WORKFLOW_DATABASE_PASSWORD"
@@ -82,13 +82,13 @@ resource "azurerm_container_app" "workflow" {
 resource "azurerm_container_app" "payment" {
   name                         = "payment-service"
   container_app_environment_id = azurerm_container_app_environment.environment.id
-  resource_group_name          = azurerm_resource_group.environment.name
+  resource_group_name          = data.azurerm_resource_group.environment.name
   revision_mode                = "Single"
   tags                         = local.tags
   identity { type = "SystemAssigned" }
   secret {
     name  = "database-password"
-    value = random_password.postgres.result
+    value = random_password.database_user["payment"].result
   }
   template {
     min_replicas = 1
@@ -108,7 +108,7 @@ resource "azurerm_container_app" "payment" {
       }
       env {
         name  = "PAYMENT_DATABASE_USER"
-        value = azurerm_postgresql_flexible_server.environment.administrator_login
+        value = local.database_users.payment
       }
       env {
         name        = "PAYMENT_DATABASE_PASSWORD"
@@ -150,13 +150,13 @@ resource "azurerm_container_app" "payment" {
 resource "azurerm_container_app" "fulfilment" {
   name                         = "fulfilment-service"
   container_app_environment_id = azurerm_container_app_environment.environment.id
-  resource_group_name          = azurerm_resource_group.environment.name
+  resource_group_name          = data.azurerm_resource_group.environment.name
   revision_mode                = "Single"
   tags                         = local.tags
   identity { type = "SystemAssigned" }
   secret {
     name  = "database-password"
-    value = random_password.postgres.result
+    value = random_password.database_user["fulfilment"].result
   }
   template {
     min_replicas = 1
@@ -176,7 +176,7 @@ resource "azurerm_container_app" "fulfilment" {
       }
       env {
         name  = "FULFILMENT_DATABASE_USER"
-        value = azurerm_postgresql_flexible_server.environment.administrator_login
+        value = local.database_users.fulfilment
       }
       env {
         name        = "FULFILMENT_DATABASE_PASSWORD"
@@ -217,13 +217,13 @@ resource "azurerm_container_app" "fulfilment" {
 resource "azurerm_container_app" "console" {
   name                         = "lab-console"
   container_app_environment_id = azurerm_container_app_environment.environment.id
-  resource_group_name          = azurerm_resource_group.environment.name
+  resource_group_name          = data.azurerm_resource_group.environment.name
   revision_mode                = "Single"
   tags                         = local.tags
   identity { type = "SystemAssigned" }
   secret {
     name  = "database-password"
-    value = random_password.postgres.result
+    value = random_password.database_user["console"].result
   }
   template {
     min_replicas = 1
@@ -243,7 +243,7 @@ resource "azurerm_container_app" "console" {
       }
       env {
         name  = "LAB_CONSOLE_DATABASE_USER"
-        value = azurerm_postgresql_flexible_server.environment.administrator_login
+        value = local.database_users.console
       }
       env {
         name        = "LAB_CONSOLE_DATABASE_PASSWORD"
@@ -272,6 +272,10 @@ resource "azurerm_container_app" "console" {
       env {
         name  = "DEPLOYMENT_EXPIRES_AT"
         value = var.destroy_after
+      }
+      env {
+        name  = "EVENTLAB_DEPLOYMENT_MAX_RUNS_PER_MINUTE"
+        value = "30"
       }
       dynamic "env" {
         for_each = local.common_environment
@@ -308,7 +312,7 @@ resource "azurerm_container_app" "console" {
 resource "azurerm_container_app" "tempo" {
   name                         = "tempo"
   container_app_environment_id = azurerm_container_app_environment.environment.id
-  resource_group_name          = azurerm_resource_group.environment.name
+  resource_group_name          = data.azurerm_resource_group.environment.name
   revision_mode                = "Single"
   tags                         = local.tags
 
@@ -358,7 +362,7 @@ resource "azurerm_container_app" "tempo" {
 resource "azurerm_container_app" "grafana" {
   name                         = "grafana"
   container_app_environment_id = azurerm_container_app_environment.environment.id
-  resource_group_name          = azurerm_resource_group.environment.name
+  resource_group_name          = data.azurerm_resource_group.environment.name
   revision_mode                = "Single"
   tags                         = local.tags
 
@@ -390,6 +394,26 @@ resource "azurerm_container_app" "grafana" {
         name  = "GF_AUTH_DISABLE_LOGIN_FORM"
         value = "true"
       }
+      env {
+        name  = "GF_AUTH_ANONYMOUS_HIDE_VERSION"
+        value = "true"
+      }
+      env {
+        name  = "GF_USERS_ALLOW_SIGN_UP"
+        value = "false"
+      }
+      env {
+        name  = "GF_SECURITY_DISABLE_GRAVATAR"
+        value = "true"
+      }
+      env {
+        name  = "GF_SERVER_ROOT_URL"
+        value = "https://eventlab.${azurerm_container_app_environment.environment.default_domain}/grafana/"
+      }
+      env {
+        name  = "GF_SERVER_SERVE_FROM_SUB_PATH"
+        value = "true"
+      }
       liveness_probe {
         transport     = "HTTP"
         port          = 3000
@@ -405,7 +429,7 @@ resource "azurerm_container_app" "grafana" {
   }
 
   ingress {
-    external_enabled           = true
+    external_enabled           = false
     target_port                = 3000
     transport                  = "http"
     allow_insecure_connections = false
@@ -419,7 +443,7 @@ resource "azurerm_container_app" "grafana" {
 resource "azurerm_container_app" "frontend" {
   name                         = "eventlab"
   container_app_environment_id = azurerm_container_app_environment.environment.id
-  resource_group_name          = azurerm_resource_group.environment.name
+  resource_group_name          = data.azurerm_resource_group.environment.name
   revision_mode                = "Single"
   tags                         = local.tags
   template {
@@ -436,7 +460,11 @@ resource "azurerm_container_app" "frontend" {
       }
       env {
         name  = "GRAFANA_BASE_URL"
-        value = "https://${azurerm_container_app.grafana.ingress[0].fqdn}"
+        value = "/grafana"
+      }
+      env {
+        name  = "GRAFANA_HOST"
+        value = azurerm_container_app.grafana.ingress[0].fqdn
       }
       liveness_probe {
         transport = "HTTP"
@@ -462,15 +490,64 @@ resource "azurerm_container_app" "frontend" {
   }
 }
 
-resource "azurerm_role_assignment" "service_bus_data_owner" {
+resource "azurerm_role_assignment" "service_bus_sender" {
   for_each = {
-    workflow   = azurerm_container_app.workflow.identity[0].principal_id
-    payment    = azurerm_container_app.payment.identity[0].principal_id
-    fulfilment = azurerm_container_app.fulfilment.identity[0].principal_id
-    console    = azurerm_container_app.console.identity[0].principal_id
+    workflow_payment = {
+      scope     = azurerm_servicebus_queue.payment_commands.id
+      principal = azurerm_container_app.workflow.identity[0].principal_id
+    }
+    workflow_fulfilment = {
+      scope     = azurerm_servicebus_queue.fulfilment_commands.id
+      principal = azurerm_container_app.workflow.identity[0].principal_id
+    }
+    workflow_events = {
+      scope     = azurerm_servicebus_topic.business_events.id
+      principal = azurerm_container_app.workflow.identity[0].principal_id
+    }
+    payment_events = {
+      scope     = azurerm_servicebus_topic.business_events.id
+      principal = azurerm_container_app.payment.identity[0].principal_id
+    }
+    fulfilment_events = {
+      scope     = azurerm_servicebus_topic.business_events.id
+      principal = azurerm_container_app.fulfilment.identity[0].principal_id
+    }
+    console_recovery = {
+      scope     = azurerm_servicebus_queue.fulfilment_commands.id
+      principal = azurerm_container_app.console.identity[0].principal_id
+    }
   }
-  scope                = azurerm_servicebus_namespace.environment.id
-  role_definition_name = "Azure Service Bus Data Owner"
-  principal_id         = each.value
+  scope                = each.value.scope
+  role_definition_name = "Azure Service Bus Data Sender"
+  principal_id         = each.value.principal
+  principal_type       = "ServicePrincipal"
+}
+
+resource "azurerm_role_assignment" "service_bus_receiver" {
+  for_each = {
+    workflow_events = {
+      scope     = azurerm_servicebus_subscription.workflow_events.id
+      principal = azurerm_container_app.workflow.identity[0].principal_id
+    }
+    payment_commands = {
+      scope     = azurerm_servicebus_queue.payment_commands.id
+      principal = azurerm_container_app.payment.identity[0].principal_id
+    }
+    fulfilment_commands = {
+      scope     = azurerm_servicebus_queue.fulfilment_commands.id
+      principal = azurerm_container_app.fulfilment.identity[0].principal_id
+    }
+    console_events = {
+      scope     = azurerm_servicebus_subscription.console_events.id
+      principal = azurerm_container_app.console.identity[0].principal_id
+    }
+    console_recovery = {
+      scope     = azurerm_servicebus_queue.fulfilment_commands.id
+      principal = azurerm_container_app.console.identity[0].principal_id
+    }
+  }
+  scope                = each.value.scope
+  role_definition_name = "Azure Service Bus Data Receiver"
+  principal_id         = each.value.principal
   principal_type       = "ServicePrincipal"
 }

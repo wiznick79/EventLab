@@ -2,8 +2,8 @@ package pt.eventlab.workflow.domain;
 
 import java.math.BigDecimal;
 import java.time.Clock;
-import java.time.Instant;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,8 +53,23 @@ public class WorkflowApplicationService {
 
     @Transactional
     public WorkflowRun start(String scenarioId, BigDecimal amount, String currency) {
+        return start(UUID.randomUUID(), scenarioId, amount, currency);
+    }
+
+    @Transactional
+    public synchronized WorkflowRun start(
+            UUID idempotencyKey, String scenarioId, BigDecimal amount, String currency) {
+        UUID resolvedKey = idempotencyKey == null ? UUID.randomUUID() : idempotencyKey;
+        WorkflowRun existing = workflows.findByExperimentPlanId(resolvedKey).orElse(null);
+        if (existing != null) {
+            if (!existing.represents(scenarioId, amount, currency)) {
+                throw new IllegalArgumentException("idempotencyKey was already used for another request");
+            }
+            return existing;
+        }
         Instant now = clock.instant();
-        WorkflowRun workflow = workflows.saveAndFlush(WorkflowRun.start(scenarioId, amount, currency, now));
+        WorkflowRun workflow = workflows.saveAndFlush(
+                WorkflowRun.start(resolvedKey, scenarioId, amount, currency, now));
         UUID correlationId = workflow.id();
 
         messages.publishBusinessEvent(new EventEnvelope<>(

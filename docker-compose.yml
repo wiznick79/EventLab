@@ -2,7 +2,7 @@ name: eventlab
 
 services:
   postgres:
-    image: postgres:17.6-alpine
+    image: postgres:17.6-alpine@sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94
     environment:
       POSTGRES_USER: ${EVENTLAB_POSTGRES_USER:-eventlab}
       POSTGRES_PASSWORD: ${EVENTLAB_POSTGRES_PASSWORD:-eventlab-local-only}
@@ -20,7 +20,7 @@ services:
       - ./infrastructure/postgres/init-databases.sql:/docker-entrypoint-initdb.d/01-init-databases.sql:ro
 
   servicebus-sql:
-    image: mcr.microsoft.com/azure-sql-edge:latest
+    image: mcr.microsoft.com/azure-sql-edge:latest@sha256:902628a8be89e35dfb7895ca31d602974c7bafde4d583a0d0873844feb1c42cf
     environment:
       ACCEPT_EULA: ${ACCEPT_EULA:-N}
       MSSQL_SA_PASSWORD: ${SERVICEBUS_SQL_PASSWORD:-EventLab-Sb1-Local!}
@@ -34,7 +34,7 @@ services:
       - servicebus-sql-data:/var/opt/mssql
 
   servicebus:
-    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest@sha256:5a96d893b245031740f7d46e0fe5ff282d24b78c4b7d761dd57590f3f010a9b3
     environment:
       ACCEPT_EULA: ${ACCEPT_EULA:-N}
       SQL_SERVER: servicebus-sql
@@ -49,14 +49,14 @@ services:
       - ./infrastructure/servicebus/Config.json:/ServiceBus_Emulator/ConfigFiles/Config.json:ro
 
   tempo:
-    image: grafana/tempo:2.8.2
+    image: grafana/tempo:2.10.7@sha256:032b3acb51ed02c4b801473d54bb63e9e9f13738d215126d9843c30283794f4b
     command: ["-config.file=/etc/tempo.yaml"]
     volumes:
       - ./infrastructure/tempo/tempo.yml:/etc/tempo.yaml:ro
       - tempo-data:/var/tempo
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.131.1
+    image: otel/opentelemetry-collector-contrib:0.131.1@sha256:c06aa6d7833e9a2b81c6c394d67e40ae9864edec8dca8a8e8552df1316c96d9b
     command: ["--config=/etc/otelcol/config.yml"]
     volumes:
       - ./infrastructure/otel/collector.yml:/etc/otelcol/config.yml:ro
@@ -67,7 +67,7 @@ services:
       - tempo
 
   grafana:
-    image: grafana/grafana:12.1.0
+    image: grafana/grafana:13.1.1@sha256:7cb8c64c4d57a57e734073f3cc94620adb24a0acb929bd80ba9f14017e3a975b
     environment:
       TEMPO_URL: http://tempo:3200
       GF_AUTH_ANONYMOUS_ENABLED: "true"
@@ -85,7 +85,7 @@ services:
       - tempo
 
   k6:
-    image: grafana/k6:2.2.0
+    image: grafana/k6:2.2.0@sha256:9bd01d6941fca969cb61bb57d2da5ee9b385fe2aa8881df3798c196564d6ace6
     profiles: [performance]
     working_dir: /tests
     entrypoint: ["k6"]

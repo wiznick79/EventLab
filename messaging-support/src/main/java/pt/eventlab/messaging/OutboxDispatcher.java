@@ -35,10 +35,14 @@ public class OutboxDispatcher {
                 }
                 outbox.markPublished(message.outboxId());
             } catch (RuntimeException exception) {
-                outbox.markFailed(message.outboxId(), exception.getMessage() == null
+                boolean quarantined = outbox.markFailed(message, exception.getMessage() == null
                         ? exception.getClass().getSimpleName()
                         : exception.getMessage());
-                LOGGER.warn("Outbox delivery failed for {}", message.outboxId(), exception);
+                if (quarantined) {
+                    LOGGER.error("Outbox message {} quarantined after the retry budget", message.outboxId(), exception);
+                } else {
+                    LOGGER.warn("Outbox delivery failed for {}", message.outboxId(), exception);
+                }
             }
         }
     }

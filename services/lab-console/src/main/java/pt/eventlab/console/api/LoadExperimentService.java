@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.Executors;
@@ -145,8 +146,10 @@ class LoadExperimentService {
                     boolean duplicate = member * 100 < experiment.requestedWorkflows()
                             * experiment.duplicatePercentage();
                     ExperimentPlan plan = new ExperimentPlan(duplicate ? 2 : 1, FulfilmentBehavior.SUCCESS);
+                    UUID idempotencyKey = UUID.nameUUIDFromBytes(
+                            (experiment.id() + ":" + member).getBytes(StandardCharsets.UTF_8));
                     StartRunRequest request = new StartRunRequest("load-" + experiment.id(), plan,
-                            BigDecimal.valueOf(129.90), "EUR");
+                            BigDecimal.valueOf(129.90), "EUR", idempotencyKey);
                     RunResponse run = workflows.start(request);
                     runs.register(request, run);
                     recordAccepted(experiment.id(), run.workflowId());
@@ -385,7 +388,8 @@ class LoadExperimentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "consumerConcurrency must be 1, 4, or 8");
         }
-        if (!List.of("NONE", "PAYMENT", "WORKFLOW", "FULFILMENT", "EVIDENCE")
+        if (request.constrainedStage() == null
+                || !List.of("NONE", "PAYMENT", "WORKFLOW", "FULFILMENT", "EVIDENCE")
                 .contains(request.constrainedStage().toUpperCase())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "constrainedStage must be NONE, PAYMENT, WORKFLOW, FULFILMENT, or EVIDENCE");

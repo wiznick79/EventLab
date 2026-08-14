@@ -509,13 +509,16 @@ export function App() {
     setDeadLetterInspection(null)
     setActiveScenario(scenarioId)
     const resolvedPlan = experimentPlan ?? presetPlan(scenarioId)
+    const idempotencyKey = crypto.randomUUID()
     setActivePlan(resolvedPlan)
     setLaunchSequence((current) => current + 1)
     try {
       const response = await fetch('/api/v1/runs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenarioId, experimentPlan, amount: 129.90, currency: 'EUR' }),
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify({
+          scenarioId, experimentPlan, amount: 129.90, currency: 'EUR', idempotencyKey,
+        }),
       })
       if (!response.ok) throw new Error(`The Lab Console returned HTTP ${response.status}`)
       const created: RunResponse = await response.json()

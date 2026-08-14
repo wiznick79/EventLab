@@ -2,3 +2,13 @@ subscription_id = "00000000-0000-0000-0000-000000000000"
 environment_name = "demo"
 destroy_after = "2026-08-12T00:00:00Z"
 image_tag = "0123456789abcdef0123456789abcdef01234567"
+image_digests = {
+  workflow          = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  payment           = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  fulfilment        = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  console           = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  frontend          = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  tempo             = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  telemetry_gateway = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  grafana           = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+}

@@ -29,6 +29,14 @@ output "backend_key_prefix" {
   value = "eventlab"
 }
 
+output "environment_resource_group_name" {
+  value = azurerm_resource_group.environments.name
+}
+
 output "github_oidc_subject" {
   value = local.github_subject
+}
+
+output "github_cleanup_oidc_subject" {
+  value = local.github_cleanup_subject
 }
