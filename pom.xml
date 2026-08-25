@@ -28,7 +28,7 @@
     </modules>
 
     <properties>
-        <azure-servicebus.version>7.17.19</azure-servicebus.version>
+        <azure-servicebus.version>7.17.20</azure-servicebus.version>
         <azure-identity.version>1.18.4</azure-identity.version>
         <netty.version>4.1.136.Final</netty.version>
         <mockito.version>5.23.0</mockito.version>
