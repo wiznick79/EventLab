@@ -1,9 +1,10 @@
 locals {
-  # GitHub defines this exact subject format for environment-scoped OIDC
-  # tokens. Numeric owner/repository IDs are useful audit metadata, but are
-  # not valid components of the token's `sub` claim.
-  github_subject         = "repo:${var.github_owner}/${var.github_repository}:environment:${var.github_environment}"
-  github_cleanup_subject = "repo:${var.github_owner}/${var.github_repository}:environment:${var.github_cleanup_environment}"
+  # Repositories created after GitHub's immutable-subject rollout use numeric
+  # owner and repository IDs in default OIDC subjects. Keep the human-readable
+  # names as well because they are also part of GitHub's emitted claim.
+  github_subject_prefix  = "repo:${var.github_owner}@${var.github_owner_id}/${var.github_repository}@${var.github_repository_id}"
+  github_subject         = "${local.github_subject_prefix}:environment:${var.github_environment}"
+  github_cleanup_subject = "${local.github_subject_prefix}:environment:${var.github_cleanup_environment}"
 }
 
 resource "random_string" "state_suffix" {
@@ -84,7 +85,7 @@ resource "azuread_service_principal" "github" {
 resource "azuread_application_federated_identity_credential" "github_environment" {
   application_id = azuread_application.github.id
   display_name   = "github-${var.github_owner}-${var.github_repository}-${var.github_environment}"
-  description    = "GitHub Actions OIDC for the protected EventLab Azure environment"
+  description    = "GitHub Actions OIDC for the protected EventLab Azure environment using immutable repository identity"
   audiences      = ["api://AzureADTokenExchange"]
   issuer         = "https://token.actions.githubusercontent.com"
   subject        = local.github_subject
@@ -93,7 +94,7 @@ resource "azuread_application_federated_identity_credential" "github_environment
 resource "azuread_application_federated_identity_credential" "github_cleanup_environment" {
   application_id = azuread_application.github.id
   display_name   = "github-${var.github_owner}-${var.github_repository}-${var.github_cleanup_environment}"
-  description    = "GitHub Actions OIDC for unattended EventLab expiry cleanup"
+  description    = "GitHub Actions OIDC for unattended EventLab expiry cleanup using immutable repository identity"
   audiences      = ["api://AzureADTokenExchange"]
   issuer         = "https://token.actions.githubusercontent.com"
   subject        = local.github_cleanup_subject

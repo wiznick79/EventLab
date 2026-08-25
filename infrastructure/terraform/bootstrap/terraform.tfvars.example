@@ -2,9 +2,11 @@ subscription_id = "00000000-0000-0000-0000-000000000000"
 tenant_id       = "00000000-0000-0000-0000-000000000000"
 location        = "francecentral"
 
-github_owner       = "wiznick79"
-github_repository  = "EventLab"
-github_environment = "azure"
+github_owner               = "wiznick79"
+github_owner_id            = "49661706"
+github_repository          = "EventLab"
+github_repository_id       = "1330006750"
+github_environment         = "azure"
 github_cleanup_environment = "azure-cleanup"
 
 # Optional CIDR entries for administrative access. GitHub runner IPs are added only for each workflow run.

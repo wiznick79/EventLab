@@ -17,7 +17,7 @@ The primary trust boundaries are the public browser-to-frontend edge, frontend-t
 | Database exposure or cross-service access | PostgreSQL has no public endpoint, uses delegated VNet/private DNS, and gives every service its own login and database ownership. |
 | Excessive broker privilege | SAS/local authentication is disabled; each system-assigned identity receives only entity-scoped Sender or Receiver roles it needs. |
 | Compromised CI dependency or image | Actions are pinned to full commit SHAs; runtime images are digest pinned; CodeQL, dependency review, Gitleaks, Trivy, Dependabot, SBOM, and provenance checks run in CI. |
-| Long-lived cloud secret | GitHub uses an environment-scoped federated credential and short-lived OIDC token; no Azure client secret is stored. |
+| Long-lived cloud secret or repository-name takeover | GitHub uses an immutable ID-based, environment-scoped federated credential and short-lived OIDC token; no Azure client secret is stored. |
 | CI identity escapes project | Contributor and RBAC Administrator are scoped to the persistent EventLab environment resource group; state permissions are scoped to the state account. |
 | Terraform state disclosure | Shared-key authentication is disabled, blob access uses Entra RBAC, versioning/deletion retention is enabled, and the firewall admits only explicit administrative IPs plus the current CI runner temporarily. |
 | Public observability abuse | Grafana remains anonymous read-only-by-role for the demo, but has no direct public ingress; `/grafana` is proxied through the same rate-limited TLS frontend. Tempo retention is 24 hours. |

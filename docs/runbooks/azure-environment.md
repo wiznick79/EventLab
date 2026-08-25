@@ -5,9 +5,9 @@ EventLab Azure environments are deliberately disposable. Service Bus Standard an
 ## One-time bootstrap
 
 1. Sign in with `az login` and select the Azure for Students subscription.
-2. Copy `infrastructure/terraform/bootstrap/terraform.tfvars.example` to the ignored `terraform.tfvars` file and set the subscription and tenant IDs. France Central is the project default because the current subscription policy permits it while rejecting West Europe. Recheck the `Allowed resource deployment regions` policy before changing regions.
+2. Copy `infrastructure/terraform/bootstrap/terraform.tfvars.example` to the ignored `terraform.tfvars` file and set the subscription and tenant IDs. Verify the immutable GitHub owner and repository IDs with `gh api users/OWNER --jq .id` and `gh api repos/OWNER/REPOSITORY --jq .id`; GitHub includes them in the repository's default OIDC subject. France Central is the project default because the current subscription policy permits it while rejecting West Europe. Recheck the `Allowed resource deployment regions` policy before changing regions.
 3. Run `terraform init`, `terraform plan -out bootstrap.tfplan`, inspect the plan, and apply that saved plan.
-4. Register the Container Apps resource provider once with `az provider register --namespace Microsoft.App --wait`. The resource-group-scoped deployment identity deliberately cannot mutate subscription-level provider registrations.
+4. Register the required resource providers once: `Microsoft.App`, `Microsoft.Authorization`, `Microsoft.DBforPostgreSQL`, `Microsoft.Insights`, `Microsoft.Network`, `Microsoft.OperationalInsights`, `Microsoft.Resources`, `Microsoft.ServiceBus`, and `Microsoft.Storage`. AzureRM 5 is configured with `resource_provider_registrations = "none"`, and the resource-group-scoped deployment identity deliberately cannot mutate subscription-level registrations.
 5. Create a reviewer-protected GitHub environment named `azure` for plan/deploy/destroy and an unreviewed `azure-cleanup` environment for the scheduled expiry workflow. The bootstrap creates a distinct OIDC subject for each; copy the same output variables to both environments.
 6. Add these bootstrap outputs as GitHub environment variables:
 
@@ -22,7 +22,7 @@ EventLab Azure environments are deliberately disposable. Service Bus Standard an
 | `TF_STATE_KEY_PREFIX` | `backend_key_prefix` |
 | `AZURE_ENVIRONMENT_RESOURCE_GROUP` | `environment_resource_group_name` |
 
-No client secret is required. GitHub receives a short-lived Azure token only when a workflow uses the repository's `azure` environment.
+No client secret is required. GitHub receives a short-lived Azure token only when a workflow uses the repository's `azure` environment. The federated credential uses GitHub's immutable default subject prefix (`repo:OWNER@OWNER_ID/REPOSITORY@REPOSITORY_ID`) plus the environment suffix, so renaming the owner or repository requires an intentional bootstrap update.
 
 The bootstrap stack also creates the persistent `rg-eventlab-environments` authorization boundary. GitHub's Contributor and RBAC Administrator roles are scoped to that group rather than the subscription. Terraform state disables shared keys and defaults its firewall to deny; each workflow temporarily adds and then removes its runner IP while authenticating to the backend with OIDC.
 

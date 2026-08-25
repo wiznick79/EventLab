@@ -45,6 +45,7 @@ resource "azurerm_container_app_environment" "environment" {
   location                   = data.azurerm_resource_group.environment.location
   resource_group_name        = data.azurerm_resource_group.environment.name
   log_analytics_workspace_id = azurerm_log_analytics_workspace.environment.id
+  logs_destination           = "log-analytics"
   infrastructure_subnet_id   = azurerm_subnet.container_apps.id
   tags                       = local.tags
 }
@@ -92,11 +93,10 @@ resource "azurerm_private_dns_zone" "postgres" {
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "postgres" {
-  name                  = "${local.prefix}-postgres"
-  private_dns_zone_name = azurerm_private_dns_zone.postgres.name
-  virtual_network_id    = azurerm_virtual_network.environment.id
-  resource_group_name   = data.azurerm_resource_group.environment.name
-  tags                  = local.tags
+  name                = "${local.prefix}-postgres"
+  private_dns_zone_id = azurerm_private_dns_zone.postgres.id
+  virtual_network_id  = azurerm_virtual_network.environment.id
+  tags                = local.tags
 }
 
 resource "azurerm_servicebus_namespace" "environment" {

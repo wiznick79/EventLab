@@ -8,7 +8,7 @@ terraform {
     }
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 4.0"
+      version = "~> 5.1"
     }
     random = {
       source  = "hashicorp/random"
@@ -18,8 +18,9 @@ terraform {
 }
 
 provider "azurerm" {
-  subscription_id     = var.subscription_id
-  storage_use_azuread = true
+  subscription_id                 = var.subscription_id
+  storage_use_azuread             = true
+  resource_provider_registrations = "none"
   features {}
 }
 
