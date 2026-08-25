@@ -26,6 +26,18 @@ variable "github_repository" {
   default     = "EventLab"
 }
 
+variable "github_owner_id" {
+  description = "Immutable numeric GitHub organization or user ID used in the repository OIDC subject."
+  type        = string
+  default     = "49661706"
+}
+
+variable "github_repository_id" {
+  description = "Immutable numeric GitHub repository ID used in the repository OIDC subject."
+  type        = string
+  default     = "1330006750"
+}
+
 variable "github_environment" {
   description = "Protected GitHub environment trusted by the Azure federated credential."
   type        = string

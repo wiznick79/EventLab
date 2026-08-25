@@ -18,3 +18,4 @@ These records capture accepted project-level decisions. A decision can be supers
 | [ADR-012](012-bounded-load-experiments.md) | Run bounded load experiments through ordinary workflow paths | Accepted |
 | [ADR-013](013-runtime-consumer-concurrency.md) | Compare bounded runtime consumer concurrency profiles | Accepted |
 | [ADR-014](014-public-lab-security-boundaries.md) | Bound the anonymous lab with layered, disposable controls | Accepted |
+| [ADR-015](015-azurerm-5-and-immutable-oidc.md) | Adopt AzureRM 5 while preserving immutable GitHub OIDC identity | Accepted |

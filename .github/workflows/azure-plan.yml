@@ -70,7 +70,7 @@ jobs:
           [[ "$SUCCESSFUL_PROBES" -ge 3 ]] || { echo "Terraform state firewall did not stabilize" >&2; exit 1; }
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
         with:
-          terraform_version: 1.15.8
+          terraform_version: 1.15.9
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4
       - name: Initialize remote state
         run: >-
