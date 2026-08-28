@@ -16,7 +16,7 @@ These are development-laptop regression limits, not production capacity claims. 
 
 ## Run locally
 
-Start the Compose infrastructure and all four backend services with messaging enabled as described in the root README. Confirm `http://localhost:8080/actuator/health` reports `UP`, then run:
+Start the Compose infrastructure and all four backend services with messaging enabled as described in the root README. Confirm `http://localhost:38080/actuator/health` reports `UP`, then run:
 
 ```powershell
 docker compose --profile performance run --rm k6
@@ -65,7 +65,7 @@ The restart experiment deliberately terminates the locally running Payment JVM, 
 .\scripts\verify-payment-restart-recovery.ps1
 ```
 
-The script refuses to stop port 8082 unless its owner is a Java command running the EventLab payment-service JAR. Its `finally` block restores Payment if an assertion or API call fails. The interruption happens before workflow creation so the experiment deterministically proves broker buffering plus post-restart consumption. A later experiment can target the narrower crash window between broker acceptance and outbox publication.
+The script refuses to stop port 38082 unless its owner is a Java command running the EventLab payment-service JAR. Its `finally` block restores Payment if an assertion or API call fails. The interruption happens before workflow creation so the experiment deterministically proves broker buffering plus post-restart consumption. A later experiment can target the narrower crash window between broker acceptance and outbox publication.
 
 The first successful execution is recorded in [the 2026-08-12 Payment restart result](../results/payment-restart-recovery-2026-08-12.md).
 

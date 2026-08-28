@@ -20,7 +20,7 @@ function Wait-ForHealth([int[]] $Ports) {
 
 try {
     foreach ($definition in @(
-        @('workflow-service', 18081), @('payment-service', 18082), @('fulfilment-service', 18083))) {
+        @('workflow-service', 38081), @('payment-service', 38082), @('fulfilment-service', 38083))) {
         $service = $definition[0]
         $processes += Start-Process java -ArgumentList @(
             '-jar', "services/$service/target/$service-0.1.0-SNAPSHOT.jar",
@@ -28,25 +28,25 @@ try {
             -WorkingDirectory $repositoryRoot -WindowStyle Hidden -PassThru
     }
     $processes += Start-Process java -ArgumentList @(
-        '-jar', 'services/lab-console/target/lab-console-0.1.0-SNAPSHOT.jar', '--server.port=18080',
-        '--eventlab.workflow-base-url=http://localhost:18081',
-        '--eventlab.fulfilment-base-url=http://localhost:18083') `
+        '-jar', 'services/lab-console/target/lab-console-0.1.0-SNAPSHOT.jar', '--server.port=38080',
+        '--eventlab.workflow-base-url=http://localhost:38081',
+        '--eventlab.fulfilment-base-url=http://localhost:38083') `
         -WorkingDirectory $repositoryRoot -WindowStyle Hidden -PassThru
-    Wait-ForHealth @(18080, 18081, 18082, 18083)
+    Wait-ForHealth @(38080, 38081, 38082, 38083)
 
     $request = @{ scenarioId = 'out-of-order-event'; amount = 129.90; currency = 'EUR' } | ConvertTo-Json
     $run = (Invoke-WebRequest -UseBasicParsing -Method Post -ContentType application/json `
-        -Body $request http://localhost:18080/api/v1/runs).Content | ConvertFrom-Json
+        -Body $request http://localhost:38080/api/v1/runs).Content | ConvertFrom-Json
     $deadline = (Get-Date).AddSeconds(40)
     do {
         Start-Sleep -Milliseconds 500
         $parsed = (Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 `
-            "http://localhost:18080/api/v1/runs/$($run.workflowId)/timeline").Content | ConvertFrom-Json
+            "http://localhost:38080/api/v1/runs/$($run.workflowId)/timeline").Content | ConvertFrom-Json
         $timeline = @($parsed | ForEach-Object { $_ })
     } while (-not ($timeline.state -contains 'STALE_IGNORED') -and (Get-Date) -lt $deadline)
 
     $workflow = (Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 `
-        "http://localhost:18081/api/v1/workflows/$($run.workflowId)").Content | ConvertFrom-Json
+        "http://localhost:38081/api/v1/workflows/$($run.workflowId)").Content | ConvertFrom-Json
     if ($workflow.state -ne 'COMPLETED' -or -not ($timeline.state -contains 'LATE_UPDATE_OBSERVED') `
             -or -not ($timeline.state -contains 'STALE_IGNORED') `
             -or $timeline.state -contains 'COMPENSATED') {

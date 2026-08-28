@@ -4,7 +4,7 @@ This experiment verifies that accepted workflows survive a complete Payment cons
 
 ## Procedure
 
-1. Verify that port 8082 belongs to the EventLab payment-service JAR.
+1. Verify that port 38082 belongs to the EventLab payment-service JAR.
 2. Force-stop that JVM to simulate an abrupt process failure.
 3. Submit five happy-path workflows through the Lab Console while Payment is offline.
 4. Confirm none has advanced through payment during the outage.
@@ -26,4 +26,4 @@ Every accepted workflow produced exactly one payment authorization and exactly o
 
 Workflow creation and its outgoing authorization command are committed before asynchronous delivery. Azure Service Bus buffers commands while Payment has no consumer, and the restarted consumer resumes the normal idempotent processing path. The result demonstrates outage recovery for queued work; it does not yet target a crash at the narrower point between broker acceptance and an outbox row being marked published.
 
-Run the experiment with `scripts/verify-payment-restart-recovery.ps1`. The script restores Payment in a `finally` block and refuses to terminate an unrelated process on port 8082.
+Run the experiment with `scripts/verify-payment-restart-recovery.ps1`. The script restores Payment in a `finally` block and refuses to terminate an unrelated process on port 38082.

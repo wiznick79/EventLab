@@ -199,7 +199,7 @@ export function grafanaTraceUrl(traceId: string) {
     queries: [{ query: traceId, queryType: 'traceql' }],
   }
 
-  return `http://localhost:3000/explore?left=${encodeURIComponent(JSON.stringify(left))}`
+  return `http://localhost:33000/explore?left=${encodeURIComponent(JSON.stringify(left))}`
 }
 
 export function traceUrl(
@@ -217,7 +217,7 @@ export function traceUrl(
 }
 
 export function grafanaDashboardUrl(
-  grafanaBaseUrl = window.EVENTLAB_CONFIG?.grafanaBaseUrl ?? 'http://localhost:3000',
+  grafanaBaseUrl = window.EVENTLAB_CONFIG?.grafanaBaseUrl ?? 'http://localhost:33000',
 ) {
   return `${grafanaBaseUrl}/d/eventlab-operations/eventlab-operations?from=now-1h&to=now`
 }

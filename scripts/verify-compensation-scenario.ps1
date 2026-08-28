@@ -20,9 +20,9 @@ function Wait-ForHealth([int[]] $Ports) {
 
 try {
     foreach ($definition in @(
-        @('workflow-service', 18081),
-        @('payment-service', 18082),
-        @('fulfilment-service', 18083))) {
+        @('workflow-service', 38081),
+        @('payment-service', 38082),
+        @('fulfilment-service', 38083))) {
         $service = $definition[0]
         $processes += Start-Process java -ArgumentList @(
             '-jar', "services/$service/target/$service-0.1.0-SNAPSHOT.jar",
@@ -31,19 +31,19 @@ try {
     }
     $processes += Start-Process java -ArgumentList @(
         '-jar', 'services/lab-console/target/lab-console-0.1.0-SNAPSHOT.jar',
-        '--server.port=18080', '--eventlab.workflow-base-url=http://localhost:18081',
-        '--eventlab.fulfilment-base-url=http://localhost:18083') `
+        '--server.port=38080', '--eventlab.workflow-base-url=http://localhost:38081',
+        '--eventlab.fulfilment-base-url=http://localhost:38083') `
         -WorkingDirectory $repositoryRoot -WindowStyle Hidden -PassThru
-    Wait-ForHealth @(18080, 18081, 18082, 18083)
+    Wait-ForHealth @(38080, 38081, 38082, 38083)
 
     $request = @{ scenarioId = 'fulfilment-rejected'; amount = 129.90; currency = 'EUR' } | ConvertTo-Json
     $run = (Invoke-WebRequest -UseBasicParsing -Method Post -ContentType application/json `
-        -Body $request http://localhost:18080/api/v1/runs).Content | ConvertFrom-Json
+        -Body $request http://localhost:38080/api/v1/runs).Content | ConvertFrom-Json
     $deadline = (Get-Date).AddSeconds(40)
     do {
         Start-Sleep -Milliseconds 500
         $parsed = (Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 `
-            "http://localhost:18080/api/v1/runs/$($run.workflowId)/timeline").Content | ConvertFrom-Json
+            "http://localhost:38080/api/v1/runs/$($run.workflowId)/timeline").Content | ConvertFrom-Json
         $timeline = @($parsed | ForEach-Object { $_ })
     } while (-not ($timeline.state -contains 'COMPENSATED') -and (Get-Date) -lt $deadline)
 
@@ -57,7 +57,7 @@ try {
         throw 'Compensation terminal-state invariant failed'
     }
     $workflow = (Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 `
-        "http://localhost:18081/api/v1/workflows/$($run.workflowId)").Content | ConvertFrom-Json
+        "http://localhost:38081/api/v1/workflows/$($run.workflowId)").Content | ConvertFrom-Json
     if ($workflow.state -ne 'COMPENSATED') { throw "Persisted workflow state is $($workflow.state)" }
     [pscustomobject]@{
         workflowId = $run.workflowId

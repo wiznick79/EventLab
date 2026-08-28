@@ -2,7 +2,7 @@ spring:
   application:
     name: workflow-service
   datasource:
-    url: ${WORKFLOW_DATABASE_URL:jdbc:postgresql://localhost:5433/workflow_service}
+    url: ${WORKFLOW_DATABASE_URL:jdbc:postgresql://localhost:35432/workflow_service}
     username: ${WORKFLOW_DATABASE_USER:workflow_service}
     password: ${WORKFLOW_DATABASE_PASSWORD:workflow-local-only}
   flyway:
@@ -13,7 +13,7 @@ spring:
       ddl-auto: validate
 
 server:
-  port: ${SERVER_PORT:8081}
+  port: ${SERVER_PORT:38081}
 
 management:
   endpoints:
@@ -29,7 +29,7 @@ management:
       probability: 1.0
   otlp:
     tracing:
-      endpoint: ${OTEL_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+      endpoint: ${OTEL_TRACES_ENDPOINT:http://localhost:34318/v1/traces}
 
 eventlab:
   messaging:

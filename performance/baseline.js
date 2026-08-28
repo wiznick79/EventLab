@@ -2,7 +2,7 @@ import http from 'k6/http'
 import { check, fail, sleep } from 'k6'
 import { Rate, Trend } from 'k6/metrics'
 
-const baseUrl = __ENV.BASE_URL || 'http://host.docker.internal:8080'
+const baseUrl = __ENV.BASE_URL || 'http://host.docker.internal:38080'
 const completionTimeoutSeconds = Number(__ENV.COMPLETION_TIMEOUT_SECONDS || 20)
 const invariantPass = new Rate('business_invariant_pass')
 const completionDuration = new Trend('workflow_completion_duration', true)
