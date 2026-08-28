@@ -78,6 +78,11 @@ jobs:
           ACCEPT_EULA: Y
         run: |
           docker compose up -d --wait postgres servicebus
+          for _ in $(seq 1 60); do
+            docker compose logs servicebus 2>&1 | grep -q 'Emulator Service is Successfully Up!' && break
+            sleep 2
+          done
+          docker compose logs servicebus 2>&1 | grep -q 'Emulator Service is Successfully Up!'
           mkdir -p /tmp/eventlab-logs
           java -jar services/workflow-service/target/workflow-service-*.jar >/tmp/eventlab-logs/workflow.log 2>&1 &
           java -jar services/payment-service/target/payment-service-*.jar >/tmp/eventlab-logs/payment.log 2>&1 &
