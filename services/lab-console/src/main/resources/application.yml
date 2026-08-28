@@ -2,7 +2,7 @@ spring:
   application:
     name: lab-console
   datasource:
-    url: ${LAB_CONSOLE_DATABASE_URL:jdbc:postgresql://localhost:5433/lab_console}
+    url: ${LAB_CONSOLE_DATABASE_URL:jdbc:postgresql://localhost:35432/lab_console}
     username: ${LAB_CONSOLE_DATABASE_USER:lab_console}
     password: ${LAB_CONSOLE_DATABASE_PASSWORD:console-local-only}
   flyway:
@@ -12,7 +12,7 @@ spring:
     hibernate:
       ddl-auto: validate
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${SERVER_PORT:38080}
 management:
   endpoints:
     web:
@@ -27,13 +27,13 @@ management:
       probability: 1.0
   otlp:
     tracing:
-      endpoint: ${OTEL_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+      endpoint: ${OTEL_TRACES_ENDPOINT:http://localhost:34318/v1/traces}
 
 eventlab:
-  workflow-base-url: ${WORKFLOW_SERVICE_BASE_URL:http://localhost:8081}
-  payment-base-url: ${PAYMENT_SERVICE_BASE_URL:http://localhost:8082}
-  fulfilment-base-url: ${FULFILMENT_SERVICE_BASE_URL:http://localhost:8083}
-  grafana-base-url: ${GRAFANA_BASE_URL:http://localhost:3000}
+  workflow-base-url: ${WORKFLOW_SERVICE_BASE_URL:http://localhost:38081}
+  payment-base-url: ${PAYMENT_SERVICE_BASE_URL:http://localhost:38082}
+  fulfilment-base-url: ${FULFILMENT_SERVICE_BASE_URL:http://localhost:38083}
+  grafana-base-url: ${GRAFANA_BASE_URL:http://localhost:33000}
   messaging:
     enabled: ${EVENTLAB_MESSAGING_ENABLED:false}
     connection-string: ${EVENTLAB_SERVICEBUS_CONNECTION_STRING:Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;}

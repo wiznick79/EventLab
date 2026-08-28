@@ -2,7 +2,7 @@ spring:
   application:
     name: fulfilment-service
   datasource:
-    url: ${FULFILMENT_DATABASE_URL:jdbc:postgresql://localhost:5433/fulfilment_service}
+    url: ${FULFILMENT_DATABASE_URL:jdbc:postgresql://localhost:35432/fulfilment_service}
     username: ${FULFILMENT_DATABASE_USER:fulfilment_service}
     password: ${FULFILMENT_DATABASE_PASSWORD:fulfilment-local-only}
   flyway:
@@ -12,7 +12,7 @@ spring:
     hibernate:
       ddl-auto: validate
 server:
-  port: ${SERVER_PORT:8083}
+  port: ${SERVER_PORT:38083}
 management:
   endpoints:
     web:
@@ -27,7 +27,7 @@ management:
       probability: 1.0
   otlp:
     tracing:
-      endpoint: ${OTEL_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+      endpoint: ${OTEL_TRACES_ENDPOINT:http://localhost:34318/v1/traces}
 
 eventlab:
   messaging:

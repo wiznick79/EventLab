@@ -37,7 +37,7 @@ Milestones 0–30 are complete. EventLab includes a disposable Azure environment
 - [Vulnerability reporting](SECURITY.md)
 - [Architecture decisions](docs/decisions/README.md)
 
-The permanent static tour is published through GitHub Pages from the same frontend with `VITE_STATIC_TOUR=true`. It contains no API calls and remains useful while the disposable Azure lab is offline. Locally, open `http://localhost:5173/?tour` after starting Vite.
+The permanent static tour is published through GitHub Pages from the same frontend with `VITE_STATIC_TOUR=true`. It contains no API calls and remains useful while the disposable Azure lab is offline. Locally, open `http://localhost:35173/?tour` after starting Vite.
 
 ## Guiding rule
 
@@ -75,6 +75,21 @@ Copy-Item .env.example .env
 # Review .env and explicitly set ACCEPT_EULA=Y if you accept the terms.
 docker compose up -d postgres servicebus-sql servicebus tempo otel-collector grafana
 ```
+
+Local development uses a project-specific host-port namespace so EventLab can run alongside other projects:
+
+| Component | Local host endpoint |
+| --- | --- |
+| Vite UI | `http://localhost:35173` |
+| Lab Console | `http://localhost:38080` |
+| Workflow service | `http://localhost:38081` |
+| Payment service | `http://localhost:38082` |
+| Fulfilment service | `http://localhost:38083` |
+| PostgreSQL | `localhost:35432` |
+| Grafana | `http://localhost:33000` |
+| OTLP gRPC / HTTP | `localhost:34317` / `localhost:34318` |
+| Service Bus management | `http://localhost:35300` |
+| Service Bus AMQP | `localhost:5672` (fixed by the emulator SDK) |
 
 The PostgreSQL initialization script creates one database and role per service. If the Postgres volume predates that script, remove only that development volume and recreate it:
 
@@ -119,7 +134,7 @@ Set-Location frontend
 npm.cmd run dev
 ```
 
-Open `http://localhost:5173`, run **Successful payment workflow**, and follow any trace link into Grafana at `http://localhost:3000`.
+Open `http://localhost:35173`, run **Successful payment workflow**, and follow any trace link into Grafana at `http://localhost:33000`.
 
 The emulator connection string is deliberately static and local-only. The emulator does not persist broker state across restarts; its queues, topic, and subscriptions are recreated from `infrastructure/servicebus/Config.json`.
 

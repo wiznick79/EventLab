@@ -78,12 +78,17 @@ jobs:
           ACCEPT_EULA: Y
         run: |
           docker compose up -d --wait postgres servicebus
+          for _ in $(seq 1 60); do
+            docker compose logs servicebus 2>&1 | grep -q 'Emulator Service is Successfully Up!' && break
+            sleep 2
+          done
+          docker compose logs servicebus 2>&1 | grep -q 'Emulator Service is Successfully Up!'
           mkdir -p /tmp/eventlab-logs
           java -jar services/workflow-service/target/workflow-service-*.jar >/tmp/eventlab-logs/workflow.log 2>&1 &
           java -jar services/payment-service/target/payment-service-*.jar >/tmp/eventlab-logs/payment.log 2>&1 &
           java -jar services/fulfilment-service/target/fulfilment-service-*.jar >/tmp/eventlab-logs/fulfilment.log 2>&1 &
           java -jar services/lab-console/target/lab-console-*.jar >/tmp/eventlab-logs/console.log 2>&1 &
-          for PORT in 8080 8081 8082 8083; do
+          for PORT in 38080 38081 38082 38083; do
             for _ in $(seq 1 90); do
               curl --fail --silent "http://localhost:${PORT}/actuator/health" >/dev/null && break
               sleep 2
@@ -96,10 +101,10 @@ jobs:
           RUN="$(curl --fail --silent --show-error -H 'Content-Type: application/json' \
             -H "Idempotency-Key: $KEY" \
             -d "{\"scenarioId\":\"happy-path\",\"amount\":129.90,\"currency\":\"EUR\",\"idempotencyKey\":\"$KEY\"}" \
-            http://localhost:8080/api/v1/runs)"
+            http://localhost:38080/api/v1/runs)"
           WORKFLOW_ID="$(jq -er '.workflowId' <<< "$RUN")"
           for _ in $(seq 1 45); do
-            EVIDENCE="$(curl --fail --silent "http://localhost:8080/api/v1/runs/${WORKFLOW_ID}/evidence")"
+            EVIDENCE="$(curl --fail --silent "http://localhost:38080/api/v1/runs/${WORKFLOW_ID}/evidence")"
             jq -e '.assessment == "PROVED"' <<< "$EVIDENCE" >/dev/null && exit 0
             sleep 2
           done

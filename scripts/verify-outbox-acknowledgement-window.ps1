@@ -3,8 +3,8 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $paymentJar = Join-Path $repositoryRoot `
     'services/payment-service/target/payment-service-0.1.0-SNAPSHOT.jar'
-$paymentPort = 8082
-$consoleUrl = 'http://localhost:8080'
+$paymentPort = 38082
+$consoleUrl = 'http://localhost:38080'
 $testPaymentProcess = $null
 $originalPaymentStopped = $false
 

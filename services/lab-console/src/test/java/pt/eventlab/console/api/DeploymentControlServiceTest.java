@@ -42,7 +42,7 @@ class DeploymentControlServiceTest {
         EvidencePipelineStatus pipeline = new EvidencePipelineStatus(false);
         DeploymentControlService service = new DeploymentControlService(RestClient.builder(),
                 new DeploymentProperties("local", "development", null, 600), pipeline,
-                "http://localhost:18081", "http://localhost:18082", "http://localhost:18083");
+                "http://localhost:38081", "http://localhost:38082", "http://localhost:38083");
 
         assertThrows(ResponseStatusException.class, service::requireAcceptingExperiments);
         assertEquals("DISABLED", service.status().evidencePipeline().status());
@@ -52,6 +52,6 @@ class DeploymentControlServiceTest {
         EvidencePipelineStatus pipeline = new EvidencePipelineStatus(true);
         pipeline.running();
         return new DeploymentControlService(RestClient.builder(), properties, pipeline,
-                "http://localhost:18081", "http://localhost:18082", "http://localhost:18083");
+                "http://localhost:38081", "http://localhost:38082", "http://localhost:38083");
     }
 }

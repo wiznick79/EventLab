@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: ${EVENTLAB_POSTGRES_PASSWORD:-eventlab-local-only}
       POSTGRES_DB: eventlab
     ports:
-      - "${EVENTLAB_POSTGRES_PORT:-5433}:5432"
+      - "${EVENTLAB_POSTGRES_PORT:-35432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -43,8 +43,9 @@ services:
       servicebus-sql:
         condition: service_healthy
     ports:
+      # The emulator SDK requires host port 5672 when UseDevelopmentEmulator=true.
       - "5672:5672"
-      - "5300:5300"
+      - "${EVENTLAB_SERVICEBUS_MANAGEMENT_PORT:-35300}:5300"
     volumes:
       - ./infrastructure/servicebus/Config.json:/ServiceBus_Emulator/ConfigFiles/Config.json:ro
 
@@ -61,8 +62,8 @@ services:
     volumes:
       - ./infrastructure/otel/collector.yml:/etc/otelcol/config.yml:ro
     ports:
-      - "4317:4317"
-      - "4318:4318"
+      - "${EVENTLAB_OTLP_GRPC_PORT:-34317}:4317"
+      - "${EVENTLAB_OTLP_HTTP_PORT:-34318}:4318"
     depends_on:
       - tempo
 
@@ -76,7 +77,7 @@ services:
       GF_USERS_VIEWERS_CAN_EDIT: "true"
       GF_AUTH_DISABLE_LOGIN_FORM: "true"
     ports:
-      - "3000:3000"
+      - "${EVENTLAB_GRAFANA_PORT:-33000}:3000"
     volumes:
       - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./infrastructure/grafana/dashboards:/var/lib/grafana/dashboards:ro
@@ -91,7 +92,7 @@ services:
     entrypoint: ["k6"]
     command: ["run", "baseline.js"]
     environment:
-      BASE_URL: ${EVENTLAB_K6_BASE_URL:-http://host.docker.internal:8080}
+      BASE_URL: ${EVENTLAB_K6_BASE_URL:-http://host.docker.internal:38080}
       HAPPY_ITERATIONS: ${EVENTLAB_K6_HAPPY_ITERATIONS:-10}
       DUPLICATE_ITERATIONS: ${EVENTLAB_K6_DUPLICATE_ITERATIONS:-3}
       COMPLETION_TIMEOUT_SECONDS: ${EVENTLAB_K6_COMPLETION_TIMEOUT_SECONDS:-20}
