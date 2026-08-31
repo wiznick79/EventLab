@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.18
-FROM maven:3.9.16-eclipse-temurin-21-alpine@sha256:d6390509b774df0a07d009a194a020aeff9c715afe1e3d2cd5ecb3bf6344700f AS build
+FROM maven:3-eclipse-temurin-26-alpine@sha256:9cbcc5b82c2deb26c1b608bdcdfebd9bc71e5edada8c07a430c36826c41f7b2b AS build
 WORKDIR /workspace
 ARG SERVICE
 
@@ -17,7 +17,7 @@ COPY messaging-support/src messaging-support/src
 COPY services/${SERVICE}/src services/${SERVICE}/src
 RUN mvn -B -ntp -pl "services/${SERVICE}" -am package -DskipTests
 
-FROM eclipse-temurin:21-jre-alpine@sha256:3f08b13888f595cc49edabea7250ba69499ba25602b267da591720769400e08c
+FROM eclipse-temurin:25-jre-alpine@sha256:3137541deb3cac6626b5d9a4a2187bc0d6a34312f858bd2c67dd01e732e6b682
 RUN apk upgrade --no-cache
 RUN addgroup -S eventlab && adduser -S eventlab -G eventlab
 WORKDIR /app
