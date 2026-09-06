@@ -28,6 +28,7 @@ Milestones 0–30 are complete. EventLab includes a disposable Azure environment
 ## Documentation
 
 - [Proposed architecture](docs/architecture.md)
+- [Visual architecture map and end-to-end flows](docs/architecture-map.md) ([standalone HTML](docs/architecture-map.html))
 - [Incremental roadmap](docs/roadmap.md)
 - [Ephemeral Azure runbook](docs/runbooks/azure-environment.md)
 - [How to verify frontend claims in traces](docs/runbooks/reading-traces.md)
