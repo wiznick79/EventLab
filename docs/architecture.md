@@ -1,5 +1,8 @@
 # EventLab proposed architecture
 
+For a compact view of the implemented layers, message topology, workflow paths, and reliability
+boundaries, see the [visual architecture map](architecture-map.md).
+
 ## 1. Purpose
 
 EventLab is an interactive failure simulator for distributed workflows. A visitor starts a small order-fulfilment workflow, injects a deterministic failure, observes its effects, and performs recovery actions when appropriate.

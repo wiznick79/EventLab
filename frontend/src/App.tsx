@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { PortfolioTour } from './PortfolioTour'
 import { DemoRecording } from './DemoRecording'
+import { ArchitectureCanvas } from './ArchitectureCanvas'
 
 type TimelineEvent = {
   sequence: number
@@ -943,7 +944,10 @@ export function App() {
             <ol>{evidenceReport.checks.map((check) => <li key={check.id}><strong>{check.status === 'PROVED' ? '✓' : check.status === 'FAILED' ? '!' : '…'} {check.label}</strong><span>{check.observation}</span>{check.traceIds.length > 0 && <small>{check.traceIds.length} supporting trace{check.traceIds.length === 1 ? '' : 's'}</small>}</li>)}</ol>
           </section>}
           {error && <p className="run-error">{error}</p>}
-          <ol className="timeline">
+          {run && <ArchitectureCanvas key={run.workflowId} events={events} traceUrl={traceUrl} />}
+          <details className="timeline-disclosure">
+            <summary>Full chronological timeline <span>{events.length} recorded event{events.length === 1 ? '' : 's'}</span></summary>
+            <ol className="timeline">
             {events.map((event) => {
               const evidence = traceEvidence(event.state)
               return <li key={event.sequence}>
@@ -957,7 +961,8 @@ export function App() {
               </li>
             })}
             {events.length === 0 && run && <li className="waiting">Waiting for the first business event…</li>}
-          </ol>
+            </ol>
+          </details>
         </section>}
       </section>
 

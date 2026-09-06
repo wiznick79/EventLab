@@ -509,3 +509,8 @@ footer { display: flex; justify-content: space-between; padding-top: 2rem; paddi
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; transition: none !important; }
 }
+.timeline-disclosure { margin-top: 1rem; border-top: 1px solid var(--line); }
+.timeline-disclosure > summary { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem 0; color: var(--acid); cursor: pointer; font: .7rem 'DM Mono', monospace; text-transform: uppercase; }
+.timeline-disclosure > summary::marker { color: var(--cyan); }
+.timeline-disclosure > summary span { color: var(--muted); font-size: .62rem; }
+.timeline-disclosure[open] > summary { border-bottom: 1px solid var(--line); }
