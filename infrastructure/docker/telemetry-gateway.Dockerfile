@@ -1,3 +1,3 @@
-FROM nginxinc/nginx-unprivileged:1.31.3-alpine-slim@sha256:ff4671e70f4f903721c5eacce1373d3e5d21b3d5f6fb03982154aabd084ed32e
+FROM nginxinc/nginx-unprivileged:1.31.5-alpine-slim@sha256:736aa11ab9f9c320825722e411661c64559881e15e77f37137eef168ebe9515c
 COPY infrastructure/nginx/telemetry-gateway.conf /etc/nginx/conf.d/default.conf
 USER 101
