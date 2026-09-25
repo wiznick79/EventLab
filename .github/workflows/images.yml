@@ -64,7 +64,9 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          build-args: ${{ matrix.service && format('SERVICE={0}', matrix.service) || '' }}
+          build-args: |
+            ${{ matrix.service && format('SERVICE={0}', matrix.service) || '' }}
+            ${{ matrix.service && format('APK_UPGRADE_CACHE_BUST={0}', github.run_id) || '' }}
           tags: eventlab-${{ matrix.image }}:${{ github.sha }}
           load: true
           cache-from: type=gha,scope=${{ matrix.image }}
@@ -90,7 +92,9 @@ jobs:
           context: .
           file: ${{ matrix.dockerfile }}
           push: true
-          build-args: ${{ matrix.service && format('SERVICE={0}', matrix.service) || '' }}
+          build-args: |
+            ${{ matrix.service && format('SERVICE={0}', matrix.service) || '' }}
+            ${{ matrix.service && format('APK_UPGRADE_CACHE_BUST={0}', github.run_id) || '' }}
           tags: ghcr.io/${{ github.repository_owner }}/eventlab/${{ matrix.package || matrix.image }}:${{ github.sha }}${{ matrix.tag_suffix }}
           cache-from: type=gha,scope=${{ matrix.image }}
           provenance: mode=max
