@@ -18,7 +18,9 @@ COPY services/${SERVICE}/src services/${SERVICE}/src
 RUN mvn -B -ntp -pl "services/${SERVICE}" -am package -DskipTests
 
 FROM eclipse-temurin:21-jre-alpine@sha256:974b08960c5d96694c780e65b2d5705268ab1e1ca1a0dd0caf4ba6c3fe34d699
-RUN apk upgrade --no-cache
+# Include a per-workflow cache key so CI refreshes Alpine packages instead of reusing a stale upgrade layer.
+ARG APK_UPGRADE_CACHE_BUST=local
+RUN printf '%s' "$APK_UPGRADE_CACHE_BUST" >/dev/null && apk upgrade --no-cache
 RUN addgroup -S eventlab && adduser -S eventlab -G eventlab
 WORKDIR /app
 ARG SERVICE
