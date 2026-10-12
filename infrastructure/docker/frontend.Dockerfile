@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.18
-FROM node:24-alpine@sha256:50c8e8ca1d27439048670df5883f32d57cf81cff6233222c893fd0d9884cbd81 AS build
+FROM node:26-alpine@sha256:143494b1da2945f061539253adc65e4f1569ddf07da2d384c022c791a9d90a4a AS build
 WORKDIR /workspace
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
