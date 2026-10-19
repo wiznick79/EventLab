@@ -1,4 +1,4 @@
-FROM grafana/grafana:13.2.1@sha256:f772d434e8fab0049deb2b1b30abd43342bcfca1537614aa8d36080232cf4283
+FROM grafana/grafana:13.2.4@sha256:dbbc38ea21103cefb50396340cd88afec779c7e070b0a7bf5a75b4ce46651d3f
 COPY infrastructure/grafana/provisioning /etc/grafana/provisioning
 COPY infrastructure/grafana/dashboards /var/lib/grafana/dashboards
 USER 472

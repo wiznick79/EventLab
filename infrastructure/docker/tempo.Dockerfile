@@ -1,4 +1,4 @@
-FROM grafana/tempo:2.10.8@sha256:f0561deb1c68ec44d6e6e7e4487f30106c4e5e768642077695b37958b105812a
+FROM grafana/tempo:3.1.0@sha256:3076b8dcdfb32fd6bc5ccef85e7b7313e6199b9cb84366257fc17ecb696db5fd
 COPY infrastructure/tempo/tempo.yml /etc/tempo.yaml
 USER 10001
 ENTRYPOINT ["/tempo"]
