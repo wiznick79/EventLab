@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
           cache: maven
       - name: Verify backend
         run: ./mvnw -B -ntp verify
@@ -37,11 +37,13 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '24'
+          node-version: "24"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
         run: npm ci
+      - name: Check dependency vulnerabilities
+        run: npm audit --audit-level=moderate
       - name: Test
         run: npm test
       - name: Build
@@ -61,7 +63,7 @@ jobs:
     name: Broker and database integration
     runs-on: ubuntu-latest
     env:
-      EVENTLAB_MESSAGING_ENABLED: 'true'
+      EVENTLAB_MESSAGING_ENABLED: "true"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -69,10 +71,14 @@ jobs:
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
           cache: maven
       - name: Package services
         run: ./mvnw -B -ntp -DskipTests package
+      - name: Reserve service ports for integration
+        run: |
+          RESERVED_PORTS="$(sysctl -n net.ipv4.ip_local_reserved_ports)"
+          sudo sysctl -w "net.ipv4.ip_local_reserved_ports=${RESERVED_PORTS:+${RESERVED_PORTS},}38080-38083"
       - name: Start real infrastructure and services
         env:
           ACCEPT_EULA: Y

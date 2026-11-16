@@ -1,4 +1,7 @@
 spring:
+  http:
+    converters:
+      preferred-json-mapper: jackson2
   application:
     name: payment-service
   datasource:
@@ -25,9 +28,11 @@ management:
   tracing:
     sampling:
       probability: 1.0
-  otlp:
+  opentelemetry:
     tracing:
-      endpoint: ${OTEL_TRACES_ENDPOINT:http://localhost:34318/v1/traces}
+      export:
+        otlp:
+          endpoint: ${OTEL_TRACES_ENDPOINT:http://localhost:34318/v1/traces}
 
 eventlab:
   messaging:
