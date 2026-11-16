@@ -14,7 +14,7 @@ Milestones 0–30 are complete. EventLab includes a disposable Azure environment
 
 ## Target technology
 
-- Java 21, Spring Boot 3, and Maven multi-module builds.
+- Java 21, Spring Boot 4, and Maven multi-module builds.
 - React, TypeScript, and Vite.
 - PostgreSQL and Flyway.
 - Azure Service Bus Standard in Azure and the official Service Bus emulator locally.

@@ -33,12 +33,12 @@ jobs:
             service: lab-console
           - image: frontend
             dockerfile: infrastructure/docker/frontend.Dockerfile
-            service: ''
+            service: ""
           - image: tempo
             package: frontend
             tag_suffix: -tempo
             dockerfile: infrastructure/docker/tempo.Dockerfile
-            service: ''
+            service: ""
             # Current upstream binaries still contain newly disclosed fixable Go HIGHs.
             # They have no direct ingress; Dependabot tracks the pinned releases.
             scan_severity: CRITICAL
@@ -46,12 +46,12 @@ jobs:
             package: frontend
             tag_suffix: -telemetry-gateway
             dockerfile: infrastructure/docker/telemetry-gateway.Dockerfile
-            service: ''
+            service: ""
           - image: grafana
             package: frontend
             tag_suffix: -grafana
             dockerfile: infrastructure/docker/grafana.Dockerfile
-            service: ''
+            service: ""
             # Grafana is internal-only behind the rate-limited frontend proxy.
             scan_severity: CRITICAL
     steps:
@@ -66,7 +66,7 @@ jobs:
           file: ${{ matrix.dockerfile }}
           build-args: |
             ${{ matrix.service && format('SERVICE={0}', matrix.service) || '' }}
-            ${{ matrix.service && format('APK_UPGRADE_CACHE_BUST={0}', github.run_id) || '' }}
+            APK_UPGRADE_CACHE_BUST=${{ github.run_id }}
           tags: eventlab-${{ matrix.image }}:${{ github.sha }}
           load: true
           cache-from: type=gha,scope=${{ matrix.image }}
@@ -77,7 +77,7 @@ jobs:
           image-ref: eventlab-${{ matrix.image }}:${{ github.sha }}
           severity: ${{ matrix.scan_severity || 'CRITICAL,HIGH' }}
           ignore-unfixed: true
-          exit-code: '1'
+          exit-code: "1"
       - name: Log in to GitHub Container Registry
         if: github.event_name != 'pull_request'
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
@@ -94,7 +94,7 @@ jobs:
           push: true
           build-args: |
             ${{ matrix.service && format('SERVICE={0}', matrix.service) || '' }}
-            ${{ matrix.service && format('APK_UPGRADE_CACHE_BUST={0}', github.run_id) || '' }}
+            APK_UPGRADE_CACHE_BUST=${{ github.run_id }}
           tags: ghcr.io/${{ github.repository_owner }}/eventlab/${{ matrix.package || matrix.image }}:${{ github.sha }}${{ matrix.tag_suffix }}
           cache-from: type=gha,scope=${{ matrix.image }}
           provenance: mode=max

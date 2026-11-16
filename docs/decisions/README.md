@@ -12,10 +12,11 @@ These records capture accepted project-level decisions. A decision can be supers
 | [ADR-006](006-failure-injection.md) | Begin with curated deterministic application-level scenarios | Accepted |
 | [ADR-007](007-data-ownership.md) | Share PostgreSQL infrastructure while preserving service ownership | Accepted |
 | [ADR-008](008-ephemeral-azure.md) | Separate persistent bootstrap from disposable Azure infrastructure | Accepted |
-| [ADR-009](009-technology-baseline.md) | Pin the initial Java and web framework baseline | Accepted |
+| [ADR-009](009-technology-baseline.md) | Pin the initial Java and web framework baseline | Partly superseded by ADR-016 |
 | [ADR-010](010-scenario-builder.md) | Compose bounded immutable experiment plans | Accepted |
 | [ADR-011](011-unsupported-contract-quarantine.md) | Reject unsupported contracts explicitly and quarantine them after a bounded budget | Accepted |
 | [ADR-012](012-bounded-load-experiments.md) | Run bounded load experiments through ordinary workflow paths | Accepted |
 | [ADR-013](013-runtime-consumer-concurrency.md) | Compare bounded runtime consumer concurrency profiles | Accepted |
 | [ADR-014](014-public-lab-security-boundaries.md) | Bound the anonymous lab with layered, disposable controls | Accepted |
 | [ADR-015](015-azurerm-5-and-immutable-oidc.md) | Adopt AzureRM 5 while preserving immutable GitHub OIDC identity | Accepted |
+| [ADR-016](016-security-dependency-baseline.md) | Use patched Spring Boot 4 and refreshed runtime images | Accepted |

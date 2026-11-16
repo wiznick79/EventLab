@@ -1,6 +1,6 @@
 # ADR-009: Initial technology baseline
 
-**Status:** Accepted
+**Status:** Superseded in part by [ADR-016](016-security-dependency-baseline.md)
 
 ## Context
 
