@@ -14,6 +14,8 @@ Validated on 2026-11-16. The framework migration is explained in
 - Grafana 13.3.1 starts successfully, provisions the signed Tempo datasource, and executes a TraceQL query.
   Unused bundled datasource plugins are removed, and automatic plugin installs and updates are disabled.
 - Docker Compose configuration validates, and the modified XML, Java, JSON, and YAML files are formatted.
+- Linux CI reserves ports 38080–38083 before startup so outbound AMQP/HTTP connections cannot claim
+  these ports from the ephemeral port range before Tomcat binds them.
 
 ## Container scan results
 
