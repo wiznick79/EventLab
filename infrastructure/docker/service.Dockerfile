@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.18
-FROM maven:3.9.16-eclipse-temurin-21-alpine@sha256:308cba8b638ed7e4658cea3f8399066219466211c805f6d5728c3c9c7614661b AS build
+FROM maven:3.9-eclipse-temurin-26-alpine@sha256:4c85d516dd8c7e50d49a403d604e565e0dbb09a790186fe3245725d313ae7cb9 AS build
 WORKDIR /workspace
 ARG SERVICE
 
@@ -17,7 +17,7 @@ COPY messaging-support/src messaging-support/src
 COPY services/${SERVICE}/src services/${SERVICE}/src
 RUN mvn -B -ntp -pl "services/${SERVICE}" -am package -DskipTests
 
-FROM eclipse-temurin:21-jre-alpine@sha256:ac05c3c42b7c2f1a52c9bd52f01041fa1958231b15ebeae7420429cbc5baf474
+FROM eclipse-temurin:24-jre-alpine@sha256:4044b6c87cb088885bcd0220f7dc7a8a4aab76577605fa471945d2e98270741f
 # Include a per-workflow cache key so CI refreshes Alpine packages instead of reusing a stale upgrade layer.
 ARG APK_UPGRADE_CACHE_BUST=local
 RUN printf '%s' "$APK_UPGRADE_CACHE_BUST" >/dev/null && apk upgrade --no-cache
